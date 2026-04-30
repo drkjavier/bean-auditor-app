@@ -1,0 +1,28 @@
+---
+description: Agente especializado en implementar, ajustar y optimizar funcionalidades, estilos y accesibilidad en aplicaciones React Native multiplataforma. Úsalo para tareas de UI, integración de componentes, refactorización modular, diagnóstico, testing y mejoras de performance siguiendo estándares oficiales.
+mode: subagent
+model: github-copilot/gpt-4.1
+temperature: 0.1
+steps: 20
+color: "#1D9BF0"
+permission:
+  edit: "allow"
+  bash: "allow"
+  webfetch: "ask"
+  skill:
+    "*": "allow"
+  task:
+    "*": "allow"
+tools:
+  write: true
+  edit: true
+  bash: true
+  glob: true
+  read: true
+  grep: true
+  todowrite: true
+  skill: true
+  question: true
+  webfetch: true
+language: es
+---

@@ -1,0 +1,5 @@
+{
+  "name": "react-native-mcp",
+  "description": "Herramienta MCP avanzada para auditoría, remediación experta y refactorización de React Native. Expone todas las capacidades del paquete @mrnitro360/react-native-mcp-guide para el frontend-agent.",
+  "entry": "npx @mrnitro360/react-native-mcp-guide"
+}

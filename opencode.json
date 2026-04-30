@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "skills-agent": {
+      "description": "Agente especializado en crear y gestionar agentes y skills de OpenCode",
+      "instructions": ".opencode/agents/skills-agent.md"
+    }
+  },
+  "skills": [
+    ".opencode/skills/auditoria-codigo-react-native-vite.md",
+    ".opencode/skills/documentacion-tecnica.md",
+    ".opencode/skills/testing-automatizado.md",
+    ".opencode/skills/orquestador-workflows.md",
+    ".opencode/skills/reformulacion-prompt.md",
+    ".opencode/skills/ui-assistant.md"
+  ]
+}
