@@ -222,12 +222,12 @@ const styles = StyleSheet.create({
   detailGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -4,
+    marginHorizontal: -6,
   },
   detailCell: {
-    width: '50%',
-    paddingHorizontal: 4,
-    marginBottom: 10,
+    width: '25%',
+    paddingHorizontal: 6,
+    marginBottom: 8,
   },
   detailLabel: {
     fontSize: 12,
