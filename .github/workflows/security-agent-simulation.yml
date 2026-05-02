@@ -1,0 +1,18 @@
+name: Security Agent Simulation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: npm ci || true
+      - name: Run simulation
+        run: node -e "(async()=>{const { runSimulation }=require('./.opencode/scripts/invoke_security_agent_and_comment'); await runSimulation({ objective: 'Implementar LoginScreen con persistencia de sesión', scope: 'src/presentation/screens/LoginScreen.tsx, src/state/authStore.ts', flow: 'login -> guardar token -> guard navegación a Home', sensitive: 'token de acceso (Bearer token)', mechanisms: 'Zustand, AsyncStorage, react-navigation guards', risks: 'persistencia insegura del token, exposición de pantallas privadas', deliverable: 'aprobar con recomendaciones' })})()"

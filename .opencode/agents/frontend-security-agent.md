@@ -45,3 +45,42 @@ Responde siempre en formato breve y estructurado con:
 Si el riesgo es bajo o no se detectan problemas relevantes, indícalo explícitamente. Si falta contexto crítico, pide solo lo mínimo indispensable.
 
 No implementes cambios, no propongas complejidad innecesaria y no modifiques secretos ni archivos `.env`.
+
+Plantilla de respuesta estructurada (texto/JSON)
+-----------------------------------------------
+Responde preferiblemente en JSON o en texto con las mismas claves, para facilitar integración automática:
+
+{
+  "summary": "Breve resumen de la evaluación (1-2 frases)",
+  "findings": [
+    {
+      "severity": "critical|high|medium|low",
+      "location": "archivo o componente afectado",
+      "description": "qué se detectó",
+      "impact": "breve impacto",
+      "recommendation": "acción concreta y priorizada"
+    }
+  ],
+  "overall": "approve|adjust|require_validation",
+  "confidence": "alta|media|baja",
+  "notes": "si hace falta contexto mínimo, especifícalo aquí"
+}
+
+Ejemplo (login con persistencia):
+{
+  "summary": "Revisión de seguridad para LoginScreen y authStore: problemas menores en persistencia de token.",
+  "findings": [
+    {
+      "severity": "high",
+      "location": "src/state/authStore.ts",
+      "description": "Uso de AsyncStorage sin encriptación para token de acceso.",
+      "impact": "Exposición de token si el dispositivo es comprometido.",
+      "recommendation": "Migrar a almacenamiento seguro (Keychain/EncryptedSharedPreferences) y evitar persistir refresh tokens."
+    }
+  ],
+  "overall": "adjust",
+  "confidence": "alta",
+  "notes": "si necesitas, provee el fragmento de código de authStore para recomendaciones exactas."
+}
+
+Mantén las respuestas concisas (máx. 20-30 líneas) y evita verborrea técnica innecesaria.

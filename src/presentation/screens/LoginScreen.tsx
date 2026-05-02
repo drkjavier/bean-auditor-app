@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Alert,
   Pressable,
@@ -37,12 +37,17 @@ export default function LoginScreen({ navigation }: Props) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Mejor accesibilidad: enfocar error en primer input inválido
+  const usernameRef = useRef<any>(null);
+  const passwordRef = useRef<any>(null);
+
   const focusFirstError = () => {
-    // Anuncia el primer error disponible para lectores de pantalla
+    // Anuncia el primer error disponible para lectores de pantalla y mueve el foco
     if (usernameError) {
       AccessibilityInfo.announceForAccessibility(usernameError);
+      usernameRef.current?.focus && usernameRef.current.focus();
     } else if (passwordError) {
       AccessibilityInfo.announceForAccessibility(passwordError);
+      passwordRef.current?.focus && passwordRef.current.focus();
     }
   };
 
@@ -113,6 +118,7 @@ export default function LoginScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>Inicia sesión</Text>
 
         <TextInput
+          ref={usernameRef}
           style={[styles.input, usernameError ? styles.inputError : null]}
           placeholder="Usuario"
           autoCapitalize="none"
@@ -130,6 +136,7 @@ export default function LoginScreen({ navigation }: Props) {
         {usernameError ? <Text style={styles.errorText}>{usernameError}</Text> : null}
 
         <TextInput
+          ref={passwordRef}
           style={[styles.input, passwordError ? styles.inputError : null]}
           placeholder="Contraseña"
           secureTextEntry

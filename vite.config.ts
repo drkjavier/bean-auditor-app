@@ -10,6 +10,10 @@ export default defineConfig({
     },
     extensions: ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', '.tsx', '.ts', '.jsx', '.js'],
   },
+  // Avoid Vite trying to pre-bundle react-navigation native modules (they target react-native, not web)
+  optimizeDeps: {
+    exclude: ['@react-navigation/native', '@react-navigation/native-stack', '@react-navigation/bottom-tabs'],
+  },
   server: {
     port: 3100,
   },

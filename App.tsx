@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Pressable, StatusBar, StyleSheet, Text, View, Platform} from 'react-native';
 import {useAuthStore} from './src/stores/authStore';
 import LoginScreen from './src/presentation/screens/LoginScreen';
+import AppNavigator from './src/presentation/navigation/AppNavigator';
 
 
 function HomeTab() {
@@ -82,12 +83,10 @@ function MainScreen() {
 }
 
 export default function App() {
-  const isLoggedIn = useAuthStore(state => state.isLoggedIn);
-
   return (
-    <View style={[styles.root, Platform.OS === 'web' ? {minHeight: '100vh'} : undefined]}>
+    <View style={[styles.root, Platform.OS === 'web' ? styles.rootWeb : undefined]}>
       <StatusBar barStyle="dark-content" />
-      {isLoggedIn ? <MainScreen /> : <LoginScreen />}
+      <AppNavigator />
     </View>
   );
 }
@@ -96,6 +95,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#f5f7fb',
+  },
+  rootWeb: {
+    minHeight: '100vh',
   },
   screen: {
     flex: 1,
