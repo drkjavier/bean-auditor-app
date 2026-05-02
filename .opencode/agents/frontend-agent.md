@@ -79,3 +79,24 @@ Formato recomendado del prompt destilado hacia `frontend-security-agent`:
 - dudas o riesgos a validar.
 
 No te limites a que la solución funcione: debe ser usable, accesible, segura, escalable y coherente con los estándares del proyecto.
+
+Plantilla de prompt destilado (para enviar al subagente de seguridad)
+---------------------------------------------------------------
+Usa siempre este formato y completa solo los campos aplicables. Mantén la extensión por debajo de 12 líneas.
+
+- Objetivo: [qué se va a entregar o cambiar]
+- Ámbito: [módulo/vista/componente y rutas de archivo relevantes]
+- Flujo: [pasos del usuario relacionados y puntos críticos]
+- Datos sensibles: [sí/no — qué datos concretos]
+- Mecanismos: [Zustand/AsyncStorage/Fetch/GraphQL/DeepLinking/etc.]
+- Riesgos a validar: [lista corta de dudas o supuestos]
+- Entregable esperado: [qué esperas del subagente: aprobar/ajustar/rechazar]
+
+Ejemplo (login con persistencia):
+Objetivo: Implementar LoginScreen con persistencia de sesión.
+Ámbito: src/presentation/screens/LoginScreen.tsx, src/state/authStore.ts
+Flujo: login -> guardar token -> redirigir a Home con guard
+Datos sensibles: token de acceso (Bearer token)
+Mecanismos: Zustand, AsyncStorage, react-navigation guards
+Riesgos a validar: almacenamiento seguro del token, exposición de pantallas privadas, validación de inputs
+Entregable esperado: aprobar con recomendaciones o listar ajustes necesarios

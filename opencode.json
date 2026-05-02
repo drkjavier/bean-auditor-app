@@ -1,17 +1,38 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
   "agent": {
     "skills-agent": {
       "description": "Agente especializado en crear y gestionar agentes y skills de OpenCode",
-      "instructions": ".opencode/agents/skills-agent.md"
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/skills-agent.md}"
+    },
+    "frontend-agent": {
+      "description": "Especialista en React y React Native para frontend web y multiplataforma. Implementa y optimiza interfaces, navegación y estado con foco en UX/UI, accesibilidad, rendimiento, seguridad frontend y mantenibilidad. Úsalo para pantallas, componentes, flujos, refactors y diagnósticos apoyados por MCP cuando aporte valor.",
+      "mode": "all",
+      "prompt": "{file:.opencode/agents/frontend-agent.yaml}"
+    },
+    "frontend-uiux-agent": {
+      "description": "Especialista en UI/UX para React y React Native. Audita y mejora jerarquía visual, accesibilidad, responsividad, feedback, estados de interfaz y consistencia de diseño. Úsalo para revisar pantallas, flujos, formularios y sistemas visuales antes de implementar o refactorizar.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-uiux-agent.md}"
+    },
+    "frontend-security-agent": {
+      "description": "Especialista en seguridad frontend para React y React Native. Revisa módulos, vistas, componentes y flujos con foco en autenticación, sesión, routing protegido, validación, consumo de APIs, almacenamiento local y exposición de datos sensibles. Úsalo cuando se creen o cambien piezas de UI con superficie de riesgo.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-security-agent.md}"
     }
   },
-  "skills": [
-    ".opencode/skills/auditoria-codigo-react-native-vite.md",
-    ".opencode/skills/documentacion-tecnica.md",
-    ".opencode/skills/testing-automatizado.md",
-    ".opencode/skills/orquestador-workflows.md",
-    ".opencode/skills/reformulacion-prompt.md",
-    ".opencode/skills/ui-assistant.md"
-  ]
+  "mcp": {
+    "react-native-mcp": {
+      "type": "local",
+      "command": ["npx", "@mrnitro360/react-native-mcp-guide"],
+      "enabled": true
+    }
+  },
+  "permission": {
+    "skill": {
+      "*": "allow"
+    }
+  }
 }
