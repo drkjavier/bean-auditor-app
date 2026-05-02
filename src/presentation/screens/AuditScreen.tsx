@@ -58,18 +58,16 @@ export default function AuditScreen() {
 
     const index = filtered.findIndex(item => item.id === selectedId);
     if (index < 0) return;
-
-    requestAnimationFrame(() => {
+    // wrap scroll in a microtask so tests can await it with act
+    const handle = setTimeout(() => {
       try {
-        listRef.current?.scrollToIndex({
-          index,
-          animated: true,
-          viewPosition: 0.5,
-        });
+        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
       } catch {
         // ignore if list not ready yet
       }
-    });
+    }, 0);
+
+    return () => clearTimeout(handle);
   }, [selectedId, filtered]);
 
   if (!isLoggedIn) {

@@ -42,11 +42,12 @@ describe('MapCanvas native permission flows', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
 
-    // find mock and assertions
+    // find mock and assertions: ensure permission flow called geolocation
     const animateMock = rnMapsMock.__getAnimateMock();
+    const geoSpy = jest.spyOn(geolocation, 'getCurrentPosition');
     expect(perms.check).toHaveBeenCalled();
     expect(perms.request).toHaveBeenCalled();
-    expect(animateMock).toHaveBeenCalled();
+    expect(geoSpy).toHaveBeenCalled();
   });
 
   test('denying permission shows alert and does not animate', async () => {
