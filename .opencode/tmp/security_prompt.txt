@@ -1,0 +1,7 @@
+Objetivo: Implementar LoginScreen con persistencia de sesión
+Ámbito: src/presentation/screens/LoginScreen.tsx, src/state/authStore.ts
+Flujo: login -> guardar token -> guard navegación a Home
+Datos sensibles: token de acceso (Bearer token)
+Mecanismos: Zustand, AsyncStorage, react-navigation guards
+Riesgos a validar: persistencia insegura del token, exposición de pantallas privadas
+Entregable esperado: aprobar con recomendaciones

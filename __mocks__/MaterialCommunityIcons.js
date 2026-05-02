@@ -1,2 +1,5 @@
 import React from 'react';
-export default function IconMock(props) { return React.createElement('Icon', props, props.children); }
+import { View } from 'react-native';
+export default function MaterialCommunityIcons() {
+  return React.createElement(View, { testID: 'MaterialCommunityIcons' });
+}

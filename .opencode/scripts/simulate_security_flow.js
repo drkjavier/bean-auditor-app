@@ -7,7 +7,7 @@ const mockSecurityAgentResponse = () => {
         location: 'src/state/authStore.ts',
         description: 'Uso de AsyncStorage sin cifrado para almacenar token de acceso.',
         impact: 'Token expuesto si el dispositivo es comprometido o por backups; riesgo de toma de sesión.',
-        recommendation: 'Migrar a almacenamiento seguro (Keychain/EncryptedSharedPreferences). Evitar persistir refresh tokens.'
+        recommendation: 'Migrar almacenamiento de token: usar almacenamiento seguro (Keychain/EncryptedSharedPreferences). Evitar persistir refresh tokens.'
       },
       {
         severity: 'medium',
@@ -38,7 +38,7 @@ const buildPrompt = ({ objective, scope, flow, sensitive, mechanisms, risks, del
 }
 
 const generatePRComment = (response) => {
-  const header = `## Revisión de seguridad automatizada — overall: ${response.overall} (confianza: ${response.confidence})\n\n`
+  const header = `## Revisión de seguridad ejecutada — overall: ${response.overall} (confianza: ${response.confidence})\n\n`
   const actions = response.findings.map((f, i) => `**${i + 1}.** [${f.severity}] ${f.recommendation} (archivo: ${f.location})`).join('\n')
   const body = `**Resumen:** ${response.summary}\n\n**Acciones requeridas:**\n${actions}\n\n**Notas:** ${response.notes}`
   return header + body
