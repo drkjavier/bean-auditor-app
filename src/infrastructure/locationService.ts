@@ -1,6 +1,14 @@
 import { Platform, Linking } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { check, request, PERMISSIONS, RESULTS, openSettings as rnOpenSettings } from 'react-native-permissions';
+// Export a small facade so tests can more easily mock the entire module via jest.mock
+export default {
+  checkPermission,
+  requestPermission,
+  openSettings,
+  getCurrentPosition,
+  RESULTS,
+};
 
 export async function checkPermission(): Promise<string> {
   const permission = Platform.select({

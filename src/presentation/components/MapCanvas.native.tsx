@@ -10,16 +10,19 @@ type Props = {
   style?: any;
   selectedId?: number | null;
   onSelect?: (item: Tag) => void;
+  // allow injecting a location service for testability (defaults to src/infrastructure/locationService)
+  locationService?: typeof import('../../infrastructure/locationService');
 };
 
-export default function MapCanvasNative({ items, style, selectedId, onSelect }: Props) {
+export default function MapCanvasNative({ items, style, selectedId, onSelect, locationService: injectedLocationService }: Props) {
   const mapRef = useRef<MapView | null>(null);
+  const locService = injectedLocationService ?? locationService;
   // do not persist user coordinates by default to minimize exposure; only center the map
   // if needed in future, introduce a prop to show a pin
 
   async function requestLocation(): Promise<boolean> {
     try {
-      const status = await locationService.checkPermission();
+      const status = await locService.checkPermission();
       if (status === RESULTS.GRANTED) return true;
 
       if (status === RESULTS.BLOCKED) {
@@ -29,7 +32,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
           'El permiso de ubicación está bloqueado. Abre los ajustes para habilitarlo.',
           [
             { text: 'Cancelar', style: 'cancel' },
-              { text: 'Abrir ajustes', onPress: () => { locationService.openSettings(); } },
+              { text: 'Abrir ajustes', onPress: () => { locService.openSettings(); } },
           ],
         );
         return false;
@@ -41,7 +44,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
       }
 
       // DENIED or LIMITED - request and evaluate
-      const res = await locationService.requestPermission();
+      const res = await locService.requestPermission();
       if (res === RESULTS.GRANTED) return true;
       if (res === RESULTS.BLOCKED) {
         // user denied with 'do not ask again'
@@ -50,7 +53,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
           'El permiso quedó bloqueado. Abre ajustes para habilitarlo.',
           [
             { text: 'Cancelar', style: 'cancel' },
-              { text: 'Abrir ajustes', onPress: () => { locationService.openSettings(); } },
+              { text: 'Abrir ajustes', onPress: () => { locService.openSettings(); } },
           ],
         );
         return false;
@@ -70,8 +73,8 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
       return;
     }
 
-    // use locationService wrapper; import alias kept earlier
-    locationService.getCurrentPosition(
+    // use injected location service wrapper
+    locService.getCurrentPosition(
       pos => {
         const { latitude, longitude } = pos.coords;
         // animate on next tick to avoid ref timing issues in tests/environments
@@ -98,18 +101,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
             // ignore if module not present or fallback not available
           }
 
-          // As a last resort (in some test setups) try to require the mock file directly
-          try {
-            // relative path from this file to repo root __mocks__
-            // MapCanvas.native.tsx is at src/presentation/components -> go up 3 levels to repo root
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const direct = require('../../../__mocks__/react-native-maps');
-            if (direct && typeof direct.__getAnimateMock === 'function') {
-              direct.__getAnimateMock()({ latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 });
-            }
-          } catch (_) {
-            // ignore
-          }
+          // do not use filesystem fallbacks; rely on module mocks or injected service in tests
         });
       },
       (err) => {
