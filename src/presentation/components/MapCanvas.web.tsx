@@ -17,10 +17,12 @@ function FocusController({
   selectedItem,
   bounds,
   fitAllSignal,
+  centerSignal,
 }: {
   selectedItem?: Tag | null;
   bounds?: L.LatLngBounds | null;
   fitAllSignal?: number;
+  centerSignal?: number;
 }) {
   const map = useMap();
 
@@ -32,6 +34,19 @@ function FocusController({
       });
     }
   }, [map, selectedItem]);
+
+  // Allow explicit recenter requests even when the selectedItem reference
+  // hasn't changed (e.g. user clicks "Centrar selección"). The parent will
+  // increment `centerSignal` to trigger this effect.
+  useEffect(() => {
+    if (selectedItem && typeof centerSignal === 'number') {
+      map.flyTo([selectedItem.lat, selectedItem.lon], Math.max(map.getZoom(), 14), {
+        animate: true,
+        duration: 0.75,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, centerSignal]);
 
   useEffect(() => {
     if (bounds && fitAllSignal) {
@@ -77,6 +92,10 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
   const center: [number, number] = items.length > 0 ? [items[0].lat, items[0].lon] : [37.77, -122.42];
   const selectedItem = selectedId ? items.find(item => item.id === selectedId) ?? null : null;
   const [fitAllSignal, setFitAllSignal] = React.useState(0);
+  // signal used to request recentring on the already-selected item even when
+  // `selectedItem` value doesn't change. Incrementing this value will trigger
+  // FocusController to flyTo the currently selected item.
+  const [centerSignal, setCenterSignal] = React.useState(0);
   const legendItems = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach(item => {
@@ -109,7 +128,12 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               {selectedItem ? (
                 <Text
                   style={styles.actionButton}
-                  onPress={() => onSelect?.(selectedItem)}
+                  onPress={() => {
+                    // trigger internal centering when user explicitly requests it
+                    // do not rely on re-setting selection in the parent since it
+                    // may already be the same value and won't cause a re-render
+                    setCenterSignal(v => v + 1);
+                  }}
                 >
                   Centrar selección
                 </Text>
@@ -127,7 +151,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
             bounds={bounds ?? undefined}
             scrollWheelZoom
           >
-            <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} />
+            <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} />
             <TileLayer
               attribution='&copy; OpenStreetMap contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
