@@ -2,8 +2,8 @@ import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Linking } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, LatLng, Region } from 'react-native-maps';
 import type { Tag } from '../../data/mocks/tagsMock';
-import Geolocation from '@react-native-community/geolocation';
-import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import * as locationService from '../../infrastructure/locationService';
+import { RESULTS } from 'react-native-permissions';
 
 type Props = {
   items: Tag[];
@@ -19,11 +19,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
 
   async function requestLocation(): Promise<boolean> {
     try {
-      const permission = Platform.select({
-        ios: PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
-        android: PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
-      }) as string;
-      const status = await check(permission);
+      const status = await locationService.checkPermission();
       if (status === RESULTS.GRANTED) return true;
 
       if (status === RESULTS.BLOCKED) {
@@ -33,10 +29,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
           'El permiso de ubicación está bloqueado. Abre los ajustes para habilitarlo.',
           [
             { text: 'Cancelar', style: 'cancel' },
-            { text: 'Abrir ajustes', onPress: () => {
-              // try library helper first, fallback to Linking
-              try { (require('react-native-permissions').openSettings || Linking.openSettings)(); } catch (_) { Linking.openSettings(); }
-            } },
+              { text: 'Abrir ajustes', onPress: () => { locationService.openSettings(); } },
           ],
         );
         return false;
@@ -48,7 +41,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
       }
 
       // DENIED or LIMITED - request and evaluate
-      const res = await request(permission);
+      const res = await locationService.requestPermission();
       if (res === RESULTS.GRANTED) return true;
       if (res === RESULTS.BLOCKED) {
         // user denied with 'do not ask again'
@@ -57,9 +50,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
           'El permiso quedó bloqueado. Abre ajustes para habilitarlo.',
           [
             { text: 'Cancelar', style: 'cancel' },
-            { text: 'Abrir ajustes', onPress: () => {
-              try { (require('react-native-permissions').openSettings || Linking.openSettings)(); } catch (_) { Linking.openSettings(); }
-            } },
+              { text: 'Abrir ajustes', onPress: () => { locationService.openSettings(); } },
           ],
         );
         return false;
@@ -79,7 +70,8 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect }: 
       return;
     }
 
-    Geolocation.getCurrentPosition(
+    // use locationService wrapper; import alias kept earlier
+    locationService.getCurrentPosition(
       pos => {
         const { latitude, longitude } = pos.coords;
         // animate on next tick to avoid ref timing issues in tests/environments
