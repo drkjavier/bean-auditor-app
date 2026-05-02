@@ -18,6 +18,9 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
   const mapRef = useRef<MapView | null>(null);
   const locService = injectedLocationService ?? locationService;
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
+  const [receiverStatus, setReceiverStatus] = useState<{ connected: boolean; rtkState: string }>({ connected: false, rtkState: 'NO_FIX' });
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [confirmedPosition, setConfirmedPosition] = useState<{ latitude: number; longitude: number } | null>(null);
   // do not persist user coordinates by default to minimize exposure; only center the map
   // if needed in future, introduce a prop to show a pin
 
@@ -113,6 +116,39 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
     );
   }
 
+  // subscribe to external/internal position stream from locationService
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    try {
+      unsub = (locService as any).onPosition((p: any) => {
+        if (p && p.error) return;
+        setAccuracy(p.accuracy ?? null);
+        setReceiverStatus({ connected: (locService as any).getStatus().receiverConnected, rtkState: (locService as any).getStatus().rtkState });
+      });
+    } catch (_) {}
+
+    return () => { if (unsub) unsub(); };
+  }, [locService]);
+
+  async function connectMockReceiver() {
+    try {
+      await (locService as any).connectExternalReceiver({ transport: 'mock', id: 'sim-01' });
+      setReceiverStatus({ connected: true, rtkState: (locService as any).getStatus().rtkState });
+    } catch (e) {
+      // ignore in stub
+    }
+  }
+
+  async function confirmPosition() {
+    // simple confirm: take current center of mapRef or last known; here we use last known position
+    try {
+      const pos = await new Promise<{ latitude: number; longitude: number }>((res, rej) => {
+        locService.getCurrentPosition((p: any) => res({ latitude: p.coords.latitude, longitude: p.coords.longitude }), () => rej(new Error('no-pos')), { enableHighAccuracy: true });
+      });
+      setConfirmedPosition(pos);
+    } catch (_) {}
+  }
+
   const initialRegion = items.length > 0
     ? ({ latitude: items[0].lat, longitude: items[0].lon, latitudeDelta: 0.1, longitudeDelta: 0.1 } as Region)
     : ({ latitude: 37.77, longitude: -122.42, latitudeDelta: 0.5, longitudeDelta: 0.5 } as Region);
@@ -120,17 +156,28 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
   return (
     <View style={[styles.container, style]} accessibilityLabel="Mapa nativo de auditorías">
       <View style={styles.toolbar}>
-        <TouchableOpacity testID="centerOnMeBtn" onPress={centerOnMe} accessibilityRole="button" style={styles.button}>
-          <Text style={styles.buttonText}>Mi ubicación</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          testID="toggleMapTypeBtn"
-          onPress={() => setMapType(prev => (prev === 'standard' ? 'satellite' : 'standard'))}
-          accessibilityRole="button"
-          style={[styles.button, { marginLeft: 8 }]}
-        >
-          <Text style={styles.buttonText}>{mapType === 'standard' ? 'Satellite' : 'Street'}</Text>
-        </TouchableOpacity>
+        <View style={styles.toolbarLeft}>
+          <TouchableOpacity testID="centerOnMeBtn" onPress={centerOnMe} accessibilityRole="button" style={styles.button}>
+            <Text style={styles.buttonText}>Mi ubicación</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="toggleMapTypeBtn"
+            onPress={() => setMapType(prev => (prev === 'standard' ? 'satellite' : 'standard'))}
+            accessibilityRole="button"
+            style={[styles.button, { marginLeft: 8 }]}
+          >
+            <Text style={styles.buttonText}>{mapType === 'standard' ? 'Satellite' : 'Street'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.toolbarRight}>
+          <TouchableOpacity onPress={connectMockReceiver} style={[styles.smallPill, receiverStatus.connected ? styles.smallPillActive : undefined]}>
+            <Text style={[styles.smallPillText, receiverStatus.connected ? styles.smallPillTextActive : undefined]}>{receiverStatus.connected ? `RTK: ${receiverStatus.rtkState}` : 'Receiver'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={confirmPosition} style={[styles.smallPill, { marginLeft: 8 }]}>
+            <Text style={styles.smallPillText}>Confirmar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <MapView
@@ -140,6 +187,11 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
         initialRegion={initialRegion}
         mapType={mapType}
       >
+        {accuracy != null ? (
+          <Marker coordinate={{ latitude: initialRegion.latitude, longitude: initialRegion.longitude }}>
+            <View style={{ width: 0, height: 0 }} />
+          </Marker>
+        ) : null}
         {items.map(item => (
           <Marker
             key={String(item.id)}
@@ -149,6 +201,11 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
             accessibilityLabel={`Marcador ${item.unique_id}`}
           />
         ))}
+        {confirmedPosition ? (
+          <Marker coordinate={{ latitude: confirmedPosition.latitude, longitude: confirmedPosition.longitude }}>
+            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#2563eb', borderWidth: 2, borderColor: '#fff' }} />
+          </Marker>
+        ) : null}
         {/* not rendering user location pin by default to reduce exposure */}
       </MapView>
     </View>
