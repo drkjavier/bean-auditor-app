@@ -17,6 +17,7 @@ type Props = {
 export default function MapCanvasNative({ items, style, selectedId, onSelect, locationService: injectedLocationService }: Props) {
   const mapRef = useRef<MapView | null>(null);
   const locService = injectedLocationService ?? locationService;
+  const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
   // do not persist user coordinates by default to minimize exposure; only center the map
   // if needed in future, introduce a prop to show a pin
 
@@ -122,6 +123,14 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
         <TouchableOpacity testID="centerOnMeBtn" onPress={centerOnMe} accessibilityRole="button" style={styles.button}>
           <Text style={styles.buttonText}>Mi ubicación</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          testID="toggleMapTypeBtn"
+          onPress={() => setMapType(prev => (prev === 'standard' ? 'satellite' : 'standard'))}
+          accessibilityRole="button"
+          style={[styles.button, { marginLeft: 8 }]}
+        >
+          <Text style={styles.buttonText}>{mapType === 'standard' ? 'Satellite' : 'Street'}</Text>
+        </TouchableOpacity>
       </View>
 
       <MapView
@@ -129,6 +138,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={initialRegion}
+        mapType={mapType}
       >
         {items.map(item => (
           <Marker

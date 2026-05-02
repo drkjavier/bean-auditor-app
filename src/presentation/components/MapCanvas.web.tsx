@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -96,6 +96,17 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
   // `selectedItem` value doesn't change. Incrementing this value will trigger
   // FocusController to flyTo the currently selected item.
   const [centerSignal, setCenterSignal] = React.useState(0);
+  const [mapType, setMapType] = React.useState<'street' | 'satellite'>('street');
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  function showToast(message: string, ms = 3000) {
+    setToast(message);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    // @ts-ignore - window.setTimeout returns number in browser
+    toastTimer.current = window.setTimeout(() => setToast(null), ms);
+  }
+
   const legendItems = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach(item => {
@@ -106,6 +117,18 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
     return Array.from(map.entries()).map(([state, color]) => ({ state, color }));
   }, [items]);
 
+  const TILESETS: Record<string, { url: string; attribution: string }> = {
+    street: {
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; OpenStreetMap contributors',
+    },
+    satellite: {
+      // Esri World Imagery (publicly accessible tileset — validar TOS en producción)
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+    },
+  };
+
   return (
     <View style={[styles.wrapper, style]} accessibilityLabel="Mapa de auditorías">
       {items.length === 0 ? (
@@ -114,47 +137,83 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
         </View>
       ) : (
         <>
-          <View style={styles.toolbar}>
-            <View style={styles.legend}>
-              {legendItems.map(item => (
-                <View key={item.state} style={styles.legendItem}>
+            <View style={styles.toolbar}>
+              <View style={styles.legend}>
+                {legendItems.map(item => (
+                  <View key={item.state} style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: item.color }]} />
                   <Text style={styles.legendText}>{item.state}</Text>
                 </View>
               ))}
-            </View>
+              </View>
 
-            <View style={styles.actions}>
-              {selectedItem ? (
-                <Text
-                  style={styles.actionButton}
-                  onPress={() => {
-                    // trigger internal centering when user explicitly requests it
-                    // do not rely on re-setting selection in the parent since it
-                    // may already be the same value and won't cause a re-render
-                    setCenterSignal(v => v + 1);
-                  }}
+              <View style={styles.actions}>
+                {selectedItem ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Centrar selección"
+                    onPress={() => setCenterSignal(v => v + 1)}
+                    style={[styles.mapToggleButton, styles.actionInlineButton]}
+                  >
+                    <Text style={styles.mapToggleButtonText}>Centrar selección</Text>
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver todos"
+                  onPress={() => setFitAllSignal(value => value + 1)}
+                  style={[styles.mapToggleButton, styles.actionInlineButton]}
                 >
-                  Centrar selección
-                </Text>
-              ) : null}
-              <Text style={styles.actionButton} onPress={() => setFitAllSignal(value => value + 1)}>
-                Ver todos
-              </Text>
-            </View>
+                  <Text style={styles.mapToggleButtonText}>Ver todos</Text>
+                </Pressable>
+
+                {/* Toggle controls aligned to 'Ver todos' */}
+                <View style={{ width: 6 }} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Vista Street"
+                  accessibilityState={{ pressed: mapType === 'street' }}
+                  onPress={() => setMapType('street')}
+                  style={[styles.mapToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
+                >
+                  <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
+                </Pressable>
+
+                <View style={{ width: 6 }} />
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Vista Satellite"
+                  accessibilityState={{ pressed: mapType === 'satellite' }}
+                  onPress={() => setMapType('satellite')}
+                  style={[styles.mapToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
+                >
+                  <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
+                </Pressable>
+              </View>
           </View>
 
-          <MapContainer
-            center={center}
-            zoom={12}
-            style={styles.map as any}
-            bounds={bounds ?? undefined}
-            scrollWheelZoom
-          >
-            <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} />
+            <MapContainer
+              center={center}
+              zoom={12}
+              style={styles.map as any}
+              bounds={bounds ?? undefined}
+              scrollWheelZoom
+            >
+              <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} />
             <TileLayer
-              attribution='&copy; OpenStreetMap contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution={TILESETS[mapType].attribution}
+              url={TILESETS[mapType].url}
+              eventHandlers={{
+                tileerror: () => {
+                  // fallback to street tiles if satellite fails
+                  if (mapType === 'satellite') {
+                    setMapType('street');
+                    showToast('Vista satélite no disponible. Usando Street.');
+                  }
+                },
+              }}
             />
 
             <MarkerClusterGroup chunkedLoading iconCreateFunction={createClusterIcon}>
@@ -219,6 +278,13 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               ))}
             </MarkerClusterGroup>
           </MapContainer>
+          {/* overlay removed - toggles moved inline into toolbar actions */}
+
+          {toast ? (
+            <View style={styles.toast} accessibilityLiveRegion="polite">
+              <Text style={styles.toastText}>{toast}</Text>
+            </View>
+          ) : null}
         </>
       )}
     </View>
@@ -275,6 +341,103 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     fontWeight: '700',
     fontSize: 12,
+  },
+  toggleButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#1e40af',
+  },
+  toggleButtonText: {
+    color: '#2563eb',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  toggleButtonTextActive: {
+    color: '#fff',
+  },
+  toggleButtonLarge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.06)',
+    // use cross-platform shadow props instead of boxShadow string
+    shadowColor: '#020617',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  toggleButtonActiveLarge: {
+    backgroundColor: '#2563eb',
+    borderColor: '#1e40af',
+  },
+  mapToggleButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapToggleButtonActive: {
+    backgroundColor: '#1e40af',
+    borderColor: '#153a8a',
+  },
+  mapToggleButtonText: {
+    color: '#1e40af',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  mapToggleButtonTextActive: {
+    color: '#fff',
+  },
+  actionInlineButton: {
+    marginRight: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  overlayControls: {
+    position: 'absolute',
+    // place overlay below the toolbar to avoid overlap/clipping
+    top: 64,
+    left: 12,
+    right: 12,
+    alignItems: 'flex-start',
+    pointerEvents: 'box-none',
+    zIndex: 1000,
+  },
+  overlayInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  toast: {
+    position: 'absolute',
+    left: '50%',
+    transform: [{ translateX: -150 } as any],
+    bottom: 14,
+    width: 300,
+    backgroundColor: 'rgba(15,23,42,0.9)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 13,
   },
   emptyState: {
     minHeight: 320,
