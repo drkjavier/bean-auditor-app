@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, FlatList } from 'react-native';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
 import { fetchTags, Tag } from '../../data/tagService';
 import MapCanvas from '../components/MapCanvas';
+import ColorCombobox from '../components/ColorCombobox';
+import DatePickerInput from '../components/DatePickerInput';
 import { useAuthStore } from '../../stores/authStore';
 
 const FILTER_DEBOUNCE_MS = 350;
@@ -10,56 +12,139 @@ export default function AuditScreen() {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
   const listRef = useRef<FlatList<Tag>>(null);
   const hasLoadedInitially = useRef(false);
+  const latestRequestId = useRef(0);
+  const isMounted = useRef(true);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAppliedFilterKey = useRef('');
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Tag[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [colorFilter, setColorFilter] = useState<string | undefined>(undefined);
   const [stateFilter, setStateFilter] = useState<string | undefined>(undefined);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [autoRefreshing, setAutoRefreshing] = useState(false);
 
-  const load = async (silent = false) => {
-    if (!silent) setLoading(true);
-    if (silent) setAutoRefreshing(true);
-    try {
-      const res = await fetchTags({ q: query || undefined, state: stateFilter, from: from || undefined, to: to || undefined });
-      setItems(res);
-      setSelectedId(prev => (res.some(item => item.id === prev) ? prev : res[0]?.id ?? null));
-    } finally {
-      setLoading(false);
-      setAutoRefreshing(false);
+  const filters = useMemo(
+    () => ({
+      color: colorFilter,
+      state: stateFilter,
+      from: from || undefined,
+      to: to || undefined,
+    }),
+    [colorFilter, stateFilter, from, to],
+  );
+  const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
+
+  const dateRangeError = useMemo(() => {
+    if (!from || !to) return null;
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      return 'Selecciona un rango de fechas válido.';
     }
-  };
+
+    if (fromDate > toDate) {
+      return 'La fecha desde no puede ser mayor que la fecha hasta.';
+    }
+
+    return null;
+  }, [from, to]);
+
+  const activeFiltersSummary = useMemo(() => {
+    const parts: string[] = [];
+
+    if (colorFilter) parts.push(`Color ${colorFilter}`);
+    if (stateFilter) parts.push(`Estado ${stateFilter}`);
+    if (from) parts.push(`Desde ${new Date(from).toLocaleDateString()}`);
+    if (to) parts.push(`Hasta ${new Date(to).toLocaleDateString()}`);
+
+    return parts.length > 0 ? parts.join(' · ') : 'Sin filtros activos';
+  }, [colorFilter, stateFilter, from, to]);
+
+  const load = useCallback(async (silent = false, nextFilters = filters, nextFiltersKey = filtersKey) => {
+    if (dateRangeError) {
+      if (isMounted.current) {
+        setAutoRefreshing(false);
+        setLoading(false);
+      }
+      return;
+    }
+
+    const requestId = ++latestRequestId.current;
+
+    if (!silent && isMounted.current) setLoading(true);
+    if (silent && isMounted.current) setAutoRefreshing(true);
+
+    try {
+      const res = await fetchTags(nextFilters);
+
+      if (!isMounted.current || requestId !== latestRequestId.current) {
+        return;
+      }
+
+      lastAppliedFilterKey.current = nextFiltersKey;
+      setItems(res);
+      setSelectedId(prev => (res.some(item => item.unique_id === prev) ? prev : res[0]?.unique_id ?? null));
+    } finally {
+      if (isMounted.current && requestId === latestRequestId.current) {
+        setLoading(false);
+        setAutoRefreshing(false);
+      }
+    }
+  }, [dateRangeError, filters, filtersKey]);
 
   useEffect(() => {
-    load();
+    lastAppliedFilterKey.current = filtersKey;
+    load(false, filters, filtersKey);
     hasLoadedInitially.current = true;
+  }, [filters, filtersKey, load]);
+
+  useEffect(() => () => {
+    isMounted.current = false;
+    latestRequestId.current += 1;
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
   }, []);
 
   useEffect(() => {
     if (!hasLoadedInitially.current) return;
+    if (dateRangeError) return;
+    if (filtersKey === lastAppliedFilterKey.current) return;
 
-    const handle = setTimeout(() => {
-      load(true);
+    debounceTimeoutRef.current = setTimeout(() => {
+      load(true, filters, filtersKey);
     }, FILTER_DEBOUNCE_MS);
 
-    return () => clearTimeout(handle);
-  }, [query, stateFilter, from, to]);
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [dateRangeError, filters, filtersKey, load]);
 
   const filtered = useMemo(() => items, [items]);
   const selectedItem = useMemo(
-    () => filtered.find(item => item.id === selectedId) ?? null,
+    () => filtered.find(item => item.unique_id === selectedId) ?? null,
     [filtered, selectedId],
   );
 
   useEffect(() => {
     if (!selectedId || filtered.length === 0) return;
 
-    const index = filtered.findIndex(item => item.id === selectedId);
+    const index = filtered.findIndex(item => item.unique_id === selectedId);
     if (index < 0) return;
     // wrap scroll in a microtask so tests can await it with act
-    const handle = setTimeout(() => {
+    scrollTimeoutRef.current = setTimeout(() => {
       try {
         listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
       } catch {
@@ -67,7 +152,11 @@ export default function AuditScreen() {
       }
     }, 0);
 
-    return () => clearTimeout(handle);
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
   }, [selectedId, filtered]);
 
   if (!isLoggedIn) {
@@ -79,50 +168,55 @@ export default function AuditScreen() {
       <Text style={styles.title}>Auditoría</Text>
       <Text style={styles.helper}>Mapa OpenStreetMap con marcadores por color.</Text>
       <Text style={styles.helperSecondary}>
-        {autoRefreshing ? 'Actualizando filtros…' : 'Los filtros se aplican automáticamente.'}
+        {autoRefreshing ? 'Actualizando filtros…' : 'Los filtros se aplican automáticamente. También puedes recargar manualmente.'}
       </Text>
 
       <View style={styles.controls}>
-        <TextInput
-          style={styles.input}
-          placeholder="Buscar por unique_id"
-          value={query}
-          onChangeText={t => setQuery(t)}
-          accessibilityLabel="Buscar auditoría"
-        />
+        <ColorCombobox value={colorFilter} onChange={setColorFilter} placeholder="Filtrar por color" />
 
         <View style={styles.row}>
-          <TextInput style={[styles.input, { flex: 1 }]} placeholder="Desde (YYYY-MM-DD)" value={from} onChangeText={setFrom} />
-          <TextInput style={[styles.input, { flex: 1, marginLeft: 8 }]} placeholder="Hasta (YYYY-MM-DD)" value={to} onChangeText={setTo} />
+          <View style={styles.halfField}>
+            <DatePickerInput value={from} onChange={setFrom} label="Desde" mode="from" />
+          </View>
+          <View style={[styles.halfField, styles.halfFieldOffset]}>
+            <DatePickerInput value={to} onChange={setTo} label="Hasta" mode="to" />
+          </View>
         </View>
 
-        <View style={styles.row}>
-          <Pressable style={[styles.filterBtn, stateFilter === undefined ? styles.filterActive : null]} onPress={() => setStateFilter(undefined)}>
+        <Text style={styles.filterLabel}>Estado</Text>
+        <View style={[styles.row, styles.filterRow]}>
+          <Pressable style={[styles.filterBtn, stateFilter === undefined ? styles.filterActive : null]} onPress={() => setStateFilter(undefined)} accessibilityRole="button" accessibilityState={{ selected: stateFilter === undefined }}>
             <Text>Todos</Text>
           </Pressable>
-          <Pressable style={[styles.filterBtn, stateFilter === 'open' ? styles.filterActive : null]} onPress={() => setStateFilter('open')}>
+          <Pressable style={[styles.filterBtn, stateFilter === 'open' ? styles.filterActive : null]} onPress={() => setStateFilter('open')} accessibilityRole="button" accessibilityState={{ selected: stateFilter === 'open' }}>
             <Text>Open</Text>
           </Pressable>
-          <Pressable style={[styles.filterBtn, stateFilter === 'closed' ? styles.filterActive : null]} onPress={() => setStateFilter('closed')}>
+          <Pressable style={[styles.filterBtn, stateFilter === 'closed' ? styles.filterActive : null]} onPress={() => setStateFilter('closed')} accessibilityRole="button" accessibilityState={{ selected: stateFilter === 'closed' }}>
             <Text>Closed</Text>
           </Pressable>
-          <Pressable style={[styles.filterBtn, stateFilter === 'pending' ? styles.filterActive : null]} onPress={() => setStateFilter('pending')}>
+          <Pressable style={[styles.filterBtn, stateFilter === 'pending' ? styles.filterActive : null]} onPress={() => setStateFilter('pending')} accessibilityRole="button" accessibilityState={{ selected: stateFilter === 'pending' }}>
             <Text>Pending</Text>
           </Pressable>
         </View>
 
-        <Pressable onPress={() => load()} style={styles.searchBtn} accessibilityRole="button">
-          <Text style={styles.searchBtnText}>{loading ? 'Cargando...' : 'Aplicar'}</Text>
+        <Text style={styles.filterSummary} accessibilityLabel="Resumen de filtros activos">
+          {activeFiltersSummary}
+        </Text>
+
+        {dateRangeError ? <Text style={styles.errorText}>{dateRangeError}</Text> : null}
+
+        <Pressable onPress={() => load(false, filters, filtersKey)} style={[styles.searchBtn, dateRangeError ? styles.searchBtnDisabled : null]} accessibilityRole="button" disabled={Boolean(dateRangeError)}>
+          <Text style={styles.searchBtnText}>{loading ? 'Cargando...' : 'Recargar'}</Text>
         </Pressable>
       </View>
 
-      <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.id)} />
+      <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} />
 
       {selectedItem ? (
         <View style={styles.detailCard} accessibilityLabel="Detalle del tag seleccionado">
           <View style={styles.detailHeader}>
-            <View style={[styles.detailSwatch, { backgroundColor: selectedItem.color }]} />
-            <View style={{ flex: 1 }}>
+            <View style={[styles.detailSwatch, { backgroundColor: selectedItem.colorHex }]} />
+            <View style={styles.flexContent}>
               <Text style={styles.detailTitle}>{selectedItem.unique_id}</Text>
               <Text style={styles.detailSubtitle}>Estado: {selectedItem.state ?? 'n/a'}</Text>
             </View>
@@ -130,12 +224,8 @@ export default function AuditScreen() {
 
           <View style={styles.detailGrid}>
             <View style={styles.detailCell}>
-              <Text style={styles.detailLabel}>ID</Text>
-              <Text style={styles.detailValue}>{selectedItem.id}</Text>
-            </View>
-            <View style={styles.detailCell}>
               <Text style={styles.detailLabel}>Color</Text>
-              <Text style={styles.detailValue}>{selectedItem.color}</Text>
+              <Text style={styles.detailValue}>{selectedItem.colorHex}</Text>
             </View>
             <View style={styles.detailCell}>
               <Text style={styles.detailLabel}>Latitud</Text>
@@ -158,15 +248,15 @@ export default function AuditScreen() {
         <FlatList
           ref={listRef}
           data={filtered}
-          keyExtractor={i => String(i.id)}
+          keyExtractor={item => item.unique_id}
           getItemLayout={(_, index) => ({ length: 49, offset: 49 * index, index })}
           onScrollToIndexFailed={({ index }) => {
             listRef.current?.scrollToOffset({ offset: Math.max(0, index * 49), animated: true });
           }}
           renderItem={({ item }) => (
-            <Pressable style={[styles.item, selectedId === item.id ? styles.itemSelected : null]} onPress={() => setSelectedId(item.id)}>
-              <View style={[styles.dot, { backgroundColor: item.color }]} />
-              <View style={{ flex: 1 }}>
+            <Pressable style={[styles.item, selectedId === item.unique_id ? styles.itemSelected : null]} onPress={() => setSelectedId(item.unique_id)}>
+                <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
+              <View style={styles.flexContent}>
                 <Text style={styles.itemTitle}>{item.unique_id}</Text>
                 <Text style={styles.itemMeta}>{item.state}</Text>
               </View>
@@ -183,13 +273,21 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
   helper: { color: '#475569', marginBottom: 8 },
   helperSecondary: { color: '#64748b', marginBottom: 12, fontSize: 12 },
-  controls: { marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 8, marginBottom: 8, backgroundColor: '#fff' },
-  row: { flexDirection: 'row', marginBottom: 8 },
+  controls: { marginBottom: 8, width: '100%', minWidth: 0 },
+  row: { flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start', flexWrap: 'wrap' },
+  filterRow: { flexWrap: 'wrap' },
+  // Reduce minWidth so fields can fit side-by-side on narrower viewports.
+  halfField: { flex: 1, minWidth: 140 },
+  halfFieldOffset: { marginLeft: 8, minWidth: 140 },
+  flexContent: { flex: 1 },
+  filterLabel: { color: '#0f172a', fontSize: 14, fontWeight: '600', marginBottom: 6 },
   filterBtn: { padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', marginRight: 8 },
   filterActive: { backgroundColor: '#e6f0ff' },
   searchBtn: { backgroundColor: '#2563eb', padding: 10, borderRadius: 8, alignItems: 'center' },
+  searchBtnDisabled: { opacity: 0.6 },
   searchBtnText: { color: '#fff', fontWeight: '700' },
+  filterSummary: { color: '#475569', fontSize: 12, marginBottom: 8 },
+  errorText: { color: '#b91c1c', fontSize: 12, marginBottom: 8 },
   map: { marginTop: 4 },
   detailCard: {
     marginTop: 12,
@@ -225,7 +323,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -6,
   },
   detailCell: {
-    width: '25%',
+    width: '33.3333%',
     paddingHorizontal: 6,
     marginBottom: 8,
   },

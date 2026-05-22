@@ -4,12 +4,20 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaf
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+// Marker cluster CSS is required for proper cluster styling (react-leaflet-cluster v4+)
+import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
+import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
 import type { Tag } from '../../data/mocks/tagsMock';
+
+// Maximum zoom allowed by the map UI. Note: tile providers may have a lower
+// native max (configured per TileLayer via maxNativeZoom). Increase only if
+// your tileserver supplies higher-resolution tiles.
+const MAX_MAP_ZOOM = 21;
 
 type Props = {
   items: Tag[];
   style?: any;
-  selectedId?: number | null;
+  selectedId?: string | null;
   onSelect?: (item: Tag) => void;
 };
 
@@ -50,7 +58,9 @@ function FocusController({
 
   useEffect(() => {
     if (bounds && fitAllSignal) {
-      map.fitBounds(bounds, { padding: [36, 36], animate: true, duration: 0.75 } as any);
+      // limit maxZoom so fitBounds doesn't try to zoom beyond map's max
+      // capped to 17 for better context vs over-zooming
+      map.fitBounds(bounds, { padding: [36, 36], animate: true, duration: 0.75, maxZoom: 17 } as any);
     }
   }, [map, bounds, fitAllSignal]);
 
@@ -90,7 +100,7 @@ function createClusterIcon(cluster: L.MarkerCluster) {
 export default function MapCanvas({ items, style, selectedId, onSelect }: Props) {
   const bounds = useMemo(() => getBounds(items), [items]);
   const center: [number, number] = items.length > 0 ? [items[0].lat, items[0].lon] : [37.77, -122.42];
-  const selectedItem = selectedId ? items.find(item => item.id === selectedId) ?? null : null;
+  const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
   const [fitAllSignal, setFitAllSignal] = React.useState(0);
   // signal used to request recentring on the already-selected item even when
   // `selectedItem` value doesn't change. Incrementing this value will trigger
@@ -99,6 +109,8 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
   const [mapType, setMapType] = React.useState<'street' | 'satellite'>('street');
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const clusterRef = useRef<any>(null);
 
   function showToast(message: string, ms = 3000) {
     setToast(message);
@@ -111,7 +123,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
     const map = new Map<string, string>();
     items.forEach(item => {
       if (!map.has(item.state ?? 'n/a')) {
-        map.set(item.state ?? 'n/a', item.color);
+        map.set(item.state ?? 'n/a', item.colorHex);
       }
     });
     return Array.from(map.entries()).map(([state, color]) => ({ state, color }));
@@ -129,6 +141,12 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
     },
   };
 
+  // Determine provider-native max zoom to avoid requesting tiles that the provider
+  // does not serve (which causes 400 responses). For OSM street tiles we assume
+  // native up to 19; for Esri satellite we allow up to 20.
+  const providerNativeMax = mapType === 'street' ? 19 : 20;
+  const mapMaxZoom = Math.min(MAX_MAP_ZOOM, providerNativeMax);
+
   return (
     <View style={[styles.wrapper, style]} accessibilityLabel="Mapa de auditorías">
       {items.length === 0 ? (
@@ -141,7 +159,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               <View style={styles.legend}>
                 {legendItems.map(item => (
                   <View key={item.state} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                  <View style={[styles.legendDot, { backgroundColor: item.colorHex }]} />
                   <Text style={styles.legendText}>{item.state}</Text>
                 </View>
               ))}
@@ -162,7 +180,54 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Ver todos"
-                  onPress={() => setFitAllSignal(value => value + 1)}
+                  onPress={() => {
+                    // trigger fit-all behaviour
+                    setFitAllSignal(value => value + 1);
+
+                    // Try to expand clusters gracefully using the cluster instance API.
+                    // We attempt several approaches (spiderfy a visible cluster, call zoomToBounds
+                    // on the cluster instance, or as a last resort call map.fitBounds).
+                    setTimeout(() => {
+                      try {
+                        const grp = clusterRef.current;
+                        const instance = grp?.leafletElement ?? grp?.instance ?? grp;
+
+                        if (instance) {
+                          // Try to spiderfy a visible cluster if present
+                          try {
+                            const fg = instance._featureGroup ?? instance._group ?? instance;
+                            const layers = fg && typeof fg.getLayers === 'function' ? fg.getLayers() : [];
+                            const clusterLayer = layers.find((l: any) => l && typeof l.getChildCount === 'function' && l.getChildCount() > 1);
+                            if (clusterLayer && typeof clusterLayer.spiderfy === 'function') {
+                              clusterLayer.spiderfy();
+                              return;
+                            }
+                          } catch (e) {
+                            // ignore and try other methods
+                          }
+
+                          if (typeof instance.zoomToBounds === 'function') {
+                            try { instance.zoomToBounds(); return; } catch (e) {}
+                          }
+
+                          if (typeof instance.zoomToShowLayer === 'function') {
+                            try {
+                              const anyLayer = instance.getLayers?.()?.[0];
+                              if (anyLayer) instance.zoomToShowLayer(anyLayer, () => {});
+                              return;
+                            } catch (e) {}
+                          }
+                        }
+
+                        // fallback: use map.fitBounds
+                        if (mapRef.current && bounds) {
+                          try { mapRef.current.fitBounds(bounds, { padding: [36, 36], maxZoom: 18 } as any); } catch (e) {}
+                        }
+                      } catch (e) {
+                        // final fallback noop
+                      }
+                    }, 200);
+                  }}
                   style={[styles.mapToggleButton, styles.actionInlineButton]}
                 >
                   <Text style={styles.mapToggleButtonText}>Ver todos</Text>
@@ -174,7 +239,12 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                   accessibilityRole="button"
                   accessibilityLabel="Vista Street"
                   accessibilityState={{ pressed: mapType === 'street' }}
-                  onPress={() => setMapType('street')}
+                  onPress={() => {
+                    setMapType('street');
+                    // notify user about native max zoom when switching provider
+                    const nativeMax = 19;
+                    showToast(`Tiles nativos disponibles hasta z=${nativeMax}. Zoom superior será reescalado.`, 4000);
+                  }}
                   style={[styles.mapToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
                 >
                   <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
@@ -186,11 +256,17 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                   accessibilityRole="button"
                   accessibilityLabel="Vista Satellite"
                   accessibilityState={{ pressed: mapType === 'satellite' }}
-                  onPress={() => setMapType('satellite')}
+                  onPress={() => {
+                    setMapType('satellite');
+                    // notify user about native max zoom when switching provider
+                    const nativeMax = 20;
+                    showToast(`Tiles nativos disponibles hasta z=${nativeMax}. Zoom superior será reescalado.`, 4000);
+                  }}
                   style={[styles.mapToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
                 >
                   <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
                 </Pressable>
+                <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${providerNativeMax}`}>Máx. zoom: {providerNativeMax}</Text>
               </View>
           </View>
 
@@ -200,11 +276,18 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               style={styles.map as any}
               bounds={bounds ?? undefined}
               scrollWheelZoom
+              whenCreated={m => (mapRef.current = m)}
+              // Cap the map max zoom to the provider's native max to avoid 400 errors
+              maxZoom={mapMaxZoom}
             >
               <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} />
             <TileLayer
               attribution={TILESETS[mapType].attribution}
               url={TILESETS[mapType].url}
+              // Do not request tiles beyond providerNativeMax
+              maxNativeZoom={providerNativeMax}
+              maxZoom={mapMaxZoom}
+              detectRetina={true}
               eventHandlers={{
                 tileerror: () => {
                   // fallback to street tiles if satellite fails
@@ -216,29 +299,75 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               }}
             />
 
-            <MarkerClusterGroup chunkedLoading iconCreateFunction={createClusterIcon}>
+            {/* Marker clustering options tuned for better UX when using "Ver todos" */}
+            <MarkerClusterGroup
+              ref={clusterRef}
+              chunkedLoading
+              iconCreateFunction={createClusterIcon}
+              // UX tuning
+              // - disable clustering at this zoom so high-zoom shows individuals
+              // set to 19 so individual markers are visible at high zoom (1m separation)
+              disableClusteringAtZoom={19}
+              // - allow spiderfy when at max zoom
+              spiderfyOnMaxZoom={true}
+              // - do not rely on default zoomToBoundsOnClick; handle cluster clicks explicitly
+              zoomToBoundsOnClick={false}
+              // - reduce cluster radius so clusters split more eagerly
+              maxClusterRadius={40}
+              // - show cluster coverage only on hover (helps on desktop)
+              showCoverageOnHover={false}
+              // handle cluster clicks to provide a predictable expand behavior
+              onClusterClick={(e: any) => {
+                try {
+                  const cluster = e?.layer ?? e?.target ?? null;
+                  if (!cluster) return;
+
+                  // Prefer cluster.zoomToBounds() if available (expands/zooms to children)
+                  if (typeof cluster.zoomToBounds === 'function') {
+                    try { cluster.zoomToBounds(); return; } catch (_) {}
+                  }
+
+                  // If we have a bounds, fit to it with a capped maxZoom
+                  const bounds = typeof cluster.getBounds === 'function' ? cluster.getBounds() : null;
+                  const map = mapRef.current;
+                  if (bounds && map) {
+                    const mapMax = typeof map.getMaxZoom === 'function' ? (map.getMaxZoom() as number) : 18;
+                    const targetMax = Math.min(18, isFinite(mapMax) ? mapMax : 18);
+                    try {
+                      map.fitBounds(bounds, { padding: [36, 36], maxZoom: targetMax } as any);
+                      return;
+                    } catch (_) {}
+                  }
+
+                  // As last resort spiderfy the cluster if possible
+                  if (typeof cluster.spiderfy === 'function') {
+                    try { cluster.spiderfy(); } catch (_) {}
+                  }
+                } catch (_) {}
+              }}
+            >
               {items.map(item => (
                 <CircleMarker
-                  key={String(item.id)}
+                  key={item.uuid}
                   center={[item.lat, item.lon]}
-                  radius={selectedItem?.id === item.id ? 11 : 8}
+                  radius={selectedItem?.uuid === item.uuid ? 11 : 8}
                   eventHandlers={onSelect ? { click: () => onSelect(item) } : undefined}
                   pathOptions={{
-                    color: item.color,
-                    fillColor: item.color,
-                    fillOpacity: selectedItem?.id === item.id ? 1 : 0.85,
-                    weight: selectedItem?.id === item.id ? 3 : 1,
+                    color: item.colorHex,
+                    fillColor: item.colorHex,
+                    fillOpacity: selectedItem?.uuid === item.uuid ? 1 : 0.85,
+                    weight: selectedItem?.uuid === item.uuid ? 3 : 1,
                   }}
                 >
                   <Popup>
-                    <div style={{ minWidth: 180, fontFamily: 'system-ui, sans-serif' }}>
+                      <div style={{ maxWidth: 300, wordBreak: 'break-word', fontFamily: 'system-ui, sans-serif' }}>
                       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
                         <span
                           style={{
                             width: 12,
                             height: 12,
                             borderRadius: '999px',
-                            backgroundColor: item.color,
+                            backgroundColor: item.colorHex,
                             display: 'inline-block',
                             marginRight: 8,
                           }}
@@ -252,12 +381,12 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>
                         <div>
-                          <div style={{ color: '#64748b' }}>ID</div>
-                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.id}</div>
+                          <div style={{ color: '#64748b' }}>UUID</div>
+                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.uuid}</div>
                         </div>
                         <div>
                           <div style={{ color: '#64748b' }}>Color</div>
-                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.color}</div>
+                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.colorHex}</div>
                         </div>
                         <div>
                           <div style={{ color: '#64748b' }}>Lat</div>
@@ -299,6 +428,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
     backgroundColor: '#fff',
+    // ensure the map wrapper is responsive and does not cause horizontal overflow
+    width: '100%',
+    minWidth: 0,
   },
   map: {
     width: '100%',
@@ -369,12 +501,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: 'rgba(15,23,42,0.06)',
-    // use cross-platform shadow props instead of boxShadow string
-    shadowColor: '#020617',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    // Use CSS boxShadow on web to avoid deprecated shadow* warnings
+    boxShadow: '0 6px 18px rgba(2,6,23,0.08)',
     elevation: 4,
+  },
+  providerInfo: {
+    color: '#64748b',
+    fontSize: 12,
+    alignSelf: 'center',
+    marginLeft: 8,
   },
   toggleButtonActiveLarge: {
     backgroundColor: '#2563eb',
