@@ -113,7 +113,12 @@ const webSelectStyle: React.CSSProperties = {
   // Let the select occupy the remaining space inside the flex row while
   // allowing it to shrink on narrow viewports. Avoid using width:100% here
   // because that plus the swatch's width would cause overflow.
+  // ensure flexible shrink/grow behavior in narrow containers
   flex: 1,
+  flexGrow: 1,
+  flexShrink: 1,
+  flexBasis: 'auto',
+  maxWidth: '100%',
   boxSizing: 'border-box',
   minWidth: 0,
   border: '1px solid #cbd5e1',
@@ -198,5 +203,9 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 0,
   },
-  swatchSmall: { marginRight: 6, flexShrink: 0 },
+  swatchSmall: { marginRight: 6, flexShrink: 0, width: 20, alignItems: 'center', justifyContent: 'center' },
+  // make wrapper clip any accidental overflow from children (defensive)
+  webWrapperOverflow: {
+    overflow: 'hidden',
+  },
 });
