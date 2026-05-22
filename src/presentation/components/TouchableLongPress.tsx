@@ -47,12 +47,26 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
     onPress?.(e);
   };
 
+  // Prevent the browser context menu from appearing when a long-press was handled
+  const handleContextMenu = (e: any) => {
+    try {
+      if (handledRef.current && e && typeof e.preventDefault === 'function') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    } catch (_) {}
+    // if consumer passed their own handler, call it
+    const consumer = (rest as any)?.onContextMenu;
+    if (typeof consumer === 'function') consumer(e);
+  };
+
   return (
     <Pressable
       {...rest}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
+      onContextMenu={handleContextMenu as any}
     />
   );
 }
