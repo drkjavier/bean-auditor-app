@@ -10,6 +10,7 @@ type Props = PressableProps & {
 export default function TouchableLongPress({ onLongPress, delay = 600, onPress, onPressIn, onPressOut, ...rest }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handledRef = useRef(false);
+  const contextHandlerRef = useRef<((e: Event) => void) | null>(null);
 
   React.useEffect(() => {
     return () => {
@@ -17,6 +18,12 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
+      try {
+        if (contextHandlerRef.current && typeof document !== 'undefined') {
+          document.removeEventListener('contextmenu', contextHandlerRef.current as any);
+          contextHandlerRef.current = null;
+        }
+      } catch (_) {}
     };
   }, []);
 
@@ -24,6 +31,16 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
     handledRef.current = false;
     // start timer only if an onLongPress handler is provided
     if (onLongPress) {
+      // prevent the browser context menu while we're detecting a long-press
+      try {
+        if (typeof document !== 'undefined') {
+          contextHandlerRef.current = (ev: Event) => {
+            try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          };
+          document.addEventListener('contextmenu', contextHandlerRef.current as any, { passive: false });
+        }
+      } catch (_) {}
+
       timerRef.current = setTimeout(() => {
         handledRef.current = true;
         console.log('TouchableLongPress: onLongPress fired');
@@ -38,6 +55,13 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    // remove temporary contextmenu prevention
+    try {
+      if (contextHandlerRef.current && typeof document !== 'undefined') {
+        document.removeEventListener('contextmenu', contextHandlerRef.current as any);
+        contextHandlerRef.current = null;
+      }
+    } catch (_) {}
     onPressOut?.(e);
   };
 
@@ -47,26 +71,12 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
     onPress?.(e);
   };
 
-  // Prevent the browser context menu from appearing when a long-press was handled
-  const handleContextMenu = (e: any) => {
-    try {
-      if (handledRef.current && e && typeof e.preventDefault === 'function') {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    } catch (_) {}
-    // if consumer passed their own handler, call it
-    const consumer = (rest as any)?.onContextMenu;
-    if (typeof consumer === 'function') consumer(e);
-  };
-
   return (
     <Pressable
       {...rest}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
-      onContextMenu={handleContextMenu as any}
     />
   );
 }
