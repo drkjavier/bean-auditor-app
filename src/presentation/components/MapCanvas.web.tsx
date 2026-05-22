@@ -30,43 +30,46 @@ function FocusController({
   bounds,
   fitAllSignal,
   centerSignal,
+  selectionZoom,
+  fitAllMaxZoom,
 }: {
   selectedItem?: Tag | null;
   bounds?: L.LatLngBounds | null;
   fitAllSignal?: number;
   centerSignal?: number;
+  selectionZoom: number;
+  fitAllMaxZoom: number;
 }) {
   const map = useMap();
 
   useEffect(() => {
     if (selectedItem) {
-      map.flyTo([selectedItem.lat, selectedItem.lon], Math.max(map.getZoom(), 14), {
+      map.flyTo([selectedItem.lat, selectedItem.lon], Math.max(map.getZoom(), selectionZoom), {
         animate: true,
         duration: 0.75,
       });
     }
-  }, [map, selectedItem]);
+  }, [map, selectedItem, selectionZoom]);
 
   // Allow explicit recenter requests even when the selectedItem reference
   // hasn't changed (e.g. user clicks "Centrar selección"). The parent will
   // increment `centerSignal` to trigger this effect.
   useEffect(() => {
     if (selectedItem && typeof centerSignal === 'number') {
-      map.flyTo([selectedItem.lat, selectedItem.lon], Math.max(map.getZoom(), 14), {
+      map.flyTo([selectedItem.lat, selectedItem.lon], Math.max(map.getZoom(), selectionZoom), {
         animate: true,
         duration: 0.75,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, centerSignal]);
+  }, [map, centerSignal, selectionZoom]);
 
   useEffect(() => {
     if (bounds && fitAllSignal) {
-      // limit maxZoom so fitBounds doesn't try to zoom beyond map's max
-      // capped to 17 for better context vs over-zooming
-      map.fitBounds(bounds, { padding: [36, 36], animate: true, duration: 0.75, maxZoom: 17 } as any);
+      // Keep enough context, but allow zooming close enough to separate tags.
+      map.fitBounds(bounds, { padding: [36, 36], animate: true, duration: 0.75, maxZoom: fitAllMaxZoom } as any);
     }
-  }, [map, bounds, fitAllSignal]);
+  }, [map, bounds, fitAllSignal, fitAllMaxZoom]);
 
   return null;
 }
@@ -151,6 +154,8 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
   // native up to 19; for Esri satellite we allow up to 20.
   const providerNativeMax = mapType === 'street' ? 19 : 20;
   const mapMaxZoom = Math.min(MAX_MAP_ZOOM, providerNativeMax);
+  const selectionZoom = Math.min(mapMaxZoom, providerNativeMax);
+  const fitAllMaxZoom = Math.min(mapMaxZoom, 19);
 
   return (
     <View style={[styles.wrapper, style]} accessibilityLabel="Mapa de auditorías">
@@ -225,9 +230,9 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                         }
 
                         // fallback: use map.fitBounds
-                        if (mapRef.current && bounds) {
-                          try { mapRef.current.fitBounds(bounds, { padding: [36, 36], maxZoom: 18 } as any); } catch (e) {}
-                        }
+                          if (mapRef.current && bounds) {
+                            try { mapRef.current.fitBounds(bounds, { padding: [36, 36], maxZoom: fitAllMaxZoom } as any); } catch (e) {}
+                          }
                       } catch (e) {
                         // final fallback noop
                       }
@@ -285,7 +290,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               // Cap the map max zoom to the provider's native max to avoid 400 errors
               maxZoom={mapMaxZoom}
             >
-              <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} />
+              <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} selectionZoom={selectionZoom} fitAllMaxZoom={fitAllMaxZoom} />
             <TileLayer
               attribution={TILESETS[mapType].attribution}
               url={TILESETS[mapType].url}
@@ -336,8 +341,8 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                   const bounds = typeof cluster.getBounds === 'function' ? cluster.getBounds() : null;
                   const map = mapRef.current;
                   if (bounds && map) {
-                    const mapMax = typeof map.getMaxZoom === 'function' ? (map.getMaxZoom() as number) : 18;
-                    const targetMax = Math.min(18, isFinite(mapMax) ? mapMax : 18);
+                    const mapMax = typeof map.getMaxZoom === 'function' ? (map.getMaxZoom() as number) : fitAllMaxZoom;
+                    const targetMax = Math.min(fitAllMaxZoom, isFinite(mapMax) ? mapMax : fitAllMaxZoom);
                     try {
                       map.fitBounds(bounds, { padding: [36, 36], maxZoom: targetMax } as any);
                       return;

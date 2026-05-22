@@ -1,7 +1,7 @@
 ---
 description: Especialista en seguridad frontend para React y React Native. Revisa módulos, vistas, componentes y flujos con foco en autenticación, sesión, routing protegido, validación, consumo de APIs, almacenamiento local y exposición de datos sensibles. Úsalo cuando se creen o cambien piezas de UI con superficie de riesgo.
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5-mini
 temperature: 0.1
 steps: 12
 color: "#DC2626"

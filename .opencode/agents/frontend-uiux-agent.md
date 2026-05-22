@@ -1,7 +1,7 @@
 ---
 description: Especialista en UI/UX para React y React Native. Audita y mejora jerarquía visual, accesibilidad, responsividad, feedback, estados de interfaz y consistencia de diseño. Úsalo para revisar pantallas, flujos, formularios y sistemas visuales antes de implementar o refactorizar.
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5-mini
 temperature: 0.1
 steps: 12
 color: "#A855F7"

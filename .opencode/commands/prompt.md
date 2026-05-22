@@ -1,14 +1,31 @@
 ---
-description: Optimiza y estructura cualquier prompt para máxima claridad y eficiencia, siguiendo las mejores prácticas de OpenCode.
+description: Replantea y optimiza un prompt para hacerlo mas claro, coherente y eficiente en tokens
 agent: build
 subtask: false
 ---
-Este comando replantea cualquier prompt recibido, aplicando los criterios de optimización y formato definidos en `/prompt-pro`.
+Analiza y replantea el siguiente prompt del usuario para que sea mas comprensible para el agente, conserve la intencion original y optimice el gasto de tokens.
 
-Instrucciones:
-- Preserva la intención original del usuario.
-- Elimina ambigüedad, redundancia y contexto innecesario.
-- Si la tarea es compleja, sigue los pasos de optimización y formato detallados en `/prompt-pro`.
-- Si la tarea es simple, simplifica la respuesta.
+Usa como referencia conceptual las buenas practicas almacenadas en `@prompts/claude-prompting-best-practices.md`.
 
-Para la optimización, utiliza internamente el flujo y reglas de `.opencode/commands/prompt-pro.md`.
+Objetivos obligatorios:
+- Aclarar la intencion principal del usuario.
+- Eliminar redundancias, ruido y ambiguedad.
+- Mejorar sentido, orden y coherencia.
+- Mantener solo el contexto necesario para ejecutar bien la tarea.
+- No inventar requisitos nuevos.
+- Si faltan datos importantes, reduce al minimo los supuestos y deja el prompt util sin sobre-explicarlo.
+
+Proceso:
+1. Identifica la meta principal del prompt.
+2. Detecta ambiguedades, contradicciones, redundancias o contexto sobrante.
+3. Reescribe el prompt con lenguaje claro, directo y accionable.
+4. Si aporta valor, organiza el resultado con bloques como objetivo, contexto, restricciones y salida esperada.
+5. Ajusta la redaccion para minimizar gasto de tokens sin perder informacion esencial.
+
+Entrega solo el prompt final optimizado.
+No agregues titulos, explicaciones, observaciones, listas ni texto introductorio.
+No envies comillas envolventes salvo que formen parte natural del prompt.
+
+Prompt a optimizar:
+
+$ARGUMENTS

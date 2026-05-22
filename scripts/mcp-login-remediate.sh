@@ -1,9 +1,12 @@
 #!/bin/bash
-# Remedia el componente LoginScreen usando MCP de React Native
+# Remedia el componente LoginScreen usando el MCP ya configurado en OpenCode.
 
-COMPONENT_NAME="LoginScreen"
+set -euo pipefail
 
-npx @mrnitro360/react-native-mcp-guide remediate_code \
+COMPONENT_NAME="${COMPONENT_NAME:-LoginScreen}"
+SCRIPT_DIR="$(dirname "$0")"
+
+bash "$SCRIPT_DIR/mcp-remediate.sh" remediate_code \
     --target_component="$COMPONENT_NAME" \
     --remediation_level=expert \
     --add_comments=true

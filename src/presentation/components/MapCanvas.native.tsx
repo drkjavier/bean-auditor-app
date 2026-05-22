@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert, Linking } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, LatLng, Region } from 'react-native-maps';
 import type { Tag } from '../../data/mocks/tagsMock';
@@ -8,7 +8,7 @@ import { RESULTS } from 'react-native-permissions';
 type Props = {
   items: Tag[];
   style?: any;
-  selectedId?: number | null;
+  selectedId?: string | null;
   onSelect?: (item: Tag) => void;
   // allow injecting a location service for testability (defaults to src/infrastructure/locationService)
   locationService?: typeof import('../../infrastructure/locationService');
@@ -17,6 +17,7 @@ type Props = {
 export default function MapCanvasNative({ items, style, selectedId, onSelect, locationService: injectedLocationService }: Props) {
   const mapRef = useRef<MapView | null>(null);
   const locService = injectedLocationService ?? locationService;
+  const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
   const [receiverStatus, setReceiverStatus] = useState<{ connected: boolean; rtkState: string }>({ connected: false, rtkState: 'NO_FIX' });
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -130,6 +131,21 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
     return () => { if (unsub) unsub(); };
   }, [locService]);
 
+  useEffect(() => {
+    if (!selectedItem || !mapRef.current) return;
+
+    try {
+      mapRef.current.animateToRegion({
+        latitude: selectedItem.lat,
+        longitude: selectedItem.lon,
+        latitudeDelta: 0.0025,
+        longitudeDelta: 0.0025,
+      } as Region, 500);
+    } catch {
+      // avoid crashing if map ref is not ready yet
+    }
+  }, [selectedItem]);
+
   async function connectMockReceiver() {
     try {
       await (locService as any).connectExternalReceiver({ transport: 'mock', id: 'sim-01' });
@@ -194,9 +210,9 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
         ) : null}
         {items.map(item => (
           <Marker
-            key={String(item.id)}
+            key={item.uuid}
             coordinate={{ latitude: item.lat, longitude: item.lon }}
-            pinColor={item.color}
+            pinColor={item.colorHex}
             onPress={() => onSelect?.(item)}
             accessibilityLabel={`Marcador ${item.unique_id}`}
           />

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Pressable, Text } from 'react-native';
 import HomeScreen from './HomeScreen';
 import AuditScreen from './AuditScreen';
+import MapZoomTest from '../components/MapZoomTest';
 import SettingsScreen from './SettingsScreen';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -52,6 +53,8 @@ export default function MainScreen() {
   return (
     <View style={styles.container} accessibilityRole="tablist">
       <View style={styles.content}>{renderScene({ route: routes[index] })}</View>
+      {/* Dev helper: mount zoom test when on audit tab (only in dev) */}
+      {routes[index].key === 'audit' ? <MapZoomTest /> : null}
 
       <View style={styles.bottomBar} accessibilityRole="tablist">
         {routes.map((r, i) => (

@@ -27,7 +27,7 @@ describe('MapCanvas native permission flows', () => {
 
     let tree: any;
     await act(async () => {
-      tree = renderer.create(<MapCanvas items={[{ id: 1, unique_id: 'T1', color: '#000', lat: 1, lon: 2, timestamp: new Date().toISOString() }]} />);
+      tree = renderer.create(<MapCanvas items={[{ uuid: '550e8400-e29b-41d4-a716-000000000001', colorHex: '#000000', unique_id: 'T1', color: '#000000', lat: 1, lon: 2, timestamp: new Date().toISOString() }]} />);
       // flush pending microtasks and allow refs to attach
       await new Promise(resolve => setImmediate(resolve));
       await new Promise(resolve => setImmediate(resolve));
@@ -85,5 +85,100 @@ describe('MapCanvas native permission flows', () => {
     expect(perms.request).toHaveBeenCalled();
     // ensure animate was not triggered by this action (call count unchanged)
     expect(animateMock.mock.calls.length).toBe(beforeCalls);
+  });
+
+  test('blocked permission suggests opening settings and calls openSettings when accepted', async () => {
+    // inject a fake location service that reports BLOCKED
+    const fakeLoc = {
+      checkPermission: jest.fn(async () => perms.RESULTS.BLOCKED),
+      requestPermission: jest.fn(async () => perms.RESULTS.BLOCKED),
+      openSettings: jest.fn(async () => {}),
+      getCurrentPosition: jest.fn(),
+    };
+
+    // mock Alert.alert to immediately invoke the 'Abrir ajustes' button
+    const Alert = require('react-native').Alert;
+    jest.spyOn(Alert, 'alert').mockImplementation((title, msg, buttons) => {
+      const openBtn = Array.isArray(buttons) && buttons.find(b => String(b.text).toLowerCase().includes('abrir'));
+      if (openBtn && typeof openBtn.onPress === 'function') openBtn.onPress();
+    });
+
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(<MapCanvas items={[]} locationService={fakeLoc} />);
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    const btn = tree.root.findByProps({ testID: 'centerOnMeBtn' });
+    await act(async () => {
+      btn.props.onPress();
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    expect(fakeLoc.checkPermission).toHaveBeenCalled();
+    expect(fakeLoc.openSettings).toHaveBeenCalled();
+    expect(fakeLoc.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  test('unavailable permission shows message and does not call geolocation', async () => {
+    const fakeLoc = {
+      checkPermission: jest.fn(async () => perms.RESULTS.UNAVAILABLE),
+      requestPermission: jest.fn(),
+      openSettings: jest.fn(),
+      getCurrentPosition: jest.fn(),
+    };
+
+    const Alert = require('react-native').Alert;
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(<MapCanvas items={[]} locationService={fakeLoc} />);
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    const btn = tree.root.findByProps({ testID: 'centerOnMeBtn' });
+    await act(async () => {
+      btn.props.onPress();
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    expect(fakeLoc.checkPermission).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalled();
+    expect(fakeLoc.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  test('denied then blocked on request opens settings', async () => {
+    const fakeLoc = {
+      checkPermission: jest.fn(async () => perms.RESULTS.DENIED),
+      requestPermission: jest.fn(async () => perms.RESULTS.BLOCKED),
+      openSettings: jest.fn(async () => {}),
+      getCurrentPosition: jest.fn(),
+    };
+
+    const Alert = require('react-native').Alert;
+    jest.spyOn(Alert, 'alert').mockImplementation((title, msg, buttons) => {
+      const openBtn = Array.isArray(buttons) && buttons.find(b => String(b.text).toLowerCase().includes('abrir'));
+      if (openBtn && typeof openBtn.onPress === 'function') openBtn.onPress();
+    });
+
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(<MapCanvas items={[]} locationService={fakeLoc} />);
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    const btn = tree.root.findByProps({ testID: 'centerOnMeBtn' });
+    await act(async () => {
+      btn.props.onPress();
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    expect(fakeLoc.checkPermission).toHaveBeenCalled();
+    expect(fakeLoc.requestPermission).toHaveBeenCalled();
+    expect(fakeLoc.openSettings).toHaveBeenCalled();
+    expect(fakeLoc.getCurrentPosition).not.toHaveBeenCalled();
   });
 });

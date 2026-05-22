@@ -1,7 +1,7 @@
 ---
 description: Especialista en React y React Native para frontend web y multiplataforma. Implementa y optimiza interfaces, navegación y estado con foco en UX/UI, accesibilidad, rendimiento, seguridad frontend y mantenibilidad. Úsalo para pantallas, componentes, flujos, refactors y diagnósticos apoyados por MCP cuando aporte valor.
 mode: all
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5-mini
 temperature: 0.1
 steps: 20
 color: "#1E90FF"

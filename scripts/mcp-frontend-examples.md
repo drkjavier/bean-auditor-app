@@ -1,6 +1,8 @@
 # Ejemplos de uso del MCP de React Native para el agente frontend
 
-Estos ejemplos permiten al **agente frontend** ejecutar acciones avanzadas sobre el código React Native usando el MCP instalado, a través del flujo universal basado en `scripts/mcp-remediate.sh`.
+Estos ejemplos permiten al **agente frontend** ejecutar acciones avanzadas sobre el codigo React Native usando el MCP ya configurado en OpenCode, a traves del flujo universal basado en `scripts/mcp-remediate.sh`.
+
+`scripts/mcp-remediate.sh` ya no arranca otro servidor MCP: delega al servidor `react-native-mcp` definido en `opencode.json`.
 
 ---
 
@@ -54,9 +56,11 @@ opencode bash scripts/mcp-remediate.sh generate_component_test \
 ## 6. Actualización y auditoría de dependencias
 
 ```sh
-opencode bash scripts/mcp-remediate.sh upgrade_packages --update_level=minor
-opencode bash scripts/mcp-remediate.sh audit_packages --auto_fix=true
+opencode bash scripts/mcp-remediate.sh get_version_info
+opencode bash scripts/mcp-remediate.sh check_for_updates
 ```
+
+Nota: la version actual del servidor no expone herramientas `upgrade_packages` ni `audit_packages`.
 
 ---
 
@@ -69,6 +73,23 @@ opencode bash scripts/mcp-remediate.sh <comando_MCP> [opciones]
 Por ejemplo, para analizar accesibilidad:
 ```sh
 opencode bash scripts/mcp-remediate.sh analyze_codebase_accessibility
+```
+
+Comandos soportados por el MCP actual:
+```text
+analyze_codebase_comprehensive
+analyze_codebase_performance
+analyze_component
+analyze_test_coverage
+analyze_testing_strategy
+architecture_advice
+check_for_updates
+debug_issue
+generate_component_test
+get_version_info
+optimize_performance
+refactor_component
+remediate_code
 ```
 
 ---

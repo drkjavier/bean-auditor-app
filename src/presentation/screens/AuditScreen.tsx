@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
+import { View, Text, StyleSheet, Pressable, FlatList, Modal } from 'react-native';
 import { fetchTags, Tag } from '../../data/tagService';
 import MapCanvas from '../components/MapCanvas';
 import ColorCombobox from '../components/ColorCombobox';
 import DatePickerInput from '../components/DatePickerInput';
+import TouchableLongPress from '../components/TouchableLongPress';
 import { useAuthStore } from '../../stores/authStore';
 
 const FILTER_DEBOUNCE_MS = 350;
@@ -23,6 +24,8 @@ export default function AuditScreen() {
   const lastAppliedFilterKey = useRef('');
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Tag[]>([]);
+  const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
+  const [markTargetId, setMarkTargetId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [colorFilter, setColorFilter] = useState<string | undefined>(undefined);
   const [auditedFilter, setAuditedFilter] = useState<boolean | undefined>(undefined);
@@ -211,6 +214,43 @@ export default function AuditScreen() {
         </Pressable>
       </View>
 
+      <Modal visible={isMarkModalOpen} transparent animationType="fade" onRequestClose={() => setIsMarkModalOpen(false)}>
+        <View style={modalStyles.backdrop}>
+          <View style={modalStyles.container} accessibilityRole="dialog" accessibilityLabel="Marcar modal">
+            <Text style={modalStyles.title}>Marcar</Text>
+            <View style={modalStyles.buttonsRow}>
+              <Pressable
+                style={[modalStyles.btn, { backgroundColor: '#10b981' }]}
+                onPress={() => {
+                  if (!markTargetId) return;
+                  setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: true } : t)));
+                  setIsMarkModalOpen(false);
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={modalStyles.btnText}>Auditar</Text>
+              </Pressable>
+
+              <Pressable
+                style={[modalStyles.btn, { backgroundColor: '#ef4444' }]}
+                onPress={() => {
+                  if (!markTargetId) return;
+                  setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: false } : t)));
+                  setIsMarkModalOpen(false);
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={modalStyles.btnText}>Sin auditar</Text>
+              </Pressable>
+            </View>
+
+            <Pressable style={modalStyles.cancel} onPress={() => setIsMarkModalOpen(false)} accessibilityRole="button">
+              <Text style={modalStyles.cancelText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} />
 
       {selectedItem ? (
@@ -246,24 +286,32 @@ export default function AuditScreen() {
 
       <View style={styles.listContainer}>
         <Text style={styles.subtitle}>Resultados: {filtered.length}</Text>
-        <FlatList
-          ref={listRef}
-          data={filtered}
-          keyExtractor={item => item.unique_id}
-          getItemLayout={(_, index) => ({ length: 49, offset: 49 * index, index })}
-          onScrollToIndexFailed={({ index }) => {
-            listRef.current?.scrollToOffset({ offset: Math.max(0, index * 49), animated: true });
-          }}
-          renderItem={({ item }) => (
-            <Pressable style={[styles.item, selectedId === item.unique_id ? styles.itemSelected : null]} onPress={() => setSelectedId(item.unique_id)}>
-                <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
-              <View style={styles.flexContent}>
-                <Text style={styles.itemTitle}>{item.unique_id}</Text>
-                <Text style={styles.itemMeta}>{getAuditStatusLabel(item.audited)}</Text>
-              </View>
-            </Pressable>
-          )}
-        />
+           <FlatList
+             ref={listRef}
+             data={filtered}
+             keyExtractor={item => item.unique_id}
+             getItemLayout={(_, index) => ({ length: 49, offset: 49 * index, index })}
+             onScrollToIndexFailed={({ index }) => {
+               listRef.current?.scrollToOffset({ offset: Math.max(0, index * 49), animated: true });
+             }}
+           renderItem={({ item }) => (
+             <TouchableLongPress
+               delay={650}
+               style={[styles.item, selectedId === item.unique_id ? styles.itemSelected : null]}
+               onPress={() => setSelectedId(item.unique_id)}
+               onLongPress={() => {
+                 setMarkTargetId(item.unique_id);
+                 setIsMarkModalOpen(true);
+               }}
+             >
+               <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
+               <View style={styles.flexContent}>
+                 <Text style={styles.itemTitle}>{item.unique_id}</Text>
+                 <Text style={styles.itemMeta}>{getAuditStatusLabel(item.audited)}</Text>
+               </View>
+             </TouchableLongPress>
+           )}
+            />
       </View>
     </View>
   );
@@ -349,4 +397,15 @@ const styles = StyleSheet.create({
   dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   itemTitle: { fontWeight: '700' },
   itemMeta: { color: '#6b7280', fontSize: 12 },
+});
+
+const modalStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
+  container: { width: 300, padding: 16, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center' },
+  title: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
+  buttonsRow: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', marginBottom: 12 },
+  btn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginHorizontal: 6 },
+  btnText: { color: '#fff', fontWeight: '700' },
+  cancel: { paddingVertical: 8 },
+  cancelText: { color: '#334155' },
 });

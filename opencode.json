@@ -21,6 +21,11 @@
       "description": "Especialista en seguridad frontend para React y React Native. Revisa módulos, vistas, componentes y flujos con foco en autenticación, sesión, routing protegido, validación, consumo de APIs, almacenamiento local y exposición de datos sensibles. Úsalo cuando se creen o cambien piezas de UI con superficie de riesgo.",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/frontend-security-agent.md}"
+    },
+    "plan-builder": {
+      "description": "Agente orquestador para analizar contexto técnico y generar planes de implementación atómicos, dependencias, diagramas y subtareas para coordinar varios agentes. Úsalo cuando un cambio requiera dividir trabajo entre base de datos, backend, frontend y CI/CD.",
+      "mode": "all",
+      "prompt": "{file:.opencode/agents/plan-builder.md}"
     }
   },
   "mcp": {
@@ -29,6 +34,10 @@
       "command": ["npx", "@mrnitro360/react-native-mcp-guide"],
       "enabled": true
     }
+  },
+  
+  "experimental": {
+    "disable_paste_summary": false
   },
   "permission": {
     "skill": {

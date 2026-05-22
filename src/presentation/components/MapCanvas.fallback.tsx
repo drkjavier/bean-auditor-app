@@ -5,7 +5,7 @@ import type { Tag } from '../../data/mocks/tagsMock';
 type Props = {
   items: Tag[];
   style?: any;
-  selectedId?: number | null;
+  selectedId?: string | null;
   onSelect?: (item: Tag) => void;
 };
 
@@ -18,13 +18,13 @@ export default function MapCanvasFallback({ items, style, selectedId, onSelect }
       ) : (
         items.map(item => (
           <Pressable
-            key={String(item.id)}
-            style={[styles.row, selectedId === item.id ? styles.rowSelected : null]}
+            key={item.uuid}
+            style={[styles.row, selectedId === item.unique_id ? styles.rowSelected : null]}
             onPress={onSelect ? () => onSelect(item) : undefined}
             accessibilityRole="button"
             accessibilityLabel={`Seleccionar punto ${item.unique_id}`}
           >
-            <View style={[styles.swatch, { backgroundColor: item.color }]} />
+            <View style={[styles.swatch, { backgroundColor: item.colorHex }]} />
             <Text style={styles.label}>{item.unique_id}</Text>
           </Pressable>
         ))
