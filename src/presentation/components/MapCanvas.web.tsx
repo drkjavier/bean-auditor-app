@@ -178,7 +178,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                     onPress={() => setCenterSignal(v => v + 1)}
                     style={[styles.mapToggleButton, styles.actionInlineButton]}
                   >
-                    <Text style={styles.mapToggleButtonText}>Centrar selección</Text>
+                    <Text style={styles.mapToggleButtonText}>Centrar</Text>
                   </Pressable>
                 ) : null}
 
@@ -250,7 +250,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                     const nativeMax = 19;
                     showToast(`Tiles nativos disponibles hasta z=${nativeMax}. Zoom superior será reescalado.`, 4000);
                   }}
-                  style={[styles.mapToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
                 >
                   <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
                 </Pressable>
@@ -267,12 +267,12 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                     const nativeMax = 20;
                     showToast(`Tiles nativos disponibles hasta z=${nativeMax}. Zoom superior será reescalado.`, 4000);
                   }}
-                  style={[styles.mapToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
                 >
                   <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
                 </Pressable>
-                <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${providerNativeMax}`}>Máx. zoom: {providerNativeMax}</Text>
               </View>
+              <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${providerNativeMax}`}>Máx. zoom: {providerNativeMax}</Text>
           </View>
 
             <MapContainer
@@ -472,6 +472,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   actionButton: {
@@ -513,8 +514,8 @@ const styles = StyleSheet.create({
   providerInfo: {
     color: '#64748b',
     fontSize: 12,
-    alignSelf: 'center',
-    marginLeft: 8,
+    alignSelf: 'flex-end',
+    marginTop: 6,
   },
   toggleButtonActiveLarge: {
     backgroundColor: '#2563eb',
@@ -529,6 +530,10 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  mapTypeToggleButton: {
+    width: 76,
+    flexShrink: 0,
   },
   mapToggleButtonActive: {
     backgroundColor: '#1e40af',
