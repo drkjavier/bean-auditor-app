@@ -11,12 +11,22 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handledRef = useRef(false);
 
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
+
   const handlePressIn: PressableProps['onPressIn'] = e => {
     handledRef.current = false;
     // start timer only if an onLongPress handler is provided
     if (onLongPress) {
       timerRef.current = setTimeout(() => {
         handledRef.current = true;
+        console.log('TouchableLongPress: onLongPress fired');
         onLongPress();
       }, delay);
     }

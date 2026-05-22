@@ -223,6 +223,7 @@ export default function AuditScreen() {
                 style={[modalStyles.btn, { backgroundColor: '#10b981' }]}
                 onPress={() => {
                   if (!markTargetId) return;
+                  console.log(`Mark action: Auditar on ${markTargetId}`);
                   setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: true } : t)));
                   setIsMarkModalOpen(false);
                 }}
@@ -235,6 +236,7 @@ export default function AuditScreen() {
                 style={[modalStyles.btn, { backgroundColor: '#ef4444' }]}
                 onPress={() => {
                   if (!markTargetId) return;
+                  console.log(`Mark action: Sin auditar on ${markTargetId}`);
                   setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: false } : t)));
                   setIsMarkModalOpen(false);
                 }}
@@ -299,10 +301,11 @@ export default function AuditScreen() {
                delay={650}
                style={[styles.item, selectedId === item.unique_id ? styles.itemSelected : null]}
                onPress={() => setSelectedId(item.unique_id)}
-               onLongPress={() => {
-                 setMarkTargetId(item.unique_id);
-                 setIsMarkModalOpen(true);
-               }}
+                onLongPress={() => {
+                  console.log(`Long press detected on tag ${item.unique_id}`);
+                  setMarkTargetId(item.unique_id);
+                  setIsMarkModalOpen(true);
+                }}
              >
                <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
                <View style={styles.flexContent}>
