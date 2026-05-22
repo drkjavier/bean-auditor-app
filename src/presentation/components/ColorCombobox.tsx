@@ -110,9 +110,10 @@ export default function ColorCombobox({ value, onChange, placeholder = 'Filtrar 
 }
 
 const webSelectStyle: React.CSSProperties = {
-  // Use full width but allow the element to be sized with box-sizing so
-  // it doesn't cause horizontal overflow when combined with the swatch.
-  width: '100%',
+  // Let the select occupy the remaining space inside the flex row while
+  // allowing it to shrink on narrow viewports. Avoid using width:100% here
+  // because that plus the swatch's width would cause overflow.
+  flex: 1,
   boxSizing: 'border-box',
   minWidth: 0,
   border: '1px solid #cbd5e1',
@@ -197,5 +198,5 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 0,
   },
-  swatchSmall: { marginRight: 6 },
+  swatchSmall: { marginRight: 6, flexShrink: 0 },
 });
