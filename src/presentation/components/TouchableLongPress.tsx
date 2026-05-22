@@ -3,14 +3,17 @@ import { Pressable, PressableProps, Platform } from 'react-native';
 
 type Props = PressableProps & {
   onLongPress?: () => void;
-  delay?: number; // ms
+  onDoubleTap?: (e?: any) => void;
+  delay?: number; // ms for long press
+  doubleTapDelay?: number; // ms to detect double tap
 };
 
 // Small cross-platform wrapper to provide reliable long-press on web and native
-export default function TouchableLongPress({ onLongPress, delay = 600, onPress, onPressIn, onPressOut, ...rest }: Props) {
+export default function TouchableLongPress({ onLongPress, delay = 600, onPress, onPressIn, onPressOut, onDoubleTap, doubleTapDelay = 300, ...rest }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handledRef = useRef(false);
   const contextHandlerRef = useRef<((e: Event) => void) | null>(null);
+  const lastTapRef = useRef<number>(0);
 
   const webNoCallout: any = Platform.OS === 'web' ? { WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none', touchAction: 'manipulation' } : {};
 
@@ -70,6 +73,18 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
   const handlePress: PressableProps['onPress'] = e => {
     // if long-press already triggered, don't trigger regular press
     if (handledRef.current) return;
+    try {
+      const now = Date.now();
+      if (lastTapRef.current && now - lastTapRef.current <= (doubleTapDelay || 300)) {
+        // double tap detected
+        lastTapRef.current = 0;
+        console.log('TouchableLongPress: onDoubleTap fired');
+        if (typeof onDoubleTap === 'function') onDoubleTap(e);
+      } else {
+        lastTapRef.current = now;
+      }
+    } catch (_) {}
+
     onPress?.(e);
   };
 
