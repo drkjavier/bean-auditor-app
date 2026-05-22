@@ -12,6 +12,8 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
   const handledRef = useRef(false);
   const contextHandlerRef = useRef<((e: Event) => void) | null>(null);
 
+  const webNoCallout: any = Platform.OS === 'web' ? { WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none', touchAction: 'manipulation' } : {};
+
   React.useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -77,6 +79,7 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
+      style={[webNoCallout, (rest as any)?.style]}
     />
   );
 }
