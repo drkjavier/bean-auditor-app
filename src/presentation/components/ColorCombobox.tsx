@@ -29,9 +29,8 @@ export default function ColorCombobox({ value, onChange, placeholder = 'Filtrar 
   // Web: use native select for better compatibility
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.webWrapper, styles.webWrapperOverflow]}>
+      <View style={styles.webWrapper}>
         {/* pointerEvents prop is deprecated on web; move to style.pointerEvents */}
-        {/* Place the swatch absolutely so it doesn't affect layout width */}
         <View style={[styles.swatchSmall, { pointerEvents: 'none' }]}> 
           {selected ? (
             <View style={[styles.swatch, { backgroundColor: selected.hex, borderWidth: selected.hex === '#FFFFFF' ? 1 : 0 }]} />
@@ -112,17 +111,11 @@ export default function ColorCombobox({ value, onChange, placeholder = 'Filtrar 
 }
 
 const webSelectStyle: React.CSSProperties = {
-  // Let the select occupy the remaining space inside the flex row while
-  // allowing it to shrink on narrow viewports. Avoid using width:100% here
-  // because that plus the swatch's width would cause overflow.
-  // ensure flexible shrink/grow behavior in narrow containers
   flex: 1,
   flexGrow: 1,
   flexShrink: 1,
   flexBasis: 'auto',
   maxWidth: '100%',
-  // reserve space for the color swatch placed absolutely inside the wrapper
-  paddingLeft: '44px',
   boxSizing: 'border-box',
   minWidth: 0,
   border: '1px solid #cbd5e1',
@@ -197,31 +190,17 @@ const styles = StyleSheet.create({
   webWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    backgroundColor: '#fff',
     marginBottom: 8,
-    paddingHorizontal: 8,
-    // allow the wrapper to size responsively and to shrink on narrow viewports
+    columnGap: 8,
     width: '100%',
     minWidth: 0,
   },
-  // small swatch used in the web select; position absolute so it doesn't
-  // affect layout width and never forces overflow.
   swatchSmall: {
-    position: 'absolute',
-    left: 8,
-    top: 8,
     width: 20,
     height: 20,
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-  },
-  // make wrapper clip any accidental overflow from children (defensive)
-  webWrapperOverflow: {
-    overflow: 'hidden',
   },
 });
