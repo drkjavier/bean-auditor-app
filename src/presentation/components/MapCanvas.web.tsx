@@ -14,6 +14,10 @@ import type { Tag } from '../../data/mocks/tagsMock';
 // your tileserver supplies higher-resolution tiles.
 const MAX_MAP_ZOOM = 21;
 
+function getAuditStatusLabel(audited: boolean) {
+  return audited ? 'Auditado' : 'Pendiente';
+}
+
 type Props = {
   items: Tag[];
   style?: any;
@@ -122,11 +126,12 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
   const legendItems = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach(item => {
-      if (!map.has(item.state ?? 'n/a')) {
-        map.set(item.state ?? 'n/a', item.colorHex);
+      const label = getAuditStatusLabel(item.audited);
+      if (!map.has(label)) {
+        map.set(label, item.colorHex);
       }
     });
-    return Array.from(map.entries()).map(([state, color]) => ({ state, color }));
+    return Array.from(map.entries()).map(([label, color]) => ({ label, color }));
   }, [items]);
 
   const TILESETS: Record<string, { url: string; attribution: string }> = {
@@ -158,9 +163,9 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
             <View style={styles.toolbar}>
               <View style={styles.legend}>
                 {legendItems.map(item => (
-                  <View key={item.state} style={styles.legendItem}>
+                  <View key={item.label} style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: item.colorHex }]} />
-                  <Text style={styles.legendText}>{item.state}</Text>
+                  <Text style={styles.legendText}>{item.label}</Text>
                 </View>
               ))}
               </View>
@@ -376,7 +381,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                       </div>
 
                       <div style={{ color: '#475569', fontSize: 12, marginBottom: 6 }}>
-                        Estado: <strong style={{ color: '#0f172a' }}>{item.state ?? 'n/a'}</strong>
+                        Auditoría: <strong style={{ color: '#0f172a' }}>{getAuditStatusLabel(item.audited)}</strong>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>

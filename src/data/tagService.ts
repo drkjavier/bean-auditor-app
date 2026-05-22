@@ -1,10 +1,12 @@
 import { tagsMock, Tag } from './mocks/tagsMock';
 
+export type { Tag };
+
 export type TagFilter = {
-  q?: string; // search in unique_id
-  state?: string;
-  from?: string; // ISO date
-  to?: string; // ISO date
+  color?: string;   // hex del color, ej: '#FF0000'
+  audited?: boolean;
+  from?: string;    // ISO date — se asume 00:00:00 del día
+  to?: string;      // ISO date — se asume 23:59:59 del día
 };
 
 // Simple in-memory service that returns a Promise to emulate async API
@@ -15,13 +17,16 @@ export async function fetchTags(filter?: TagFilter): Promise<Tag[]> {
   let items = tagsMock.slice();
 
   if (filter) {
-    const { q, state, from, to } = filter;
-    if (q) {
-      const qn = String(q).trim().toLowerCase().slice(0, 64);
-      items = items.filter(t => t.unique_id.toLowerCase().includes(qn));
+    const { color, audited, from, to } = filter;
+
+    if (color) {
+      const colorNorm = color.trim().toLowerCase();
+      // tagsMock uses `colorHex` for the color field. Guard against undefined
+      // and normalize both sides before comparing to avoid runtime errors.
+      items = items.filter(t => (t.colorHex ?? '').trim().toLowerCase() === colorNorm);
     }
-    if (state) {
-      items = items.filter(t => t.state === state);
+    if (typeof audited === 'boolean') {
+      items = items.filter(t => t.audited === audited);
     }
     if (from) {
       const f = new Date(from);

@@ -8,6 +8,10 @@ import { useAuthStore } from '../../stores/authStore';
 
 const FILTER_DEBOUNCE_MS = 350;
 
+function getAuditStatusLabel(audited: boolean) {
+  return audited ? 'Auditado' : 'Pendiente';
+}
+
 export default function AuditScreen() {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
   const listRef = useRef<FlatList<Tag>>(null);
@@ -21,7 +25,7 @@ export default function AuditScreen() {
   const [items, setItems] = useState<Tag[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [colorFilter, setColorFilter] = useState<string | undefined>(undefined);
-  const [stateFilter, setStateFilter] = useState<string | undefined>(undefined);
+  const [auditedFilter, setAuditedFilter] = useState<boolean | undefined>(undefined);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [autoRefreshing, setAutoRefreshing] = useState(false);
@@ -29,11 +33,11 @@ export default function AuditScreen() {
   const filters = useMemo(
     () => ({
       color: colorFilter,
-      state: stateFilter,
+      audited: auditedFilter,
       from: from || undefined,
       to: to || undefined,
     }),
-    [colorFilter, stateFilter, from, to],
+    [colorFilter, auditedFilter, from, to],
   );
   const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
 
@@ -58,12 +62,12 @@ export default function AuditScreen() {
     const parts: string[] = [];
 
     if (colorFilter) parts.push(`Color ${colorFilter}`);
-    if (stateFilter) parts.push(`Estado ${stateFilter}`);
+    if (typeof auditedFilter === 'boolean') parts.push(getAuditStatusLabel(auditedFilter));
     if (from) parts.push(`Desde ${new Date(from).toLocaleDateString()}`);
     if (to) parts.push(`Hasta ${new Date(to).toLocaleDateString()}`);
 
     return parts.length > 0 ? parts.join(' · ') : 'Sin filtros activos';
-  }, [colorFilter, stateFilter, from, to]);
+  }, [colorFilter, auditedFilter, from, to]);
 
   const load = useCallback(async (silent = false, nextFilters = filters, nextFiltersKey = filtersKey) => {
     if (dateRangeError) {
@@ -183,19 +187,16 @@ export default function AuditScreen() {
           </View>
         </View>
 
-        <Text style={styles.filterLabel}>Estado</Text>
+        <Text style={styles.filterLabel}>Auditoría</Text>
         <View style={[styles.row, styles.filterRow]}>
-          <Pressable style={[styles.filterBtn, stateFilter === undefined ? styles.filterActive : null]} onPress={() => setStateFilter(undefined)} accessibilityRole="button" accessibilityState={{ selected: stateFilter === undefined }}>
+          <Pressable style={[styles.filterBtn, auditedFilter === undefined ? styles.filterActive : null]} onPress={() => setAuditedFilter(undefined)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === undefined }}>
             <Text>Todos</Text>
           </Pressable>
-          <Pressable style={[styles.filterBtn, stateFilter === 'open' ? styles.filterActive : null]} onPress={() => setStateFilter('open')} accessibilityRole="button" accessibilityState={{ selected: stateFilter === 'open' }}>
-            <Text>Open</Text>
+          <Pressable style={[styles.filterBtn, auditedFilter === true ? styles.filterActive : null]} onPress={() => setAuditedFilter(true)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === true }}>
+            <Text>Auditados</Text>
           </Pressable>
-          <Pressable style={[styles.filterBtn, stateFilter === 'closed' ? styles.filterActive : null]} onPress={() => setStateFilter('closed')} accessibilityRole="button" accessibilityState={{ selected: stateFilter === 'closed' }}>
-            <Text>Closed</Text>
-          </Pressable>
-          <Pressable style={[styles.filterBtn, stateFilter === 'pending' ? styles.filterActive : null]} onPress={() => setStateFilter('pending')} accessibilityRole="button" accessibilityState={{ selected: stateFilter === 'pending' }}>
-            <Text>Pending</Text>
+          <Pressable style={[styles.filterBtn, auditedFilter === false ? styles.filterActive : null]} onPress={() => setAuditedFilter(false)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === false }}>
+            <Text>Pendientes</Text>
           </Pressable>
         </View>
 
@@ -218,7 +219,7 @@ export default function AuditScreen() {
             <View style={[styles.detailSwatch, { backgroundColor: selectedItem.colorHex }]} />
             <View style={styles.flexContent}>
               <Text style={styles.detailTitle}>{selectedItem.unique_id}</Text>
-              <Text style={styles.detailSubtitle}>Estado: {selectedItem.state ?? 'n/a'}</Text>
+              <Text style={styles.detailSubtitle}>Auditoría: {getAuditStatusLabel(selectedItem.audited)}</Text>
             </View>
           </View>
 
@@ -258,7 +259,7 @@ export default function AuditScreen() {
                 <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
               <View style={styles.flexContent}>
                 <Text style={styles.itemTitle}>{item.unique_id}</Text>
-                <Text style={styles.itemMeta}>{item.state}</Text>
+                <Text style={styles.itemMeta}>{getAuditStatusLabel(item.audited)}</Text>
               </View>
             </Pressable>
           )}

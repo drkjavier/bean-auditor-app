@@ -1,40 +1,57 @@
-// Mock data: 10 tags con id, unique_id, color, lat, lon, timestamp
-// Ubicación: Finca bananera (Finca Mocá Grande - referencia histórica en la zona)
-// Coordenadas base usadas (aprox para la finca): 14.276500, -91.369200
+// Mock data: 175 tags con uuid único, colorHex, unique_id, lat, lon, timestamp, audited
+// Ubicación base: Finca bananera Tiquisate, Guatemala
+// Coordenadas base: 14.283333, -91.366667
+// Radio máximo por tag: ~3 metros (≈ 0.000027 grados)
+import { TAG_COLORS } from '../../domain/constants/tagColors';
+
 export type Tag = {
-  id: number;
+  uuid: string;     // identificador técnico único
+  colorHex: string; // hex del color, ej: '#FF0000'
   unique_id: string;
-  color: string; // hex color
   lat: number;
   lon: number;
   timestamp: string; // ISO
-  state?: 'open' | 'closed' | 'pending';
+  audited: boolean;
 };
 
-// Generamos 10 tags dispersos alrededor de la finca (radio pequeño ~100-500m)
-export const tagsMock: Tag[] = Array.from({ length: 10 }).map((_, i) => {
-  const latBase = 14.283333; // Tiquisate central (approx)
-  const lonBase = -91.366667;
-  const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#0ea5e9'];
-  const states: Tag['state'][] = ['open', 'closed', 'pending'];
+const LAT_BASE = 14.283333;
+const LON_BASE = -91.366667;
+// 3 metros en grados ≈ 0.000027
+const MAX_RADIUS_DEG = 0.000027;
 
-  // Distribución determinista en una pequeña elipse para simular tags dentro de la finca
-  const angle = (i / 10) * Math.PI * 2; // ángulo alrededor del centro
-  // radio en grados (~0.0005 = ~55m, 0.001 = ~111m)
-  const r = 0.0004 + (i % 4) * 0.00035; // entre ~44m y ~155m
+// Generador pseudo-aleatorio determinista (LCG simple)
+function lcg(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
 
-  const lat = +(latBase + Math.cos(angle) * r).toFixed(6);
-  const lon = +(lonBase + Math.sin(angle) * r).toFixed(6);
+const rand = lcg(42);
 
-  const ts = new Date(Date.now() - i * 1000 * 60 * 60 * 24).toISOString();
+export const tagsMock: Tag[] = Array.from({ length: 175 }).map((_, i) => {
+  const colorEntry = TAG_COLORS[i % TAG_COLORS.length];
+
+  // Posición aleatoria dentro de un radio de 3m (0.000027°)
+  const angle = rand() * Math.PI * 2;
+  const radius = rand() * MAX_RADIUS_DEG;
+  const lat = +(LAT_BASE + Math.cos(angle) * radius).toFixed(7);
+  const lon = +(LON_BASE + Math.sin(angle) * radius).toFixed(7);
+
+  // Timestamps distribuidos en los últimos 30 días
+  const daysAgo = rand() * 30;
+  const ts = new Date(Date.now() - daysAgo * 86400000).toISOString();
+
+  const seq = String(i + 1).padStart(3, '0');
 
   return {
-    id: i + 1,
-    unique_id: `TAG-TIQ-${100 + i}`,
-    color: colors[i % colors.length],
+    uuid: `550e8400-e29b-41d4-a716-${String(i + 1).padStart(12, '0')}`,
+    colorHex: colorEntry.hex,
+    unique_id: `TAG-TIQ-${seq}`,
     lat,
     lon,
     timestamp: ts,
-    state: states[i % states.length],
+    audited: i % 2 === 0,
   };
 });

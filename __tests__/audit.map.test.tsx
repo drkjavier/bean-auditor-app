@@ -11,13 +11,14 @@ global.requestAnimationFrame = (callback: FrameRequestCallback): number => {
 jest.mock('../src/data/tagService', () => ({
   fetchTags: jest.fn().mockResolvedValue([
     {
-      id: 1,
+      uuid: '550e8400-e29b-41d4-a716-000000001000',
+      colorHex: '#ef4444',
       unique_id: 'TAG-1000',
       color: '#ef4444',
       lat: 37.77,
       lon: -122.42,
       timestamp: '2026-05-01T00:00:00.000Z',
-      state: 'open',
+      audited: true,
     },
   ]),
 }));
@@ -35,17 +36,26 @@ describe('AuditScreen map integration', () => {
     });
 
     expect(tree!.toJSON()).toBeTruthy();
+
+    await act(async () => {
+      tree!.unmount();
+    });
   });
 
   test('passes selectedId and onSelect to map', async () => {
     const MapCanvas = require('../src/presentation/components/MapCanvas');
+    let tree: renderer.ReactTestRenderer;
 
     await act(async () => {
-      renderer.create(<AuditScreen />);
+      tree = renderer.create(<AuditScreen />);
       await Promise.resolve();
     });
 
     expect(MapCanvas).toBeTruthy();
+
+    await act(async () => {
+      tree!.unmount();
+    });
   });
 
   test('renders selected detail panel content', async () => {
@@ -58,7 +68,11 @@ describe('AuditScreen map integration', () => {
 
     const textOutput = JSON.stringify(tree!.toJSON());
     expect(textOutput).toContain('TAG-1000');
-    expect(textOutput).toContain('Estado: ');
-    expect(textOutput).toContain('open');
+    expect(textOutput).toContain('Auditoría: ');
+    expect(textOutput).toContain('Auditado');
+
+    await act(async () => {
+      tree!.unmount();
+    });
   });
 });
