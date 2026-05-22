@@ -29,15 +29,17 @@ export default function ColorCombobox({ value, onChange, placeholder = 'Filtrar 
   // Web: use native select for better compatibility
   if (Platform.OS === 'web') {
     return (
-      <View style={styles.webWrapper}>
+      <View style={[styles.webWrapper, styles.webWrapperOverflow]}>
         {/* pointerEvents prop is deprecated on web; move to style.pointerEvents */}
-        <View style={[styles.swatchSmall, { pointerEvents: 'none' }]}>
+        {/* Place the swatch absolutely so it doesn't affect layout width */}
+        <View style={[styles.swatchSmall, { pointerEvents: 'none' }]}> 
           {selected ? (
             <View style={[styles.swatch, { backgroundColor: selected.hex, borderWidth: selected.hex === '#FFFFFF' ? 1 : 0 }]} />
           ) : (
             <View style={styles.swatchEmpty} />
           )}
         </View>
+
         {/* @ts-ignore — web-only select element */}
         <select
           value={value ?? ''}
@@ -119,6 +121,8 @@ const webSelectStyle: React.CSSProperties = {
   flexShrink: 1,
   flexBasis: 'auto',
   maxWidth: '100%',
+  // reserve space for the color swatch placed absolutely inside the wrapper
+  paddingLeft: '44px',
   boxSizing: 'border-box',
   minWidth: 0,
   border: '1px solid #cbd5e1',
@@ -203,7 +207,19 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 0,
   },
-  swatchSmall: { marginRight: 6, flexShrink: 0, width: 20, alignItems: 'center', justifyContent: 'center' },
+  // small swatch used in the web select; position absolute so it doesn't
+  // affect layout width and never forces overflow.
+  swatchSmall: {
+    position: 'absolute',
+    left: 8,
+    top: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
   // make wrapper clip any accidental overflow from children (defensive)
   webWrapperOverflow: {
     overflow: 'hidden',
