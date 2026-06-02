@@ -1,9 +1,12 @@
 import React from 'react';
 import {render, fireEvent, waitFor} from '@testing-library/react-native';
 import LoginScreen from '../src/presentation/screens/LoginScreen';
-import {useAuthStore} from '../src/stores/authStore';
+import {useAuthStore} from '../src/stores';
 
-jest.mock('../src/stores/authStore');
+// Keep behavior compatible with tests by mocking useAuthStore as a jest mock
+jest.mock('../src/stores', () => ({
+  useAuthStore: jest.fn(),
+}));
 
 describe('LoginScreen', () => {
   const loginMock = jest.fn();

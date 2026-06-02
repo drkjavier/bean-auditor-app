@@ -12,7 +12,8 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore } from '../../stores';
+import { AUTH_DEBUG, genAttemptId, setAttemptId, getAttemptId, maskUsername, sanitizeError } from '../../infrastructure/logging/authDebug';
 
 /**
  * Pantalla de inicio de sesión (LoginScreen) siguiendo buenas prácticas:
@@ -35,6 +36,9 @@ export default function LoginScreen({ navigation }: Props) {
 
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  // debug UI helpers (only shown when AUTH_DEBUG)
+  const [debugAttemptId, setDebugAttemptId] = useState<string | null>(null);
+  const [debugMessage, setDebugMessage] = useState<string | null>(null);
 
   // Mejor accesibilidad: enfocar error en primer input inválido
   const usernameRef = useRef<any>(null);
@@ -78,29 +82,84 @@ export default function LoginScreen({ navigation }: Props) {
       return;
     }
     setLoading(true);
+    // Reuse attemptId if already set by the button handler; otherwise generate one.
+    let attemptId = getAttemptId();
+    if (!attemptId) {
+      attemptId = genAttemptId();
+      // expose for propagation to fetchWithAuth if needed
+      setAttemptId(attemptId);
+    }
+    if (AUTH_DEBUG) {
+      console.warn('[auth] LoginScreen onSubmit:start', { attemptId, username: maskUsername(username) });
+      setDebugAttemptId(attemptId);
+      setDebugMessage('submit:start');
+    }
     try {
       // Cierra el teclado y realiza login
       Keyboard.dismiss();
+      if (AUTH_DEBUG) {
+        console.warn('[auth] LoginScreen calling login', { attemptId, username: maskUsername(username) });
+      }
+      const callStart = Date.now();
       await login(password);
+      const durationMs = Date.now() - callStart;
+      // After login, inspect minimal state without exposing sensitive data
+      const isLoggedInAfter = useAuthStore.getState().isLoggedIn;
+      const currentUsername = useAuthStore.getState().username;
+      if (AUTH_DEBUG) {
+        console.warn('[auth] LoginScreen login:returned', { attemptId, durationMs, isLoggedInAfter, username: maskUsername(currentUsername) });
+      }
       setUsernameError(null);
       setPasswordError(null);
-      if (navigation && navigation.replace) navigation.replace('Main');
+    if (AUTH_DEBUG) {
+      console.warn('[auth] LoginScreen onSubmit:success', { attemptId, username: maskUsername(username) });
+      setDebugMessage('submit:success');
+    }
+      if (navigation && navigation.replace) {
+        if (AUTH_DEBUG) console.warn('[auth] LoginScreen navigating', { attemptId, to: 'Main' });
+        navigation.replace('Main');
+      }
     } catch (err: any) {
       const msg = err?.message || 'Error de autenticación';
-      if (msg.includes('Usuario') && msg.includes('contraseña')) {
-        setUsernameError('Usuario incorrecto');
-        setPasswordError('Contraseña incorrecta');
-      } else if (msg.includes('Usuario')) {
-        setUsernameError(msg);
-      } else if (msg.includes('Contraseña')) {
-        setPasswordError(msg);
+      if (AUTH_DEBUG) {
+        const sErr = sanitizeError(err);
+        console.warn('[auth] LoginScreen onSubmit:error', { attemptId, username: maskUsername(username), error: sErr });
+        setDebugMessage(`submit:error ${sErr.message}`);
+      }
+      // For authentication failures, show a generic message to avoid user enumeration
+      if (msg === 'Credenciales inválidas' || msg === 'Error de autenticación') {
+        setPasswordError('Credenciales inválidas');
+        setUsernameError(null);
+      } else if (msg === 'Usuario y contraseña requeridos') {
+        // keep client-side presence validations handled above
+        setUsernameError('Usuario requerido');
+        setPasswordError('Contraseña requerida');
       } else {
-        Alert.alert(msg);
+        // Fallback: show an alert for unexpected errors
+        Alert.alert('Error', msg);
       }
       focusFirstError();
     } finally {
+      // cleanup attempt id after action completes
+      setAttemptId(null);
+      // keep debugAttemptId visible for a short time (do not clear immediately)
+      // optional: leave it so developer can inspect UI; remove in production via AUTH_DEBUG
       setLoading(false);
     }
+  };
+
+  // Button press handler: generates an attemptId, logs button press metadata and triggers submit.
+  const handleButtonPress = () => {
+    const attemptId = genAttemptId();
+    // store in-memory only
+    setAttemptId(attemptId);
+    if (AUTH_DEBUG) {
+      console.warn('[auth] LoginButton:press', { attemptId, username: maskUsername(username), canSubmit: !!canSubmit, isDisabled: !!isDisabled });
+      setDebugAttemptId(attemptId);
+      setDebugMessage('button:press');
+    }
+    // fire submit (async) and ignore returned promise here
+    void onSubmit();
   };
 
   const canSubmit = !!(username && String(username).trim() && password && password.trim());
@@ -156,7 +215,7 @@ export default function LoginScreen({ navigation }: Props) {
 
         <Pressable
           style={[styles.button, !canSubmit ? styles.buttonDisabled : null]}
-          onPress={onSubmit}
+          onPress={handleButtonPress}
           disabled={isDisabled}
           accessibilityRole="button"
           accessibilityLabel={loading ? 'Ingresando...' : 'Entrar'}
@@ -167,6 +226,11 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.buttonText}>Entrar</Text>
           )}
         </Pressable>
+        {AUTH_DEBUG ? (
+          <Text accessibilityRole="status" style={styles.debugText}>
+            {`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}
+          </Text>
+        ) : null}
       </View>
     </KeyboardAvoidingView>
   );
@@ -191,6 +255,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 24,
     color: '#475569',
+  },
+  debugText: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#94a3b8',
   },
   input: {
     width: '100%',

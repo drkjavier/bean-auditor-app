@@ -1,4 +1,4 @@
-import { useAuthStore } from '../src/stores/authStore';
+import { useAuthStore } from '../src/stores';
 
 describe('authStore (unit)', () => {
   it('initial state and login/logout flow', async () => {

@@ -2,10 +2,11 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { View, Text, StyleSheet, Pressable, FlatList, Modal } from 'react-native';
 import { fetchTags, Tag } from '../../data/tagService';
 import MapCanvas from '../components/MapCanvas';
+import { useSettingsStore } from '../../state/settingsStore';
 import ColorCombobox from '../components/ColorCombobox';
 import DatePickerInput from '../components/DatePickerInput';
 import TouchableLongPress from '../components/TouchableLongPress';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore } from '../../stores';
 
 const FILTER_DEBOUNCE_MS = 350;
 
@@ -221,12 +222,13 @@ export default function AuditScreen() {
             <View style={modalStyles.buttonsRow}>
               <Pressable
                 style={[modalStyles.btn, { backgroundColor: '#10b981' }]}
-                onPress={() => {
-                  if (!markTargetId) return;
-                  console.log(`Mark action: Auditar on ${markTargetId}`);
-                  setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: true } : t)));
-                  setIsMarkModalOpen(false);
-                }}
+                  onPress={() => {
+                    if (!markTargetId) return;
+                    // DEV-only log
+                    if (__DEV__) console.debug(`Mark action: Auditar on ${markTargetId}`);
+                    setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: true } : t)));
+                    setIsMarkModalOpen(false);
+                  }}
                 accessibilityRole="button"
               >
                 <Text style={modalStyles.btnText}>Auditar</Text>
@@ -234,12 +236,12 @@ export default function AuditScreen() {
 
               <Pressable
                 style={[modalStyles.btn, { backgroundColor: '#ef4444' }]}
-                onPress={() => {
-                  if (!markTargetId) return;
-                  console.log(`Mark action: Sin auditar on ${markTargetId}`);
-                  setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: false } : t)));
-                  setIsMarkModalOpen(false);
-                }}
+                  onPress={() => {
+                    if (!markTargetId) return;
+                    if (__DEV__) console.debug(`Mark action: Sin auditar on ${markTargetId}`);
+                    setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: false } : t)));
+                    setIsMarkModalOpen(false);
+                  }}
                 accessibilityRole="button"
               >
                 <Text style={modalStyles.btnText}>Sin auditar</Text>
@@ -253,7 +255,8 @@ export default function AuditScreen() {
         </View>
       </Modal>
 
-      <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} />
+      {/* subscribe to settings store so UI updates when user toggles visibility */}
+      <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} showUserLocation={useSettingsStore(state => state.showUserLocation)} />
 
       {selectedItem ? (
         <View style={styles.detailCard} accessibilityLabel="Detalle del tag seleccionado">
@@ -301,11 +304,11 @@ export default function AuditScreen() {
                delay={650}
                style={[styles.item, selectedId === item.unique_id ? styles.itemSelected : null]}
                onPress={() => setSelectedId(item.unique_id)}
-                onLongPress={() => {
-                  console.log(`Long press detected on tag ${item.unique_id}`);
-                  setMarkTargetId(item.unique_id);
-                  setIsMarkModalOpen(true);
-                }}
+                 onLongPress={() => {
+                   if (__DEV__) console.debug(`Long press detected on tag ${item.unique_id}`);
+                   setMarkTargetId(item.unique_id);
+                   setIsMarkModalOpen(true);
+                 }}
              >
                <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
                <View style={styles.flexContent}>

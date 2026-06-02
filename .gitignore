@@ -66,6 +66,10 @@ yarn-error.log
 # testing
 /coverage
 
+# Build artifacts
+/dist
+/.parcel-cache
+
 # Yarn
 .yarn/*
 !.yarn/patches

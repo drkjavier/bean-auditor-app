@@ -22,7 +22,7 @@ jest.mock('../src/data/tagService', () => ({
     },
   ]),
 }));
-jest.mock('../src/stores/authStore', () => ({
+jest.mock('../src/stores', () => ({
   useAuthStore: (selector: any) => selector({ isLoggedIn: true }),
 }));
 

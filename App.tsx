@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import {Pressable, StatusBar, StyleSheet, Text, View, Platform} from 'react-native';
-import {useAuthStore} from './src/stores/authStore';
+import {useAuthStore} from './src/stores';
 import LoginScreen from './src/presentation/screens/LoginScreen';
 import AppNavigator from './src/presentation/navigation/AppNavigator';
 

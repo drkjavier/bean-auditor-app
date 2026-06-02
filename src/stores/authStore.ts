@@ -15,45 +15,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (password: string) => {
     const { username } = get();
     // Normalize inputs
-    const usernameTrim = (username || '').trim().toLowerCase();
+    const usernameTrim = (username || '').trim();
     const passwordTrim = (password || '').trim();
 
-    // Basic presence checks with specific error messages
-    const usernameEmpty = !usernameTrim;
-    const passwordEmpty = !passwordTrim;
-
-    if (usernameEmpty && passwordEmpty) {
-      throw new Error('Usuario y contraseña incorrectos');
-    }
-    if (usernameEmpty) {
-      throw new Error('Usuario incorrecto');
-    }
-    if (passwordEmpty) {
-      throw new Error('Contraseña incorrecta');
+    // Presence checks are allowed to be specific (client-side validation)
+    if (!usernameTrim || !passwordTrim) {
+      throw new Error('Usuario y contraseña requeridos');
     }
 
     // Simulate an async authentication request (replace with real API call)
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Simple hardcoded validation for now: username 'admin' and password 'admin'
-    const usernameValid = usernameTrim === 'admin';
-    const passwordValid = passwordTrim === 'admin';
-
-    if (usernameValid && passwordValid) {
-      // On success, update auth state (do NOT store password)
-      set({ isLoggedIn: true });
-      return;
+    // DEV-only stubbed check. Do not rely on this in production.
+    // Keep this guarded so production builds won't accidentally use hardcoded creds.
+    if (__DEV__) {
+      const ok = usernameTrim === 'admin' && passwordTrim === 'admin';
+      if (ok) {
+        set({ isLoggedIn: true });
+        return;
+      }
+      // Generic auth failure message to avoid user-enumeration
+      throw new Error('Credenciales inválidas');
     }
 
-    // Specific messages depending on which field is invalid
-    if (!usernameValid && !passwordValid) {
-      throw new Error('Usuario y contraseña incorrectos');
-    }
-    if (!usernameValid) {
-      throw new Error('Usuario incorrecto');
-    }
-    // else password invalid
-    throw new Error('Contraseña incorrecta');
+    // In production, the client should call a backend endpoint. For now, always fail.
+    throw new Error('Credenciales inválidas');
   },
   logout: () => set({ isLoggedIn: false, username: '' }),
 }));

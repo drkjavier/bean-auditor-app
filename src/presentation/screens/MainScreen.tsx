@@ -4,7 +4,7 @@ import HomeScreen from './HomeScreen';
 import AuditScreen from './AuditScreen';
 import MapZoomTest from '../components/MapZoomTest';
 import SettingsScreen from './SettingsScreen';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore } from '../../stores';
 
 // MainScreen: contenedor con BottomNavigation simple (sin dependencias externas)
 // - Renderiza tres pestañas y deja que el contenedor superior maneje la protección de sesión

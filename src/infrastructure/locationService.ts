@@ -1,5 +1,8 @@
 import { Platform, Linking } from 'react-native';
-import Geolocation from '@react-native-community/geolocation';
+// Use react-native-geolocation-service for improved reliability on Android.
+// Keep the facade API stable so tests and callers don't need to change.
+import Geolocation from 'react-native-geolocation-service';
+// Note: consider migrating to 'react-native-geolocation-service' for better Android reliability.
 import { check, request, PERMISSIONS, RESULTS, openSettings as rnOpenSettings } from 'react-native-permissions';
 // Export a small facade so tests can more easily mock the entire module via jest.mock
 export default {

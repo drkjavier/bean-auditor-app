@@ -7,12 +7,16 @@ type Props = {
   style?: any;
   selectedId?: string | null;
   onSelect?: (item: Tag) => void;
+  mapLoadError?: string | null;
 };
 
-export default function MapCanvasFallback({ items, style, selectedId, onSelect }: Props) {
+export default function MapCanvasFallback({ items, style, selectedId, onSelect, mapLoadError }: Props) {
   return (
     <View style={[styles.container, style]} accessibilityLabel="Mapa de auditorías fallback">
       <Text style={styles.title}>Mapa (fallback)</Text>
+      {mapLoadError ? (
+        <Text style={styles.errorText} testID="mapLoadError">El mapa nativo no está disponible. Revisa la consola Metro o instala react-native-maps y reconstruye la app.</Text>
+      ) : null}
       {items.length === 0 ? (
         <Text style={styles.empty}>No hay puntos para mostrar</Text>
       ) : (
@@ -66,5 +70,10 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#0f172a',
+  },
+  errorText: {
+    color: '#b91c1c',
+    marginBottom: 8,
+    fontSize: 12,
   },
 });

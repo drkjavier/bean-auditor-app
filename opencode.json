@@ -1,16 +1,16 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "default_agent": "build",
+  "default_agent": "frontend-agent",
   "agent": {
     "skills-agent": {
       "description": "Agente especializado en crear y gestionar agentes y skills de OpenCode",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/skills-agent.md}"
     },
-    "frontend-agent": {
+      "frontend-agent": {
       "description": "Especialista en React y React Native para frontend web y multiplataforma. Implementa y optimiza interfaces, navegación y estado con foco en UX/UI, accesibilidad, rendimiento, seguridad frontend y mantenibilidad. Úsalo para pantallas, componentes, flujos, refactors y diagnósticos apoyados por MCP cuando aporte valor.",
       "mode": "all",
-      "prompt": "{file:.opencode/agents/frontend-agent.yaml}"
+      "prompt": "{file:.opencode/agents/frontend-agent.md}"
     },
     "frontend-uiux-agent": {
       "description": "Especialista en UI/UX para React y React Native. Audita y mejora jerarquía visual, accesibilidad, responsividad, feedback, estados de interfaz y consistencia de diseño. Úsalo para revisar pantallas, flujos, formularios y sistemas visuales antes de implementar o refactorizar.",
