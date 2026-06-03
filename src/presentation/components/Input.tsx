@@ -20,7 +20,7 @@ export default function Input({ label, error, secure = false, style, testID, ...
         <TextInput
           {...(rest as any)}
           secureTextEntry={!visible}
-          style={[styles.input, rest.style as any]}
+          style={[styles.input, style as any]}
           accessibilityLabel={label}
           testID={testID}
         />
