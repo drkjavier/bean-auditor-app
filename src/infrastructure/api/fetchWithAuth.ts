@@ -50,7 +50,7 @@ const AUTH_DEBUG = CENTRAL_AUTH_DEBUG;
 // Simple single-flight refresh guard
 let refreshingPromise: Promise<void> | null = null;
 
-async function doRefreshIfNeeded(): Promise<void> {
+async function doRefreshIfNeeded(signal?: AbortSignal): Promise<void> {
   if (refreshingPromise) return refreshingPromise;
 
   refreshingPromise = (async () => {
@@ -69,7 +69,8 @@ async function doRefreshIfNeeded(): Promise<void> {
         return;
       }
 
-      const resp = await refreshToken(session.refreshToken);
+      // forward optional signal to refresh APIs so refresh can be cancelled
+      const resp = await refreshToken(session.refreshToken, signal ? { signal } : undefined);
       const newSession = {
         accessToken: resp.access_token,
         refreshToken: resp.refresh_token || session.refreshToken,
@@ -89,12 +90,32 @@ async function doRefreshIfNeeded(): Promise<void> {
   return refreshingPromise;
 }
 
+import { createAndRegisterAbortController, registerAbortController, unregisterAbortController } from './abortManager';
+
 export async function fetchWithAuth(input: RequestInfo, init?: RequestInit) {
-  // Ensure possible refresh before sending request
+  // Prepare an AbortSignal to pass to refresh and the eventual fetch.
+  // If the caller provided one, forward it; otherwise create and register a local one.
+  let localCtrl: AbortController | null = null;
+  const callerSignal = init?.signal as AbortSignal | undefined;
+  if (!callerSignal) {
+    // create and register
+    // @ts-ignore
+    const ctrl: any = createAndRegisterAbortController();
+    localCtrl = ctrl as AbortController;
+    registerAbortController(ctrl);
+    init = { ...init, signal: (ctrl as any).signal };
+  }
+
   try {
-    await doRefreshIfNeeded();
-  } catch (err) {
-    // ignore refresh errors here; the request will likely fail and be handled by caller
+    // Ensure possible refresh before sending request, forwarding the signal so
+    // refreshToken/introspect can be cancelled together with the main request.
+    try {
+      await doRefreshIfNeeded(init?.signal as AbortSignal | undefined);
+    } catch (err) {
+      // ignore refresh errors here; the request will likely fail and be handled by caller
+    }
+  } catch (e) {
+    // noop
   }
 
   const session = await _getSessionLike();
@@ -110,8 +131,16 @@ export async function fetchWithAuth(input: RequestInfo, init?: RequestInit) {
     if (AUTH_DEBUG) console.warn('[auth] fetchWithAuth: failed to set X-Client-Log-Id', e);
   }
 
-  // If auth API disabled, just send request without Authorization header
-  if (!AUTH_USE_API) return fetch(input, { ...init, headers });
-
-  return fetch(input, { ...init, headers });
+  try {
+    // If auth API disabled, just send request without Authorization header
+    const resp = await fetch(input, { ...init, headers });
+    return resp;
+  } finally {
+    // cleanup registration for locally-created controller
+    if (localCtrl) {
+      try {
+        unregisterAbortController(localCtrl);
+      } catch (_) {}
+    }
+  }
 }

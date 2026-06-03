@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Pressable, FlatList, Modal } from 'react-native';
 import { fetchTags, Tag } from '../../data/tagService';
+import { createAndRegisterAbortController, unregisterAbortController } from '../../infrastructure/api/abortManager';
 import MapCanvas from '../components/MapCanvas';
 import { useSettingsStore } from '../../state/settingsStore';
 import ColorCombobox from '../components/ColorCombobox';
@@ -33,6 +35,8 @@ export default function AuditScreen() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [autoRefreshing, setAutoRefreshing] = useState(false);
+  const insets = useSafeAreaInsets();
+  const NAV_BAR_HEIGHT = require('../themes/layout').NAV_BAR_HEIGHT as number;
 
   const filters = useMemo(
     () => ({
@@ -87,8 +91,10 @@ export default function AuditScreen() {
     if (!silent && isMounted.current) setLoading(true);
     if (silent && isMounted.current) setAutoRefreshing(true);
 
+    // Create an AbortController for this request so it can be cancelled
+    const ctrl: any = createAndRegisterAbortController();
     try {
-      const res = await fetchTags(nextFilters);
+      const res = await fetchTags(nextFilters, { signal: ctrl.signal });
 
       if (!isMounted.current || requestId !== latestRequestId.current) {
         return;
@@ -97,7 +103,14 @@ export default function AuditScreen() {
       lastAppliedFilterKey.current = nextFiltersKey;
       setItems(res);
       setSelectedId(prev => (res.some(item => item.unique_id === prev) ? prev : res[0]?.unique_id ?? null));
+    } catch (err: any) {
+      if (err && (err.name === 'AbortError' || err.message === 'Aborted')) {
+        // request was aborted — ignore
+        return;
+      }
+      throw err;
     } finally {
+      try { unregisterAbortController(ctrl); } catch (_) {}
       if (isMounted.current && requestId === latestRequestId.current) {
         setLoading(false);
         setAutoRefreshing(false);
@@ -122,6 +135,11 @@ export default function AuditScreen() {
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
+    // abort in-flight requests started by this screen
+    try {
+      const abortManager = require('../../infrastructure/api/abortManager').default;
+      if (abortManager && typeof abortManager.abortAllControllers === 'function') abortManager.abortAllControllers();
+    } catch (_) {}
   }, []);
 
   useEffect(() => {
@@ -154,7 +172,9 @@ export default function AuditScreen() {
     // wrap scroll in a microtask so tests can await it with act
     scrollTimeoutRef.current = setTimeout(() => {
       try {
-        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+        // ensure item is scrolled into view above the bottom navigation
+        // viewOffset ensures the item is not hidden behind the fixed bottom bar
+        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5, viewOffset: insets.bottom + NAV_BAR_HEIGHT });
       } catch {
         // ignore if list not ready yet
       }
@@ -289,15 +309,17 @@ export default function AuditScreen() {
         </View>
       ) : null}
 
-      <View style={styles.listContainer}>
+      <View style={[styles.listContainer, { paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 12 }]}> 
         <Text style={styles.subtitle}>Resultados: {filtered.length}</Text>
            <FlatList
              ref={listRef}
              data={filtered}
+               contentContainerStyle={{ paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 12 }}
              keyExtractor={item => item.unique_id}
              getItemLayout={(_, index) => ({ length: 49, offset: 49 * index, index })}
              onScrollToIndexFailed={({ index }) => {
-               listRef.current?.scrollToOffset({ offset: Math.max(0, index * 49), animated: true });
+                const offset = Math.max(0, index * 49 - (insets.bottom + NAV_BAR_HEIGHT));
+                listRef.current?.scrollToOffset({ offset, animated: true });
              }}
            renderItem={({ item }) => (
              <TouchableLongPress

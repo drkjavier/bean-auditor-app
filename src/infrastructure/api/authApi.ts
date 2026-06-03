@@ -24,7 +24,7 @@ async function fetchJson(input: string, init?: RequestInit) {
   return res.json();
 }
 
-export async function refreshToken(refreshToken: string): Promise<RefreshResponse> {
+export async function refreshToken(refreshToken: string, init?: RequestInit): Promise<RefreshResponse> {
   if (!AUTH_USE_API) throw new Error('Auth API disabled');
   const url = `${AUTH_BASE_URL}/auth/refresh`;
   return fetchJson(url, {
@@ -34,13 +34,14 @@ export async function refreshToken(refreshToken: string): Promise<RefreshRespons
   }) as Promise<RefreshResponse>;
 }
 
-export async function introspectToken(token: string): Promise<IntrospectResponse> {
+export async function introspectToken(token: string, init?: RequestInit): Promise<IntrospectResponse> {
   if (!AUTH_USE_API) throw new Error('Auth API disabled');
   const url = `${AUTH_BASE_URL}/auth/introspect`;
   return fetchJson(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
+    ...(init || {}),
   }) as Promise<IntrospectResponse>;
 }
 

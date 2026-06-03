@@ -32,6 +32,7 @@ function FocusController({
   centerSignal,
   selectionZoom,
   fitAllMaxZoom,
+  insetsBottom,
 }: {
   selectedItem?: Tag | null;
   bounds?: L.LatLngBounds | null;
@@ -39,6 +40,7 @@ function FocusController({
   centerSignal?: number;
   selectionZoom: number;
   fitAllMaxZoom: number;
+  insetsBottom?: number;
 }) {
   const map = useMap();
 
@@ -67,9 +69,9 @@ function FocusController({
   useEffect(() => {
     if (bounds && fitAllSignal) {
       // Keep enough context, but allow zooming close enough to separate tags.
-      map.fitBounds(bounds, { padding: [36, 36], animate: true, duration: 0.75, maxZoom: fitAllMaxZoom } as any);
+      map.fitBounds(bounds, { padding: [36, 36 + (insetsBottom || 0)], animate: true, duration: 0.75, maxZoom: fitAllMaxZoom } as any);
     }
-  }, [map, bounds, fitAllSignal, fitAllMaxZoom]);
+  }, [map, bounds, fitAllSignal, fitAllMaxZoom, insetsBottom]);
 
   return null;
 }
@@ -105,6 +107,9 @@ function createClusterIcon(cluster: L.MarkerCluster) {
 }
 
 export default function MapCanvas({ items, style, selectedId, onSelect }: Props) {
+  // Read CSS env safe-area-bottom for web if available (e.g. iOS Safari with notch)
+  const insetsBottom = typeof window !== 'undefined' ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') || 0 : 0;
+  const NAV_BAR_HEIGHT = require('../themes/layout').NAV_BAR_HEIGHT ?? 64;
   const bounds = useMemo(() => getBounds(items), [items]);
   const center: [number, number] = items.length > 0 ? [items[0].lat, items[0].lon] : [37.77, -122.42];
   const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
@@ -229,9 +234,9 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                           }
                         }
 
-                        // fallback: use map.fitBounds
+                        // fallback: use map.fitBounds (respect bottom inset)
                           if (mapRef.current && bounds) {
-                            try { mapRef.current.fitBounds(bounds, { padding: [36, 36], maxZoom: fitAllMaxZoom } as any); } catch (e) {}
+                            try { mapRef.current.fitBounds(bounds, { padding: [36, 36 + (insetsBottom || 0) + NAV_BAR_HEIGHT], maxZoom: fitAllMaxZoom } as any); } catch (e) {}
                           }
                       } catch (e) {
                         // final fallback noop
@@ -280,7 +285,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${providerNativeMax}`}>Máx. zoom: {providerNativeMax}</Text>
           </View>
 
-            <MapContainer
+    <MapContainer
               center={center}
               zoom={12}
               style={styles.map as any}
@@ -290,7 +295,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
               // Cap the map max zoom to the provider's native max to avoid 400 errors
               maxZoom={mapMaxZoom}
             >
-              <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} selectionZoom={selectionZoom} fitAllMaxZoom={fitAllMaxZoom} />
+              <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} selectionZoom={selectionZoom} fitAllMaxZoom={fitAllMaxZoom} insetsBottom={insetsBottom} />
             <TileLayer
               attribution={TILESETS[mapType].attribution}
               url={TILESETS[mapType].url}
@@ -340,14 +345,14 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                   // If we have a bounds, fit to it with a capped maxZoom
                   const bounds = typeof cluster.getBounds === 'function' ? cluster.getBounds() : null;
                   const map = mapRef.current;
-                  if (bounds && map) {
-                    const mapMax = typeof map.getMaxZoom === 'function' ? (map.getMaxZoom() as number) : fitAllMaxZoom;
-                    const targetMax = Math.min(fitAllMaxZoom, isFinite(mapMax) ? mapMax : fitAllMaxZoom);
-                    try {
-                      map.fitBounds(bounds, { padding: [36, 36], maxZoom: targetMax } as any);
-                      return;
-                    } catch (_) {}
-                  }
+                    if (bounds && map) {
+                      const mapMax = typeof map.getMaxZoom === 'function' ? (map.getMaxZoom() as number) : fitAllMaxZoom;
+                      const targetMax = Math.min(fitAllMaxZoom, isFinite(mapMax) ? mapMax : fitAllMaxZoom);
+                      try {
+                        map.fitBounds(bounds, { padding: [36, 36 + (insetsBottom || 0) + NAV_BAR_HEIGHT], maxZoom: targetMax } as any);
+                        return;
+                      } catch (_) {}
+                    }
 
                   // As last resort spiderfy the cluster if possible
                   if (typeof cluster.spiderfy === 'function') {
@@ -420,7 +425,14 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
           {/* overlay removed - toggles moved inline into toolbar actions */}
 
           {toast ? (
-            <View style={styles.toast} accessibilityLiveRegion="polite">
+            // Position toast above bottom navigation using insetsBottom + NAV height
+            <View
+              style={[
+                styles.toast,
+                { bottom: (insetsBottom || 0) + NAV_BAR_HEIGHT + 14, zIndex: 1200 },
+              ]}
+              accessibilityLiveRegion="polite"
+            >
               <Text style={styles.toastText}>{toast}</Text>
             </View>
           ) : null}

@@ -2,6 +2,7 @@ import { AuthRepository } from '../../domain/auth/AuthRepository';
 import { AuthSession } from '../../domain/auth/AuthSession';
 import { saveToken, getToken, clearToken, getSession } from '../../infrastructure/security/tokenStorage.native';
 import { refreshToken, introspectToken, shouldAttemptRefresh } from '../../infrastructure/api/authApi';
+import { createAndRegisterAbortController, unregisterAbortController } from '../../infrastructure/api/abortManager';
 import { execute, queryRows } from '../sqlite/db.native';
 import runMigrations from '../sqlite/migrations.native';
 import { AUTH_DEBUG, getAttemptId, maskUsername } from '../../infrastructure/logging/authDebug';
@@ -60,24 +61,35 @@ export const AuthRepositoryImpl: AuthRepository = {
       try {
         if (sessionObj.expiresAt && shouldAttemptRefresh(sessionObj.expiresAt)) {
           // attempt introspect first
-          try {
-            const intros = await introspectToken(sessionObj.accessToken);
-            if (!intros.active && sessionObj.refreshToken) {
-              const resp = await refreshToken(sessionObj.refreshToken);
-              const newSession = {
-                accessToken: resp.access_token,
-                refreshToken: resp.refresh_token || sessionObj.refreshToken,
-                expiresAt: resp.expires_at || Date.now() + 1000 * 60 * 60,
-              };
-              await saveToken(newSession);
-              // use refreshed sessionObj
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              Object.assign(sessionObj, newSession as any);
+            // create an abort controller for this restore attempt so it can be
+            // cancelled if the app logs out while restoring session
+            const ctrl: any = createAndRegisterAbortController();
+            try {
+              const intros = await introspectToken(sessionObj.accessToken, { signal: ctrl.signal });
+              if (!intros.active && sessionObj.refreshToken) {
+                const resp = await refreshToken(sessionObj.refreshToken, { signal: ctrl.signal });
+                const newSession = {
+                  accessToken: resp.access_token,
+                  refreshToken: resp.refresh_token || sessionObj.refreshToken,
+                  expiresAt: resp.expires_at || Date.now() + 1000 * 60 * 60,
+                };
+                await saveToken(newSession);
+                // use refreshed sessionObj
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                Object.assign(sessionObj, newSession as any);
+              }
+            } catch (e: any) {
+              if (e && (e.name === 'AbortError' || e.message === 'Aborted')) {
+                // aborted due to logout/unmount; treat as no session
+                try { unregisterAbortController(ctrl); } catch (_) {}
+                return null;
+              }
+              // refresh failed - proceed to return null (will require login)
+              try { unregisterAbortController(ctrl); } catch (_) {}
+              return null;
+            } finally {
+              try { unregisterAbortController(ctrl); } catch (_) {}
             }
-          } catch (e) {
-            // refresh failed - proceed to return null (will require login)
-            return null;
-          }
         }
       } catch (insErr) {
         // ignore introspect errors and return null to force login

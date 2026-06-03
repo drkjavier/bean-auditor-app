@@ -44,6 +44,8 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
   }
 
   const mapRef = useRef<any | null>(null);
+  const insets = require('react-native-safe-area-context').useSafeAreaInsets?.() ?? { bottom: 0 };
+  const NAV_BAR_HEIGHT = require('../themes/layout').NAV_BAR_HEIGHT ?? 64;
   const locService = injectedLocationService ?? locationService;
   const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
@@ -175,6 +177,17 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
       // avoid crashing if map ref is not ready yet
     }
   }, [selectedItem]);
+
+  useEffect(() => {
+    // Apply bottom padding so markers/controls are not covered by bottom nav
+    try {
+      const padBottom = (insets?.bottom ?? 0) + NAV_BAR_HEIGHT;
+      if (mapRef.current && typeof mapRef.current.setPadding === 'function') {
+        // setPadding(left, top, right, bottom) for react-native-maps
+        mapRef.current.setPadding(0, 0, 0, padBottom);
+      }
+    } catch (_) {}
+  }, [insets]);
 
   async function connectMockReceiver() {
     try {

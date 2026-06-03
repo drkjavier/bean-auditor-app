@@ -7,7 +7,7 @@ export default function DrawerMenu({ visible, onClose, items = [] }: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.container}>
+        <View style={[styles.container, styles.containerElevated]}>
           {items.map(i => (
             <Pressable key={i.key} onPress={() => { i.onPress && i.onPress(); onClose(); }} style={styles.item}>
               <Text>{i.title}</Text>
@@ -25,6 +25,7 @@ export default function DrawerMenu({ visible, onClose, items = [] }: Props) {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-start' },
   container: { width: 260, backgroundColor: '#fff', padding: 12, paddingTop: 48 },
+  containerElevated: { zIndex: 2000, elevation: 30 },
   item: { paddingVertical: 12 },
   close: { marginTop: 12 }
 });

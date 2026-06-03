@@ -153,6 +153,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // ignore cleanup errors
       });
     }
+    // Abort any outstanding requests registered for the session
+    try {
+      // lazy import to avoid cycles
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      const abortManager = require('../infrastructure/api/abortManager').default;
+      if (abortManager && typeof abortManager.abortAllControllers === 'function') {
+        // best-effort abort
+        abortManager.abortAllControllers();
+      }
+    } catch (_) {}
   },
 }));
 
