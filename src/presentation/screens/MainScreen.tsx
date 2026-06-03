@@ -4,6 +4,8 @@ import HomeScreen from './HomeScreen';
 import AuditScreen from './AuditScreen';
 import MapZoomTest from '../components/MapZoomTest';
 import SettingsScreen from './SettingsScreen';
+import AppLayout from '../components/AppLayout';
+import DrawerMenu from '../components/DrawerMenu';
 import { useAuthStore } from '../../stores';
 
 // MainScreen: contenedor con BottomNavigation simple (sin dependencias externas)
@@ -23,6 +25,7 @@ export default function MainScreen() {
 
   // Lazy-loading renderScene: solo montar la escena la primera vez que se visita.
   const [visited, setVisited] = useState<Record<string, boolean>>({ home: true });
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     // Mark the initial route as visited
@@ -51,26 +54,34 @@ export default function MainScreen() {
   }, [index, routes]);
 
   return (
-    <View style={styles.container} accessibilityRole="tablist">
-      <View style={styles.content}>{renderScene({ route: routes[index] })}</View>
-      {/* Dev helper: mount zoom test when on audit tab (only in dev) */}
-      {routes[index].key === 'audit' ? <MapZoomTest /> : null}
+    <AppLayout title="BeanAuditorApp" onMenuPress={() => setMenuOpen(true)}>
+      <View style={styles.container} accessibilityRole="tablist">
+        <View style={styles.content}>{renderScene({ route: routes[index] })}</View>
+        {/* Dev helper: mount zoom test when on audit tab (only in dev) */}
+        {routes[index].key === 'audit' ? <MapZoomTest /> : null}
 
-      <View style={styles.bottomBar} accessibilityRole="tablist">
-        {routes.map((r, i) => (
-          <Pressable
-            key={r.key}
-            style={[styles.tabItem, index === i ? styles.tabItemActive : null]}
-            onPress={() => setIndex(i)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: index === i }}
-            accessibilityLabel={r.title}
-          >
-            <Text style={styles.tabTitle}>{r.title}</Text>
-          </Pressable>
-        ))}
+        <View style={styles.bottomBar} accessibilityRole="tablist">
+          {routes.map((r, i) => (
+            <Pressable
+              key={r.key}
+              style={[styles.tabItem, index === i ? styles.tabItemActive : null]}
+              onPress={() => setIndex(i)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: index === i }}
+              accessibilityLabel={r.title}
+            >
+              <Text style={styles.tabTitle}>{r.title}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-    </View>
+
+      <DrawerMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        items={routes.map(r => ({ key: r.key, title: r.title, onPress: () => { const idx = routes.findIndex(rr => rr.key === r.key); if (idx >= 0) setIndex(idx); } }))}
+      />
+    </AppLayout>
   );
 }
 
