@@ -8,6 +8,7 @@ describe('Button', () => {
     expect(getByText('Click')).toBeTruthy();
 
     rerender(<Button loading onPress={() => {}}>Loading</Button>);
-    expect(getByText('Loading')).toBeTruthy();
+    // when loading, ActivityIndicator is shown instead of children text
+    expect(() => getByText('Loading')).toThrow();
   });
 });
