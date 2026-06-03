@@ -13,6 +13,8 @@ type InputProps = TextInputProps & {
 const Input = forwardRef<TextInput, InputProps>(({ label, error, secure = false, style, testID, ...rest }: InputProps, ref) => {
   const [visible, setVisible] = useState(!secure);
 
+  const a11yLabel = (rest as any)?.accessibilityLabel ?? label;
+
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -22,7 +24,7 @@ const Input = forwardRef<TextInput, InputProps>(({ label, error, secure = false,
           ref={ref}
           secureTextEntry={!visible}
           style={[styles.input, style as any]}
-          accessibilityLabel={label}
+          accessibilityLabel={a11yLabel}
           testID={testID}
         />
         {secure ? (
