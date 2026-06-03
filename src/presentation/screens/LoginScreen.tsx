@@ -210,6 +210,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Input
             ref={usernameRef}
             label="Usuario"
+            accessibilityLabel="Campo usuario"
             placeholder="Usuario"
             autoCapitalize="none"
             value={username}
@@ -224,6 +225,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Input
             ref={passwordRef}
             label="Contraseña"
+            accessibilityLabel="Campo contraseña"
             placeholder="Contraseña"
             secure
             autoCapitalize="none"
@@ -237,9 +239,9 @@ export default function LoginScreen({ navigation }: Props) {
             testID="input-password"
           />
 
-          <Button onPress={handleButtonPress} loading={loading} disabled={isDisabled || !canSubmit} accessibilityLabel={loading ? 'Ingresando...' : 'Entrar'}>
-            Entrar
-          </Button>
+        <Button onPress={handleButtonPress} loading={loading} disabled={isDisabled} accessibilityLabel={loading ? 'Ingresando...' : 'Entrar'}>
+          Entrar
+        </Button>
 
           {generalError ? <ErrorBanner message={generalError} /> : null}
 
