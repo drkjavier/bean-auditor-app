@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, TextInputProps } from 'react-native';
 import theme from '../themes/theme';
 
@@ -10,7 +10,7 @@ type InputProps = TextInputProps & {
   testID?: string;
 };
 
-export default function Input({ label, error, secure = false, style, testID, ...rest }: InputProps) {
+const Input = forwardRef<TextInput, InputProps>(({ label, error, secure = false, style, testID, ...rest }: InputProps, ref) => {
   const [visible, setVisible] = useState(!secure);
 
   return (
@@ -19,6 +19,7 @@ export default function Input({ label, error, secure = false, style, testID, ...
       <View style={styles.row}>
         <TextInput
           {...(rest as any)}
+          ref={ref}
           secureTextEntry={!visible}
           style={[styles.input, style as any]}
           accessibilityLabel={label}
@@ -33,7 +34,9 @@ export default function Input({ label, error, secure = false, style, testID, ...
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
-}
+});
+
+export default Input;
 
 const styles = StyleSheet.create({
   container: { width: '100%', maxWidth: 360 },

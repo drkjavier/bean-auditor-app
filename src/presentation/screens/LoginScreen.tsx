@@ -1,12 +1,9 @@
 import React, { useState, useRef } from 'react';
 import {
   Alert,
-  Pressable,
   Text,
-  TextInput,
   View,
   AccessibilityInfo,
-  ActivityIndicator,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +11,10 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../../stores';
 import { AUTH_DEBUG, genAttemptId, setAttemptId, getAttemptId, maskUsername, sanitizeError } from '../../infrastructure/logging/authDebug';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import ErrorBanner from '../components/ErrorBanner';
+import AppLayout from '../components/AppLayout';
 
 /**
  * Pantalla de inicio de sesión (LoginScreen) siguiendo buenas prácticas:
@@ -121,6 +122,8 @@ export default function LoginScreen({ navigation }: Props) {
       const callStart = Date.now();
       // Await the login call and capture duration for diagnostics
       await login(password);
+      // clear sensitive data from UI immediately after success
+      setPassword('');
       const durationMs = Date.now() - callStart;
       // After login, inspect minimal state without exposing sensitive data
       const isLoggedInAfter = useAuthStore.getState().isLoggedIn;
@@ -198,78 +201,54 @@ export default function LoginScreen({ navigation }: Props) {
   const isDisabled = loading; // disable only while loading; allow validation presses when fields empty
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.form} accessibilityLabel="Pantalla de inicio de sesión" accessibilityRole="form">
-        <Text style={styles.title} accessibilityRole="header">
-          BeanAuditorApp
-        </Text>
-        <Text style={styles.subtitle}>Inicia sesión</Text>
+    <AppLayout title="BeanAuditorApp">
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.form} accessibilityLabel="Pantalla de inicio de sesión" accessibilityRole="form">
+          <Text style={styles.title} accessibilityRole="header">BeanAuditorApp</Text>
+          <Text style={styles.subtitle}>Inicia sesión</Text>
 
-        <TextInput
-          ref={usernameRef}
-          style={[styles.input, usernameError ? styles.inputError : null]}
-          placeholder="Usuario"
-          autoCapitalize="none"
-          value={username}
-          onChangeText={text => {
-            setUsername(text);
-            if (usernameError) setUsernameError(null);
-          }}
-          editable={!loading}
-          accessibilityLabel="Campo usuario"
-          accessibilityHint="Introduce tu usuario"
-          accessibilityState={{ invalid: !!usernameError }}
-          returnKeyType="next"
-        />
-        {usernameError ? <Text style={styles.errorText}>{usernameError}</Text> : null}
+          <Input
+            ref={usernameRef}
+            label="Usuario"
+            placeholder="Usuario"
+            autoCapitalize="none"
+            value={username}
+            onChangeText={text => {
+              setUsername(text);
+              if (usernameError) setUsernameError(null);
+            }}
+            editable={!loading}
+            error={usernameError}
+            testID="input-username"
+          />
+          <Input
+            ref={passwordRef}
+            label="Contraseña"
+            placeholder="Contraseña"
+            secure
+            autoCapitalize="none"
+            value={password}
+            onChangeText={text => {
+              setPassword(text);
+              if (passwordError) setPasswordError(null);
+            }}
+            editable={!loading}
+            error={passwordError}
+            testID="input-password"
+          />
 
-        <TextInput
-          ref={passwordRef}
-          style={[styles.input, passwordError ? styles.inputError : null]}
-          placeholder="Contraseña"
-          secureTextEntry
-          autoCapitalize="none"
-          value={password}
-          onChangeText={text => {
-            setPassword(text);
-            if (passwordError) setPasswordError(null);
-          }}
-          editable={!loading}
-          accessibilityLabel="Campo contraseña"
-          accessibilityHint="Introduce tu contraseña"
-          accessibilityState={{ invalid: !!passwordError }}
-          returnKeyType="done"
-        />
-        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+          <Button onPress={handleButtonPress} loading={loading} disabled={isDisabled || !canSubmit} accessibilityLabel={loading ? 'Ingresando...' : 'Entrar'}>
+            Entrar
+          </Button>
 
-        <Pressable
-          style={[styles.button, !canSubmit ? styles.buttonDisabled : null]}
-          onPress={handleButtonPress}
-          disabled={isDisabled}
-          accessibilityRole="button"
-          accessibilityLabel={loading ? 'Ingresando...' : 'Entrar'}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Entrar</Text>
-          )}
-        </Pressable>
-        {generalError ? (
-          <Text accessibilityRole="status" style={styles.generalErrorText}>
-            {generalError}
-          </Text>
-        ) : null}
-        {AUTH_DEBUG ? (
-          <Text accessibilityRole="status" style={styles.debugText}>
-            {`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}
-          </Text>
-        ) : null}
-      </View>
-    </KeyboardAvoidingView>
+          {generalError ? <ErrorBanner message={generalError} /> : null}
+
+          {AUTH_DEBUG ? (
+            <Text accessibilityRole="status" style={styles.debugText}>{`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}</Text>
+          ) : null}
+        </View>
+      </KeyboardAvoidingView>
+    </AppLayout>
   );
 }
 
