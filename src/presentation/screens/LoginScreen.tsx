@@ -39,6 +39,7 @@ export default function LoginScreen({ navigation }: Props) {
   // debug UI helpers (only shown when AUTH_DEBUG)
   const [debugAttemptId, setDebugAttemptId] = useState<string | null>(null);
   const [debugMessage, setDebugMessage] = useState<string | null>(null);
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
   // Mejor accesibilidad: enfocar error en primer input inválido
   const usernameRef = useRef<any>(null);
@@ -77,10 +78,27 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   const onSubmit = async () => {
+    // Clear any previous general error shown in UI
+    setGeneralError(null);
+
+    // Validate inputs locally and log if validation fails
+    const u = (username || '').trim();
+    const p = (password || '').trim();
     if (!validateInputs()) {
+      const attemptIdBefore = getAttemptId();
+      if (AUTH_DEBUG) {
+        console.warn('[auth] LoginScreen onSubmit:validationFailed', {
+          attemptId: attemptIdBefore,
+          username: maskUsername(username),
+          missingUsername: !u,
+          missingPassword: !p,
+        });
+        setDebugMessage('submit:validationFailed');
+      }
       focusFirstError();
       return;
     }
+
     setLoading(true);
     // Reuse attemptId if already set by the button handler; otherwise generate one.
     let attemptId = getAttemptId();
@@ -101,6 +119,7 @@ export default function LoginScreen({ navigation }: Props) {
         console.warn('[auth] LoginScreen calling login', { attemptId, username: maskUsername(username) });
       }
       const callStart = Date.now();
+      // Await the login call and capture duration for diagnostics
       await login(password);
       const durationMs = Date.now() - callStart;
       // After login, inspect minimal state without exposing sensitive data
@@ -115,15 +134,18 @@ export default function LoginScreen({ navigation }: Props) {
       console.warn('[auth] LoginScreen onSubmit:success', { attemptId, username: maskUsername(username) });
       setDebugMessage('submit:success');
     }
+      // clear any general error on success
+      setGeneralError(null);
       if (navigation && navigation.replace) {
         if (AUTH_DEBUG) console.warn('[auth] LoginScreen navigating', { attemptId, to: 'Main' });
         navigation.replace('Main');
       }
     } catch (err: any) {
       const msg = err?.message || 'Error de autenticación';
+      const sErr = sanitizeError(err);
+      // Always log sanitized error; use console.error for visibility
+      console.error('[auth] LoginScreen onSubmit:error', { attemptId, username: maskUsername(username), error: sErr });
       if (AUTH_DEBUG) {
-        const sErr = sanitizeError(err);
-        console.warn('[auth] LoginScreen onSubmit:error', { attemptId, username: maskUsername(username), error: sErr });
         setDebugMessage(`submit:error ${sErr.message}`);
       }
       // For authentication failures, show a generic message to avoid user enumeration
@@ -135,13 +157,15 @@ export default function LoginScreen({ navigation }: Props) {
         setUsernameError('Usuario requerido');
         setPasswordError('Contraseña requerida');
       } else {
-        // Fallback: show an alert for unexpected errors
-        Alert.alert('Error', msg);
+        // Fallback: show an alert for unexpected errors on native and a visible banner on all platforms
+        setGeneralError(msg);
+        if (Platform.OS !== 'web') Alert.alert('Error', msg);
       }
       focusFirstError();
     } finally {
       // cleanup attempt id after action completes
       setAttemptId(null);
+      if (AUTH_DEBUG) console.warn('[auth] LoginScreen onSubmit:finished', { attemptId });
       // keep debugAttemptId visible for a short time (do not clear immediately)
       // optional: leave it so developer can inspect UI; remove in production via AUTH_DEBUG
       setLoading(false);
@@ -149,17 +173,25 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   // Button press handler: generates an attemptId, logs button press metadata and triggers submit.
-  const handleButtonPress = () => {
+  const handleButtonPress = async () => {
     const attemptId = genAttemptId();
-    // store in-memory only
+    // store in-memory only so fetchWithAuth or other infra can read it
     setAttemptId(attemptId);
     if (AUTH_DEBUG) {
       console.warn('[auth] LoginButton:press', { attemptId, username: maskUsername(username), canSubmit: !!canSubmit, isDisabled: !!isDisabled });
       setDebugAttemptId(attemptId);
       setDebugMessage('button:press');
     }
-    // fire submit (async) and ignore returned promise here
-    void onSubmit();
+    try {
+      // Await onSubmit so we capture any rejection and can log it here
+      await onSubmit();
+    } catch (err: any) {
+      const sErr = sanitizeError(err);
+      console.error('[auth] LoginButton:unhandled', { attemptId, error: sErr });
+      if (AUTH_DEBUG) setDebugMessage(`button:unhandled ${sErr.message}`);
+      // ensure UI shows something even if onSubmit failed unexpectedly
+      setGeneralError(sErr.message || 'Error inesperado');
+    }
   };
 
   const canSubmit = !!(username && String(username).trim() && password && password.trim());
@@ -226,6 +258,11 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.buttonText}>Entrar</Text>
           )}
         </Pressable>
+        {generalError ? (
+          <Text accessibilityRole="status" style={styles.generalErrorText}>
+            {generalError}
+          </Text>
+        ) : null}
         {AUTH_DEBUG ? (
           <Text accessibilityRole="status" style={styles.debugText}>
             {`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}
@@ -260,6 +297,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 12,
     color: '#94a3b8',
+  },
+  generalErrorText: {
+    width: '100%',
+    maxWidth: 360,
+    color: '#7f1d1d',
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+    textAlign: 'center',
   },
   input: {
     width: '100%',

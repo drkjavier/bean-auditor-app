@@ -46,6 +46,7 @@ type AuthState = {
   username: string;
   isLoggedIn: boolean;
   isRestoring: boolean;
+  isDevBypass?: boolean;
   error: string | null;
   setUsername: (username: string) => void;
   login: (password: string) => Promise<void>;
@@ -56,6 +57,7 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set, get) => ({
   username: '',
   isLoggedIn: false,
+  isDevBypass: false,
   isRestoring: false,
   error: null,
   setUsername: (username: string) => set({ username }),
@@ -68,7 +70,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error('Usuario y contraseña requeridos');
     }
 
-    if (!authRepo) throw new Error('AuthRepository no disponible');
+    // Temporary bypass requested for local testing: admin/admin logs in without remote request.
+    // NOTE: Remove this before production hardening.
+    if (usernameTrim === 'admin' && passwordTrim === 'admin') {
+      const attemptId = getAttemptId();
+      if (AUTH_DEBUG) console.info('[auth] store.login:dev-bypass admin accepted', { attemptId, username: maskUsername(usernameTrim) });
+      // Mark as logged in locally, do NOT persist tokens here
+      set({ isLoggedIn: true, username: usernameTrim, isDevBypass: true, error: null });
+      return;
+    }
+
+    if (!authRepo) {
+      if (AUTH_DEBUG) console.warn('[auth] store.login: AuthRepository no disponible');
+      throw new Error('AuthRepository no disponible');
+    }
 
     set({ error: null });
 
