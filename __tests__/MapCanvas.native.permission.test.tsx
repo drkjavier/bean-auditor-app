@@ -1,5 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MapCanvas from '../src/presentation/components/MapCanvas';
 
 const rnMapsMock = require('../__mocks__/react-native-maps');
@@ -27,7 +28,11 @@ describe('MapCanvas native permission flows', () => {
 
     let tree: any;
     await act(async () => {
-      tree = renderer.create(<MapCanvas items={[{ uuid: '550e8400-e29b-41d4-a716-000000000001', colorHex: '#000000', unique_id: 'T1', color: '#000000', lat: 1, lon: 2, timestamp: new Date().toISOString() }]} />);
+      tree = renderer.create(
+        <SafeAreaProvider>
+          <MapCanvas items={[{ uuid: '550e8400-e29b-41d4-a716-000000000001', colorHex: '#000000', unique_id: 'T1', color: '#000000', lat: 1, lon: 2, timestamp: new Date().toISOString() }]} />
+        </SafeAreaProvider>
+      );
       // flush pending microtasks and allow refs to attach
       await new Promise(resolve => setImmediate(resolve));
       await new Promise(resolve => setImmediate(resolve));
@@ -62,7 +67,7 @@ describe('MapCanvas native permission flows', () => {
 
     let tree2: any;
     await act(async () => {
-      tree2 = renderer.create(<MapCanvas items={[]} />);
+      tree2 = renderer.create(<SafeAreaProvider><MapCanvas items={[]} />);
       // allow refs and async effects to settle
       await new Promise(resolve => setImmediate(resolve));
       await new Promise(resolve => setImmediate(resolve));

@@ -1,5 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MapCanvas from '../src/presentation/components/MapCanvas';
 
 const rnMapsMock = require('../__mocks__/react-native-maps');
@@ -10,9 +11,12 @@ describe('MapCanvas showsUserLocation prop', () => {
   });
 
   test('passes showsUserLocation to MapView when prop enabled', async () => {
-    let tree: any;
     await act(async () => {
-      tree = renderer.create(<MapCanvas items={[]} showUserLocation={true} /> as any);
+      renderer.create(
+        <SafeAreaProvider>
+          <MapCanvas items={[]} showUserLocation={true} />
+        </SafeAreaProvider>
+      );
     });
 
     const props = rnMapsMock.__getLastProps();
