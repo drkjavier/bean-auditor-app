@@ -27,11 +27,15 @@ async function fetchJson(input: string, init?: RequestInit) {
 export async function refreshToken(refreshToken: string, init?: RequestInit): Promise<RefreshResponse> {
   if (!AUTH_USE_API) throw new Error('Auth API disabled');
   const url = `${AUTH_BASE_URL}/auth/refresh`;
-  return fetchJson(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  }) as Promise<RefreshResponse>;
+  return fetchJson(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      ...(init || {}),
+    }
+  ) as Promise<RefreshResponse>;
 }
 
 export async function introspectToken(token: string, init?: RequestInit): Promise<IntrospectResponse> {
@@ -43,6 +47,20 @@ export async function introspectToken(token: string, init?: RequestInit): Promis
     body: JSON.stringify({ token }),
     ...(init || {}),
   }) as Promise<IntrospectResponse>;
+}
+
+// When using cookie-based sessions on web, ask backend for current session using credentials
+export async function getSessionFromCookie(init?: RequestInit): Promise<{ username?: string; access_token?: string; refresh_token?: string; expires_at?: number } | null> {
+  if (!AUTH_USE_API) throw new Error('Auth API disabled');
+  const url = `${AUTH_BASE_URL}/auth/session`;
+  try {
+    const res = await fetch(url, { method: 'GET', credentials: 'include', ...(init || {}) });
+    if (!res.ok) return null;
+    return (await res.json()) as any;
+  } catch (err) {
+    // network or other issue - return null to indicate no session
+    return null;
+  }
 }
 
 export function shouldAttemptRefresh(expiresAt?: number | null): boolean {

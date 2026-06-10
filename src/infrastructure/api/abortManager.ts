@@ -27,11 +27,31 @@ export function createAndRegisterAbortController(): AbortControllerLike {
 }
 
 export function registerAbortController(ctrl: AbortControllerLike) {
-  controllers.add(ctrl);
+  try {
+    controllers.add(ctrl);
+  } catch (_) {}
 }
 
 export function unregisterAbortController(ctrl: AbortControllerLike) {
-  controllers.delete(ctrl);
+  try {
+    controllers.delete(ctrl);
+  } catch (_) {
+    // noop
+  }
+}
+
+// If callers pass an external signal and want it to be aborted on logout,
+// this helper creates a proxy controller that is registered and will abort
+// when the external signal fires or when abortAllControllers is invoked.
+export function registerSignalAsController(signal: AbortSignal) {
+  const proxy = createAndRegisterAbortController();
+  // hook external signal to abort the proxy so that logout also stops it
+  try {
+    signal.addEventListener('abort', () => {
+      try { (proxy as any).abort(); } catch (_) {}
+    }, { once: true });
+  } catch (_) {}
+  return proxy;
 }
 
 export function abortAllControllers() {
@@ -40,7 +60,10 @@ export function abortAllControllers() {
       c.abort();
     } catch (_) {}
   }
-  controllers.clear();
+  // Clear set after attempting aborts to avoid leaking references.
+  try {
+    controllers.clear();
+  } catch (_) {}
 }
 
 export default {

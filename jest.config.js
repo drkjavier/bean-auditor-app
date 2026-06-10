@@ -7,6 +7,7 @@ module.exports = {
     '^@react-native-community/geolocation$': '<rootDir>/__mocks__/geolocation.js',
     '^react-native-permissions$': '<rootDir>/__mocks__/react-native-permissions.js',
   },
+  snapshotSerializers: ['<rootDir>/jest.token-serializer.js'],
   transformIgnorePatterns: [
     'node_modules/(?!(react-native' +
       '|@react-native' +

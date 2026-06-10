@@ -67,7 +67,11 @@ describe('MapCanvas native permission flows', () => {
 
     let tree2: any;
     await act(async () => {
-      tree2 = renderer.create(<SafeAreaProvider><MapCanvas items={[]} />);
+      tree2 = renderer.create(
+        <SafeAreaProvider>
+          <MapCanvas items={[]} />
+        </SafeAreaProvider>
+      );
       // allow refs and async effects to settle
       await new Promise(resolve => setImmediate(resolve));
       await new Promise(resolve => setImmediate(resolve));
