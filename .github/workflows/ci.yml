@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ feat/ui-ux-foundation-phase0 ]
   pull_request:
-    branches: [ main ]
+    branches: [ feat/ui-ux-foundation-phase0 ]
 
 permissions:
   contents: read
