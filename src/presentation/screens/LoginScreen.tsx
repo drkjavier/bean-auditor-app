@@ -201,12 +201,9 @@ export default function LoginScreen({ navigation }: Props) {
   const isDisabled = loading; // disable only while loading; allow validation presses when fields empty
 
   return (
-    <AppLayout title="BeanAuditorApp">
+    <AppLayout>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.form} accessibilityLabel="Pantalla de inicio de sesión" accessibilityRole="form">
-          <Text style={styles.title} accessibilityRole="header">BeanAuditorApp</Text>
-          <Text style={styles.subtitle}>Inicia sesión</Text>
-
           <Input
             ref={usernameRef}
             label="Usuario"
@@ -239,8 +236,8 @@ export default function LoginScreen({ navigation }: Props) {
             testID="input-password"
           />
 
-        <Button onPress={handleButtonPress} loading={loading} disabled={isDisabled} accessibilityLabel={loading ? 'Ingresando...' : 'Entrar'}>
-          Entrar
+        <Button onPress={handleButtonPress} loading={loading} disabled={isDisabled} accessibilityLabel={loading ? 'Ingresando...' : 'Login'}>
+          Login
         </Button>
 
           {generalError ? <ErrorBanner message={generalError} /> : null}
@@ -263,6 +260,7 @@ const styles = StyleSheet.create({
   },
   form: {
     alignItems: 'center',
+    marginTop: 32,
   },
   title: {
     fontSize: 28,
@@ -298,7 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    marginBottom: 12,
+    marginBottom: 20,
     backgroundColor: '#fff',
   },
   inputError: {
@@ -318,7 +316,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 24,
   },
   buttonDisabled: {
     backgroundColor: '#93c5fd',

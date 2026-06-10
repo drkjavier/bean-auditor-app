@@ -26,6 +26,11 @@
       "description": "Agente orquestador para analizar contexto técnico y generar planes de implementación atómicos, dependencias, diagramas y subtareas para coordinar varios agentes. Úsalo cuando un cambio requiera dividir trabajo entre base de datos, backend, frontend y CI/CD.",
       "mode": "all",
       "prompt": "{file:.opencode/agents/plan-builder.md}"
+    },
+    "orquestador-tareas": {
+      "description": "Orquesta tareas simultáneas o individuales, gestiona planes con registro de tareas ejecutadas, permite pausar planes, reintentar planes fallidos desde la última tarea exitosa y selecciona agentes según la tarea requerida.",
+      "mode": "primary",
+      "prompt": "{file:.opencode/agents/orquestador-tareas.md}"
     }
   },
   "mcp": {
