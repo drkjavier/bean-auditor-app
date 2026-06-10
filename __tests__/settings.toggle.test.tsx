@@ -1,6 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Pressable, Text } from 'react-native';
+import { Text } from 'react-native';
 import SettingsScreen from '../src/presentation/screens/SettingsScreen';
 import { useSettingsStore } from '../src/state/settingsStore';
 

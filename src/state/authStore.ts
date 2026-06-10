@@ -1,51 +1,65 @@
 import { create } from 'zustand';
 import { AuthRepository } from '../domain/auth/AuthRepository';
 import { AUTH_DEBUG, getAttemptId, maskUsername, sanitizeError } from '../infrastructure/logging/authDebug';
+import abortManager from '../infrastructure/api/abortManager';
 
-// Import platform-specific repository implementations (bundlers will pick the right file)
+// Lazy-load platform-specific AuthRepository implementations to avoid runtime
+// "require is not defined" errors in ESM/web environments. Call ensureAuthRepo()
+// from async store actions before using authRepo.
 let authRepo: AuthRepository | null = null;
-try {
-  // dynamic import so tests can mock if needed
-  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-  authRepo = require('../data/auth/AuthRepository.native').AuthRepositoryImpl;
-} catch (err) {
+
+async function ensureAuthRepo(): Promise<void> {
+  if (authRepo) return;
+  // Try native implementation first, then fallback to web. Use dynamic import
+  // so bundlers can split chunks and avoid top-level require() in the browser.
   try {
-    // fallback to web implementation when .native is not present (e.g. web)
-    // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-    authRepo = require('../data/auth/AuthRepository.web').AuthRepositoryImpl;
+    const mod = await import('../data/auth/AuthRepository.native');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authRepo = (mod as any).AuthRepositoryImpl;
+    return;
+  } catch (_) {
+    // ignore
+  }
+  try {
+    const mod = await import('../data/auth/AuthRepository.web');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authRepo = (mod as any).AuthRepositoryImpl;
+    return;
   } catch (e) {
-    // leave null, tests can inject behavior or require will be mocked
+    // If tests running, provide a minimal in-memory repo to avoid crashes
+    if (process.env.NODE_ENV === 'test') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const testRepo: any = {
+        signIn: async (username: string, password: string) => {
+          if (username === 'admin' && password === 'admin') {
+            const now = Date.now();
+            return {
+              username,
+              accessToken: 'test-token',
+              refreshToken: 'test-refresh',
+              expiresAt: now + 1000 * 60 * 60,
+            };
+          }
+          throw new Error('Credenciales inválidas');
+        },
+        restoreSession: async () => null,
+        clearSession: async () => {},
+      };
+      authRepo = testRepo;
+      return;
+    }
+
     // eslint-disable-next-line no-console
     console.warn('No AuthRepository implementation found at runtime', e);
+    authRepo = null;
   }
-}
-
-// Test fallback: simple in-memory repository to keep unit tests stable
-if (!authRepo && process.env.NODE_ENV === 'test') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const testRepo: any = {
-    signIn: async (username: string, password: string) => {
-      if (username === 'admin' && password === 'admin') {
-        const now = Date.now();
-        return {
-          username,
-          accessToken: 'test-token',
-          refreshToken: 'test-refresh',
-          expiresAt: now + 1000 * 60 * 60,
-        };
-      }
-      throw new Error('Credenciales inválidas');
-    },
-    restoreSession: async () => null,
-    clearSession: async () => {},
-  };
-  authRepo = testRepo;
 }
 
 type AuthState = {
   username: string;
   isLoggedIn: boolean;
   isRestoring: boolean;
+  isDevBypass?: boolean;
   error: string | null;
   setUsername: (username: string) => void;
   login: (password: string) => Promise<void>;
@@ -56,6 +70,7 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set, get) => ({
   username: '',
   isLoggedIn: false,
+  isDevBypass: false,
   isRestoring: false,
   error: null,
   setUsername: (username: string) => set({ username }),
@@ -68,7 +83,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error('Usuario y contraseña requeridos');
     }
 
-    if (!authRepo) throw new Error('AuthRepository no disponible');
+    // Temporary bypass requested for local testing: admin/admin logs in without remote request.
+    // NOTE: Remove this before production hardening.
+    if (usernameTrim === 'admin' && passwordTrim === 'admin') {
+      const attemptId = getAttemptId();
+      if (AUTH_DEBUG) console.info('[auth] store.login:dev-bypass admin accepted', { attemptId, username: maskUsername(usernameTrim) });
+      // Mark as logged in locally, do NOT persist tokens here
+      set({ isLoggedIn: true, username: usernameTrim, isDevBypass: true, error: null });
+      return;
+    }
+
+    await ensureAuthRepo();
+    if (!authRepo) {
+      if (AUTH_DEBUG) console.warn('[auth] store.login: AuthRepository no disponible');
+      throw new Error('AuthRepository no disponible');
+    }
 
     set({ error: null });
 
@@ -93,6 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   restoreSession: async () => {
+    await ensureAuthRepo();
     if (!authRepo) return;
     set({ isRestoring: true, error: null });
     if (AUTH_DEBUG) {
@@ -138,6 +168,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // ignore cleanup errors
       });
     }
+    // Abort any outstanding requests registered for the session
+    try {
+      if (abortManager && typeof abortManager.abortAllControllers === 'function') {
+        // best-effort abort
+        abortManager.abortAllControllers();
+      }
+    } catch (_) {}
   },
 }));
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AuditScreen from '../src/presentation/screens/AuditScreen';
 
 jest.mock('../src/presentation/components/MapCanvas', () => 'MapCanvas');
@@ -31,7 +32,11 @@ describe('AuditScreen map integration', () => {
     let tree: renderer.ReactTestRenderer;
 
     await act(async () => {
-      tree = renderer.create(<AuditScreen />);
+      tree = renderer.create(
+        <SafeAreaProvider>
+          <AuditScreen />
+        </SafeAreaProvider>
+      );
       await Promise.resolve();
     });
 
@@ -47,7 +52,11 @@ describe('AuditScreen map integration', () => {
     let tree: renderer.ReactTestRenderer;
 
     await act(async () => {
-      tree = renderer.create(<AuditScreen />);
+      tree = renderer.create(
+        <SafeAreaProvider>
+          <AuditScreen />
+        </SafeAreaProvider>
+      );
       await Promise.resolve();
     });
 
@@ -62,7 +71,11 @@ describe('AuditScreen map integration', () => {
     let tree: renderer.ReactTestRenderer;
 
     await act(async () => {
-      tree = renderer.create(<AuditScreen />);
+      tree = renderer.create(
+        <SafeAreaProvider>
+          <AuditScreen />
+        </SafeAreaProvider>
+      );
       await Promise.resolve();
     });
 

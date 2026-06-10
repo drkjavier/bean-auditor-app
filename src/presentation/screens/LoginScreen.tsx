@@ -1,12 +1,9 @@
 import React, { useState, useRef } from 'react';
 import {
   Alert,
-  Pressable,
   Text,
-  TextInput,
   View,
   AccessibilityInfo,
-  ActivityIndicator,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +11,10 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../../stores';
 import { AUTH_DEBUG, genAttemptId, setAttemptId, getAttemptId, maskUsername, sanitizeError } from '../../infrastructure/logging/authDebug';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import ErrorBanner from '../components/ErrorBanner';
+import AppLayout from '../components/AppLayout';
 
 /**
  * Pantalla de inicio de sesión (LoginScreen) siguiendo buenas prácticas:
@@ -39,6 +40,7 @@ export default function LoginScreen({ navigation }: Props) {
   // debug UI helpers (only shown when AUTH_DEBUG)
   const [debugAttemptId, setDebugAttemptId] = useState<string | null>(null);
   const [debugMessage, setDebugMessage] = useState<string | null>(null);
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
   // Mejor accesibilidad: enfocar error en primer input inválido
   const usernameRef = useRef<any>(null);
@@ -77,10 +79,27 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   const onSubmit = async () => {
+    // Clear any previous general error shown in UI
+    setGeneralError(null);
+
+    // Validate inputs locally and log if validation fails
+    const u = (username || '').trim();
+    const p = (password || '').trim();
     if (!validateInputs()) {
+      const attemptIdBefore = getAttemptId();
+      if (AUTH_DEBUG) {
+        console.warn('[auth] LoginScreen onSubmit:validationFailed', {
+          attemptId: attemptIdBefore,
+          username: maskUsername(username),
+          missingUsername: !u,
+          missingPassword: !p,
+        });
+        setDebugMessage('submit:validationFailed');
+      }
       focusFirstError();
       return;
     }
+
     setLoading(true);
     // Reuse attemptId if already set by the button handler; otherwise generate one.
     let attemptId = getAttemptId();
@@ -101,7 +120,10 @@ export default function LoginScreen({ navigation }: Props) {
         console.warn('[auth] LoginScreen calling login', { attemptId, username: maskUsername(username) });
       }
       const callStart = Date.now();
+      // Await the login call and capture duration for diagnostics
       await login(password);
+      // clear sensitive data from UI immediately after success
+      setPassword('');
       const durationMs = Date.now() - callStart;
       // After login, inspect minimal state without exposing sensitive data
       const isLoggedInAfter = useAuthStore.getState().isLoggedIn;
@@ -115,15 +137,18 @@ export default function LoginScreen({ navigation }: Props) {
       console.warn('[auth] LoginScreen onSubmit:success', { attemptId, username: maskUsername(username) });
       setDebugMessage('submit:success');
     }
+      // clear any general error on success
+      setGeneralError(null);
       if (navigation && navigation.replace) {
         if (AUTH_DEBUG) console.warn('[auth] LoginScreen navigating', { attemptId, to: 'Main' });
         navigation.replace('Main');
       }
     } catch (err: any) {
       const msg = err?.message || 'Error de autenticación';
+      const sErr = sanitizeError(err);
+      // Always log sanitized error; use console.error for visibility
+      console.error('[auth] LoginScreen onSubmit:error', { attemptId, username: maskUsername(username), error: sErr });
       if (AUTH_DEBUG) {
-        const sErr = sanitizeError(err);
-        console.warn('[auth] LoginScreen onSubmit:error', { attemptId, username: maskUsername(username), error: sErr });
         setDebugMessage(`submit:error ${sErr.message}`);
       }
       // For authentication failures, show a generic message to avoid user enumeration
@@ -135,13 +160,15 @@ export default function LoginScreen({ navigation }: Props) {
         setUsernameError('Usuario requerido');
         setPasswordError('Contraseña requerida');
       } else {
-        // Fallback: show an alert for unexpected errors
-        Alert.alert('Error', msg);
+        // Fallback: show an alert for unexpected errors on native and a visible banner on all platforms
+        setGeneralError(msg);
+        if (Platform.OS !== 'web') Alert.alert('Error', msg);
       }
       focusFirstError();
     } finally {
       // cleanup attempt id after action completes
       setAttemptId(null);
+      if (AUTH_DEBUG) console.warn('[auth] LoginScreen onSubmit:finished', { attemptId });
       // keep debugAttemptId visible for a short time (do not clear immediately)
       // optional: leave it so developer can inspect UI; remove in production via AUTH_DEBUG
       setLoading(false);
@@ -149,90 +176,78 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   // Button press handler: generates an attemptId, logs button press metadata and triggers submit.
-  const handleButtonPress = () => {
+  const handleButtonPress = async () => {
     const attemptId = genAttemptId();
-    // store in-memory only
+    // store in-memory only so fetchWithAuth or other infra can read it
     setAttemptId(attemptId);
     if (AUTH_DEBUG) {
       console.warn('[auth] LoginButton:press', { attemptId, username: maskUsername(username), canSubmit: !!canSubmit, isDisabled: !!isDisabled });
       setDebugAttemptId(attemptId);
       setDebugMessage('button:press');
     }
-    // fire submit (async) and ignore returned promise here
-    void onSubmit();
+    try {
+      // Await onSubmit so we capture any rejection and can log it here
+      await onSubmit();
+    } catch (err: any) {
+      const sErr = sanitizeError(err);
+      console.error('[auth] LoginButton:unhandled', { attemptId, error: sErr });
+      if (AUTH_DEBUG) setDebugMessage(`button:unhandled ${sErr.message}`);
+      // ensure UI shows something even if onSubmit failed unexpectedly
+      setGeneralError(sErr.message || 'Error inesperado');
+    }
   };
 
   const canSubmit = !!(username && String(username).trim() && password && password.trim());
   const isDisabled = loading; // disable only while loading; allow validation presses when fields empty
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.form} accessibilityLabel="Pantalla de inicio de sesión" accessibilityRole="form">
-        <Text style={styles.title} accessibilityRole="header">
-          BeanAuditorApp
-        </Text>
-        <Text style={styles.subtitle}>Inicia sesión</Text>
+    <AppLayout>
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.form} accessibilityLabel="Pantalla de inicio de sesión" accessibilityRole="form">
+          <Input
+            ref={usernameRef}
+            label="Usuario"
+            accessibilityLabel="Campo usuario"
+            placeholder="Usuario"
+            autoCapitalize="none"
+            value={username}
+            onChangeText={text => {
+              setUsername(text);
+              if (usernameError) setUsernameError(null);
+            }}
+            editable={!loading}
+            error={usernameError}
+            testID="input-username"
+          />
+          <Input
+            ref={passwordRef}
+            label="Contraseña"
+            accessibilityLabel="Campo contraseña"
+            placeholder="Contraseña"
+            secure
+            autoCapitalize="none"
+            value={password}
+            onChangeText={text => {
+              setPassword(text);
+              if (passwordError) setPasswordError(null);
+            }}
+            editable={!loading}
+            error={passwordError}
+            testID="input-password"
+          />
 
-        <TextInput
-          ref={usernameRef}
-          style={[styles.input, usernameError ? styles.inputError : null]}
-          placeholder="Usuario"
-          autoCapitalize="none"
-          value={username}
-          onChangeText={text => {
-            setUsername(text);
-            if (usernameError) setUsernameError(null);
-          }}
-          editable={!loading}
-          accessibilityLabel="Campo usuario"
-          accessibilityHint="Introduce tu usuario"
-          accessibilityState={{ invalid: !!usernameError }}
-          returnKeyType="next"
-        />
-        {usernameError ? <Text style={styles.errorText}>{usernameError}</Text> : null}
+        <Button onPress={handleButtonPress} loading={loading} disabled={isDisabled} accessibilityLabel={loading ? 'Ingresando...' : 'Login'}>
+          Login
+        </Button>
 
-        <TextInput
-          ref={passwordRef}
-          style={[styles.input, passwordError ? styles.inputError : null]}
-          placeholder="Contraseña"
-          secureTextEntry
-          autoCapitalize="none"
-          value={password}
-          onChangeText={text => {
-            setPassword(text);
-            if (passwordError) setPasswordError(null);
-          }}
-          editable={!loading}
-          accessibilityLabel="Campo contraseña"
-          accessibilityHint="Introduce tu contraseña"
-          accessibilityState={{ invalid: !!passwordError }}
-          returnKeyType="done"
-        />
-        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+          {generalError ? <ErrorBanner message={generalError} /> : null}
 
-        <Pressable
-          style={[styles.button, !canSubmit ? styles.buttonDisabled : null]}
-          onPress={handleButtonPress}
-          disabled={isDisabled}
-          accessibilityRole="button"
-          accessibilityLabel={loading ? 'Ingresando...' : 'Entrar'}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Entrar</Text>
-          )}
-        </Pressable>
-        {AUTH_DEBUG ? (
-          <Text accessibilityRole="status" style={styles.debugText}>
-            {`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}
-          </Text>
-        ) : null}
-      </View>
-    </KeyboardAvoidingView>
+          {AUTH_DEBUG ? (
+            <Text accessibilityRole="status" style={styles.debugText}>{`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}</Text>
+          ) : null}
+        </View>
+      </KeyboardAvoidingView>
+    </AppLayout>
   );
 }
 
@@ -245,6 +260,7 @@ const styles = StyleSheet.create({
   },
   form: {
     alignItems: 'center',
+    marginTop: 32,
   },
   title: {
     fontSize: 28,
@@ -261,6 +277,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94a3b8',
   },
+  generalErrorText: {
+    width: '100%',
+    maxWidth: 360,
+    color: '#7f1d1d',
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+    textAlign: 'center',
+  },
   input: {
     width: '100%',
     maxWidth: 360,
@@ -269,7 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    marginBottom: 12,
+    marginBottom: 20,
     backgroundColor: '#fff',
   },
   inputError: {
@@ -289,7 +316,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 24,
   },
   buttonDisabled: {
     backgroundColor: '#93c5fd',
