@@ -10,9 +10,42 @@ export type TagFilter = {
 };
 
 // Simple in-memory service that returns a Promise to emulate async API
-export async function fetchTags(filter?: TagFilter): Promise<Tag[]> {
-  // Simulate latency
-  await new Promise(res => setTimeout(res, 120));
+export type FetchTagsOptions = { signal?: AbortSignal };
+
+export async function fetchTags(filter?: TagFilter, options?: FetchTagsOptions): Promise<Tag[]> {
+  // Simulate latency with cancellable timeout
+  const delay = 120;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const p = new Promise<void>((resolve, reject) => {
+    timeoutId = setTimeout(resolve, delay);
+    if (options?.signal) {
+      if (options.signal.aborted) {
+        clearTimeout(timeoutId as any);
+        return reject(new DOMException('Aborted', 'AbortError'));
+      }
+      const onAbort = () => {
+        if (timeoutId) clearTimeout(timeoutId as any);
+        try {
+          reject(new DOMException('Aborted', 'AbortError'));
+        } catch (_) {
+          // node env may not have DOMException
+          reject(new Error('Aborted'));
+        }
+      };
+      // Some environments do not support addEventListener on signal
+      try {
+        if (typeof (options.signal as any).addEventListener === 'function') {
+          (options.signal as any).addEventListener('abort', onAbort);
+        } else if (typeof (options.signal as any).onabort === 'function' || typeof (options.signal as any).onabort === 'undefined') {
+          // attach to onabort if available
+          (options.signal as any).onabort = onAbort;
+        }
+      } catch (_) {
+        // ignore
+      }
+    }
+  });
+  await p;
 
   let items = tagsMock.slice();
 

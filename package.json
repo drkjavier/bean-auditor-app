@@ -31,7 +31,7 @@
     "react-native-web": "0.21.2",
     "zustand": "^5.0.12",
     "react-native-maps": "^1.4.0",
-    "react-native-geolocation-service": "^1.2.0",
+    "react-native-geolocation-service": "^5.3.1",
     "react-native-permissions": "^3.9.0"
   },
   "optionalDependencies": {
