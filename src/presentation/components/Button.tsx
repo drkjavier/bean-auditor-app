@@ -5,7 +5,7 @@ import theme from '../themes/theme';
 type ButtonProps = {
   onPress?: () => void;
   children?: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'tonal';
   loading?: boolean;
   disabled?: boolean;
   accessibilityLabel?: string;
@@ -14,8 +14,8 @@ type ButtonProps = {
 };
 
 export default function Button({ onPress, children, variant = 'primary', loading = false, disabled = false, accessibilityLabel, style, testID }: ButtonProps) {
-  const bgColor = disabled ? theme.colors.muted : variant === 'primary' ? theme.colors.primary : variant === 'secondary' ? theme.colors.surface : 'transparent';
-  const textColor = variant === 'primary' ? '#fff' : theme.colors.textPrimary;
+  const bgColor = disabled ? '#e0e0e0' : variant === 'tonal' ? 'rgba(11, 95, 255, 0.12)' : variant === 'primary' ? theme.colors.primary : variant === 'secondary' ? theme.colors.surface : 'transparent';
+  const textColor = disabled ? '#999' : variant === 'primary' ? '#fff' : theme.colors.primary;
 
   return (
     <Pressable

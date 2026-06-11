@@ -7,7 +7,7 @@ type Props = { message?: string | null };
 export default function ErrorBanner({ message }: Props) {
   if (!message) return null;
   return (
-    <View accessibilityRole="status" style={styles.container}>
+    <View accessibilityRole="alert" accessibilityLiveRegion="assertive" style={styles.container}>
       <Text style={styles.text}>{message}</Text>
     </View>
   );

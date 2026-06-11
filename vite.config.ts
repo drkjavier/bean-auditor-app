@@ -27,6 +27,10 @@ export default defineConfig({
         find: 'react-native-maps',
         replacement: path.resolve(__dirname, 'src/web-shims/react-native-maps.js'),
       },
+      {
+        find: 'react-native-keychain',
+        replacement: path.resolve(__dirname, 'src/web-shims/react-native-keychain.js'),
+      },
     ],
     extensions: ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', '.tsx', '.ts', '.jsx', '.js'],
   },
