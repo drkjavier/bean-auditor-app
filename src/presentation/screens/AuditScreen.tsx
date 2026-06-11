@@ -2,13 +2,14 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Pressable, FlatList, Modal } from 'react-native';
 import { fetchTags, Tag } from '../../data/tagService';
-import { createAndRegisterAbortController, unregisterAbortController } from '../../infrastructure/api/abortManager';
+import { createAndRegisterAbortController, unregisterAbortController, abortAllControllers } from '../../infrastructure/api/abortManager';
 import MapCanvas from '../components/MapCanvas';
 import { useSettingsStore } from '../../state/settingsStore';
 import ColorCombobox from '../components/ColorCombobox';
 import DatePickerInput from '../components/DatePickerInput';
 import TouchableLongPress from '../components/TouchableLongPress';
 import { useAuthStore } from '../../stores';
+import { NAV_BAR_HEIGHT } from '../themes/layout';
 
 const FILTER_DEBOUNCE_MS = 350;
 
@@ -36,7 +37,6 @@ export default function AuditScreen() {
   const [to, setTo] = useState('');
   const [autoRefreshing, setAutoRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
-  const NAV_BAR_HEIGHT = require('../themes/layout').NAV_BAR_HEIGHT as number;
 
   const filters = useMemo(
     () => ({
@@ -137,8 +137,7 @@ export default function AuditScreen() {
     }
     // abort in-flight requests started by this screen
     try {
-      const abortManager = require('../../infrastructure/api/abortManager').default;
-      if (abortManager && typeof abortManager.abortAllControllers === 'function') abortManager.abortAllControllers();
+      abortAllControllers();
     } catch (_) {}
   }, []);
 
