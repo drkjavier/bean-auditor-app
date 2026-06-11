@@ -26,6 +26,9 @@ jest.mock('../src/data/tagService', () => ({
 jest.mock('../src/stores', () => ({
   useAuthStore: (selector: any) => selector({ isLoggedIn: true }),
 }));
+jest.mock('../src/state/settingsStore', () => ({
+  useSettingsStore: (selector: any) => selector({ showUserLocation: false }),
+}));
 
 describe('AuditScreen map integration', () => {
   test('renders audit screen after loading data', async () => {

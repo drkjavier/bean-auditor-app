@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Pressable, FlatList, Modal } from 'react-native';
 import { fetchTags, Tag } from '../../data/tagService';
 import { createAndRegisterAbortController, unregisterAbortController, abortAllControllers } from '../../infrastructure/api/abortManager';
@@ -9,7 +8,7 @@ import ColorCombobox from '../components/ColorCombobox';
 import DatePickerInput from '../components/DatePickerInput';
 import TouchableLongPress from '../components/TouchableLongPress';
 import { useAuthStore } from '../../stores';
-import { NAV_BAR_HEIGHT } from '../themes/layout';
+import { useBottomBarOffset } from '../components/BottomNavBar';
 
 const FILTER_DEBOUNCE_MS = 350;
 
@@ -36,7 +35,8 @@ export default function AuditScreen() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [autoRefreshing, setAutoRefreshing] = useState(false);
-  const insets = useSafeAreaInsets();
+  const bottomBarOffset = useBottomBarOffset();
+  const showUserLocation = useSettingsStore(state => state.showUserLocation);
 
   const filters = useMemo(
     () => ({
@@ -171,9 +171,9 @@ export default function AuditScreen() {
     // wrap scroll in a microtask so tests can await it with act
     scrollTimeoutRef.current = setTimeout(() => {
       try {
-        // ensure item is scrolled into view above the bottom navigation
-        // viewOffset ensures the item is not hidden behind the fixed bottom bar
-        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5, viewOffset: insets.bottom + NAV_BAR_HEIGHT });
+        // Ensure item is scrolled into view above the bottom navigation.
+        // The viewOffset accounts for the fixed BottomNavBar managed by MainScreen.
+        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5, viewOffset: bottomBarOffset + 12 });
       } catch {
         // ignore if list not ready yet
       }
@@ -184,7 +184,7 @@ export default function AuditScreen() {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [selectedId, filtered]);
+  }, [selectedId, filtered, bottomBarOffset]);
 
   if (!isLoggedIn) {
     return null;
@@ -275,7 +275,7 @@ export default function AuditScreen() {
       </Modal>
 
       {/* subscribe to settings store so UI updates when user toggles visibility */}
-      <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} showUserLocation={useSettingsStore(state => state.showUserLocation)} />
+      <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} showUserLocation={showUserLocation} />
 
       {selectedItem ? (
         <View style={styles.detailCard} accessibilityLabel="Detalle del tag seleccionado">
@@ -308,16 +308,15 @@ export default function AuditScreen() {
         </View>
       ) : null}
 
-      <View style={[styles.listContainer, { paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 12 }]}> 
+      <View style={styles.listContainer}>
         <Text style={styles.subtitle}>Resultados: {filtered.length}</Text>
            <FlatList
              ref={listRef}
              data={filtered}
-               contentContainerStyle={{ paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 12 }}
              keyExtractor={item => item.unique_id}
              getItemLayout={(_, index) => ({ length: 49, offset: 49 * index, index })}
              onScrollToIndexFailed={({ index }) => {
-                const offset = Math.max(0, index * 49 - (insets.bottom + NAV_BAR_HEIGHT));
+                const offset = Math.max(0, index * 49 - bottomBarOffset);
                 listRef.current?.scrollToOffset({ offset, animated: true });
              }}
            renderItem={({ item }) => (
@@ -417,7 +416,7 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 12,
   },
-  listContainer: { height: 220, marginTop: 8 },
+  listContainer: { flex: 1, marginTop: 8 },
   subtitle: { marginBottom: 8, color: '#475569' },
   item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   itemSelected: { backgroundColor: '#eff6ff', borderRadius: 8, paddingHorizontal: 8 },
