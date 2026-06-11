@@ -1,3 +1,5 @@
+import { AUTH_USE_COOKIES as AUTH_USE_COOKIES_FROM_CONFIG } from '../api/config';
+
 const KEY = 'bean_auditor_oauth_dev_token';
 
 // Fallback for environments without sessionStorage (Jest/node)
@@ -6,15 +8,9 @@ let __inMemoryToken: string | null = null;
 
 const hasSessionStorage = typeof globalThis !== 'undefined' && typeof (globalThis as any).sessionStorage !== 'undefined';
 const IS_PROD = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production';
-// Read config from central module when available; fallback to env for tests
-let AUTH_USE_COOKIES = false;
-try {
-  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-  const cfg = require('../api/config');
-  AUTH_USE_COOKIES = !!cfg.AUTH_USE_COOKIES;
-} catch (_) {
-  AUTH_USE_COOKIES = typeof process !== 'undefined' && (process.env.AUTH_USE_COOKIES === 'true' || process.env.REACT_APP_AUTH_USE_COOKIES === 'true');
-}
+// Read config from central module; fallback to env for tests
+const AUTH_USE_COOKIES = AUTH_USE_COOKIES_FROM_CONFIG
+  || (typeof process !== 'undefined' && (process.env.AUTH_USE_COOKIES === 'true' || process.env.REACT_APP_AUTH_USE_COOKIES === 'true'));
 
 export async function saveToken(token: string): Promise<void> {
   try {

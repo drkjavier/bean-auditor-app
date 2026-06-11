@@ -1,12 +1,11 @@
 import React, { useState, useRef } from 'react';
 import {
-  Alert,
   Text,
   View,
   AccessibilityInfo,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
+  Alert,
   Keyboard,
 } from 'react-native';
 import { useAuthStore } from '../../stores';
@@ -14,7 +13,7 @@ import { AUTH_DEBUG, genAttemptId, setAttemptId, getAttemptId, maskUsername, san
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ErrorBanner from '../components/ErrorBanner';
-import AppLayout from '../components/AppLayout';
+import theme from '../themes/theme';
 
 /**
  * Pantalla de inicio de sesión (LoginScreen) siguiendo buenas prácticas:
@@ -201,128 +200,164 @@ export default function LoginScreen({ navigation }: Props) {
   const isDisabled = loading; // disable only while loading; allow validation presses when fields empty
 
   return (
-    <AppLayout>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.form} accessibilityLabel="Pantalla de inicio de sesión" accessibilityRole="form">
-          <Input
-            ref={usernameRef}
-            label="Usuario"
-            accessibilityLabel="Campo usuario"
-            placeholder="Usuario"
-            autoCapitalize="none"
-            value={username}
-            onChangeText={text => {
-              setUsername(text);
-              if (usernameError) setUsernameError(null);
-            }}
-            editable={!loading}
-            error={usernameError}
-            testID="input-username"
-          />
-          <Input
-            ref={passwordRef}
-            label="Contraseña"
-            accessibilityLabel="Campo contraseña"
-            placeholder="Contraseña"
-            secure
-            autoCapitalize="none"
-            value={password}
-            onChangeText={text => {
-              setPassword(text);
-              if (passwordError) setPasswordError(null);
-            }}
-            editable={!loading}
-            error={passwordError}
-            testID="input-password"
-          />
+    <View style={styles.screen}>
+      <View style={styles.card}>
+        <Text style={styles.appTitle}>BeanAuditor</Text>
+        <Text style={styles.appSubtitle}>Sistema de Auditoría de Café</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Account</Text>
+        </View>
+
+        <Input
+          ref={usernameRef}
+          prependIcon="email-outline"
+          accessibilityLabel="Campo usuario"
+          placeholder="Email address"
+          autoCapitalize="none"
+          autoComplete="email"
+          value={username}
+          onChangeText={text => {
+            setUsername(text);
+            if (usernameError) setUsernameError(null);
+          }}
+          editable={!loading}
+          error={usernameError}
+          testID="input-username"
+        />
+
+        <View style={styles.passwordHeader}>
+          <Text style={styles.sectionLabel}>Password</Text>
+          <Text style={styles.forgotLink}>Forgot login password?</Text>
+        </View>
+
+        <Input
+          ref={passwordRef}
+          secure
+          prependIcon="lock-outline"
+          accessibilityLabel="Campo contraseña"
+          placeholder="Enter your password"
+          autoCapitalize="none"
+          autoComplete="current-password"
+          value={password}
+          onChangeText={text => {
+            setPassword(text);
+            if (passwordError) setPasswordError(null);
+          }}
+          editable={!loading}
+          error={passwordError}
+          testID="input-password"
+        />
+
+        <View style={styles.warningCard}>
+          <Text style={styles.warningText}>
+            Warning: After 3 consecutive failed login attempts, your account will be temporarily locked for three hours. If you must login now, you can also click "Forgot login password?" below to reset the login password.
+          </Text>
+        </View>
 
         <Button onPress={handleButtonPress} loading={loading} disabled={isDisabled} accessibilityLabel={loading ? 'Ingresando...' : 'Login'}>
-          Login
+          Log In
         </Button>
 
-          {generalError ? <ErrorBanner message={generalError} /> : null}
+        {generalError ? <ErrorBanner message={generalError} /> : null}
 
-          {AUTH_DEBUG ? (
-            <Text accessibilityRole="status" style={styles.debugText}>{`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}</Text>
-          ) : null}
+        <View style={styles.signupRow}>
+          <Text style={styles.signupLink}>Sign up now </Text>
+          <Text style={styles.signupArrow}>›</Text>
         </View>
-      </KeyboardAvoidingView>
-    </AppLayout>
+
+        {AUTH_DEBUG ? (
+          <Text accessibilityRole="text" style={styles.debugText}>{`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}</Text>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 24,
   },
-  form: {
-    alignItems: 'center',
-    marginTop: 32,
+  card: {
+    width: '100%',
+    maxWidth: 448,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 32,
+    paddingBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  title: {
-    fontSize: 28,
+  appTitle: {
+    fontSize: 24,
     fontWeight: '700',
+    textAlign: 'center',
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  appSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: theme.colors.muted,
+    marginBottom: 28,
+  },
+  section: {
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 24,
-    color: '#475569',
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: theme.colors.textPrimary,
+  },
+  passwordHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  forgotLink: {
+    fontSize: 13,
+    color: theme.colors.primary,
+    textDecorationLine: 'underline',
+  },
+  warningCard: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
+  },
+  signupRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  signupLink: {
+    fontSize: 14,
+    color: theme.colors.primary,
+  },
+  signupArrow: {
+    fontSize: 18,
+    color: theme.colors.primary,
+    marginLeft: 2,
   },
   debugText: {
     marginTop: 12,
     fontSize: 12,
     color: '#94a3b8',
-  },
-  generalErrorText: {
-    width: '100%',
-    maxWidth: 360,
-    color: '#7f1d1d',
-    backgroundColor: '#fee2e2',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    maxWidth: 360,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 20,
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#dc2626',
-  },
-  errorText: {
-    width: '100%',
-    maxWidth: 360,
-    color: '#dc2626',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  button: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#2563eb',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  buttonDisabled: {
-    backgroundColor: '#93c5fd',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '700',
   },
 });
