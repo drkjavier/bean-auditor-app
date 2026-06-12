@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
 import type { Tag } from '../../data/mocks/tagsMock';
+import { NAV_BAR_HEIGHT } from '../themes/layout';
 
 // Maximum zoom allowed by the map UI. Note: tile providers may have a lower
 // native max (configured per TileLayer via maxNativeZoom). Increase only if
@@ -109,7 +110,6 @@ function createClusterIcon(cluster: L.MarkerCluster) {
 export default function MapCanvas({ items, style, selectedId, onSelect }: Props) {
   // Read CSS env safe-area-bottom for web if available (e.g. iOS Safari with notch)
   const insetsBottom = typeof window !== 'undefined' ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') || 0 : 0;
-  const NAV_BAR_HEIGHT = require('../themes/layout').NAV_BAR_HEIGHT ?? 64;
   const bounds = useMemo(() => getBounds(items), [items]);
   const center: [number, number] = items.length > 0 ? [items[0].lat, items[0].lon] : [37.77, -122.42];
   const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;

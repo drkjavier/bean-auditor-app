@@ -13,9 +13,59 @@
       "prompt": "{file:.opencode/agents/frontend-agent.md}"
     },
     "frontend-uiux-agent": {
-      "description": "Especialista en UI/UX para React y React Native. Audita y mejora jerarquía visual, accesibilidad, responsividad, feedback, estados de interfaz y consistencia de diseño. Úsalo para revisar pantallas, flujos, formularios y sistemas visuales antes de implementar o refactorizar.",
+      "description": "[DEPRECATED 2026-06-11] Reemplazado por frontend-ui-agent + frontend-ux-agent + frontend-accessibility-agent. Se eliminará en el próximo sprint. Conservar solo para auditoría de planes antiguos.",
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/frontend-uiux-agent.md}"
+    },
+    "frontend-ui-agent": {
+      "description": "Especialista en diseño visual de interfaces para React y React Native. Audita tokens, color, tipografía, espaciado, iconografía (@mdi/font), consistencia de componentes y responsividad visual. Úsalo para revisar pantallas y componentes antes de cerrar tareas de UI.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-ui-agent.md}"
+    },
+    "frontend-ux-agent": {
+      "description": "Especialista en experiencia de usuario para React y React Native. Audita flujos, usabilidad, microcopy, feedback, estados de interfaz, prevención de errores y recuperación. Úsalo para revisar pantallas, formularios y journeys antes de cerrar tareas.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-ux-agent.md}"
+    },
+    "frontend-accessibility-agent": {
+      "description": "Especialista en accesibilidad frontend (WCAG 2.1 AA) para React y React Native. Audita contraste, ARIA, foco visible, navegación por teclado, lector de pantalla, touch targets, semántica y motion-safe. Úsalo para revisar pantallas y componentes antes de cerrar tareas.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-accessibility-agent.md}"
+    },
+    "frontend-state-agent": {
+      "description": "Especialista en estado global con Zustand para React y React Native. Audita stores, slices, selectores, suscripciones, persistencia, dev-bypass y migración de stores a state. Úsalo al crear, modificar o auditar stores Zustand.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-state-agent.md}"
+    },
+    "frontend-architecture-agent": {
+      "description": "Especialista en arquitectura frontend en capas para React y React Native. Audita separación de responsabilidades, imports cruzados indebidos, ubicación de archivos, deuda arquitectónica y cohesión de módulos. Úsalo al crear, refactorizar o auditar capas (presentation, domain, data, infrastructure, state).",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-architecture-agent.md}"
+    },
+    "frontend-cross-platform-agent": {
+      "description": "Especialista en compatibilidad multiplataforma React Native + Vite. Audita extensiones .native/.web, shims en src/web-shims/, alias de vite.config.ts y metro.config.js, comportamiento divergente entre plataformas y fallbacks. Úsalo al crear o modificar componentes con diferencias nativo/web.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-cross-platform-agent.md}"
+    },
+    "frontend-documentation-agent": {
+      "description": "Especialista en documentación técnica frontend. Genera y mantiene JSDoc, comentarios en línea, README de módulos, diagramas de arquitectura y changelogs para el proyecto BeanAuditor. Úsalo al crear/refactorizar componentes, exports públicos o features.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-documentation-agent.md}"
+    },
+    "frontend-navigation-agent": {
+      "description": "Especialista en navegación custom para React y React Native. Audita AppNavigator, useWebHistory, BottomNavBar, deep links, modales, transiciones y el contrato con Zustand (isLoggedIn). Úsalo al crear, modificar o auditar navegación, routing o historial web.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-navigation-agent.md}"
+    },
+    "frontend-performance-agent": {
+      "description": "Especialista en rendimiento frontend para React y React Native. Audita renders, memoización, bundle size, lazy loading, code splitting, listas largas, animaciones y memoria. Úsalo al crear pantallas, listas, mapas o componentes con datos voluminosos.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-performance-agent.md}"
+    },
+    "frontend-testing-agent": {
+      "description": "Especialista en testing automatizado para React y React Native. Diseña, audita y mejora tests Jest + @testing-library/react-native, mocks, cobertura, snapshot serializer de seguridad (redacción de tokens Bearer) y test de flujos. Úsalo al crear, refactorizar o auditar la suite de tests.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-testing-agent.md}"
     },
     "frontend-security-agent": {
       "description": "Especialista en seguridad frontend para React y React Native. Revisa módulos, vistas, componentes y flujos con foco en autenticación, sesión, routing protegido, validación, consumo de APIs, almacenamiento local y exposición de datos sensibles. Úsalo cuando se creen o cambien piezas de UI con superficie de riesgo.",

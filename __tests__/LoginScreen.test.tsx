@@ -34,7 +34,7 @@ describe('LoginScreen', () => {
 
     const userInput = getByLabelText('Campo usuario');
     const passInput = getByLabelText('Campo contraseña');
-    const button = getByText('Login');
+    const button = getByText('Log In');
 
     // Initially empty -> submission triggers errors
     fireEvent.press(button);

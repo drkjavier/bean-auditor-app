@@ -5,6 +5,16 @@ import MapCanvas from '../src/presentation/components/MapCanvas';
 
 const rnMapsMock = require('../__mocks__/react-native-maps');
 
+// ── Mock SafeAreaProvider (native module not available in Jest) ────────────────
+jest.mock('react-native-safe-area-context', () => {
+  const R = require('react');
+  return {
+    SafeAreaProvider: ({ children }: any) => R.createElement(R.Fragment, null, children),
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+    SafeAreaView: ({ children, ...props }: any) => R.createElement('View', props, children),
+  };
+});
+
 // Let Jest use the manual mocks placed in __mocks__ by calling jest.mock with module name only.
 jest.mock('@react-native-community/geolocation');
 jest.mock('react-native-permissions');

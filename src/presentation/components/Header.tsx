@@ -7,9 +7,13 @@ type Props = { title?: string; onMenuPress?: () => void; right?: React.ReactNode
 export default function Header({ title, onMenuPress, right }: Props) {
   return (
     <View style={styles.container}>
-      <Pressable onPress={onMenuPress} accessibilityLabel="Abrir menú" style={styles.menuButton}>
-        <Text style={styles.menuIcon}>☰</Text>
-      </Pressable>
+      {onMenuPress ? (
+        <Pressable onPress={onMenuPress} accessibilityLabel="Abrir menú" style={styles.menuButton}>
+          <Text style={styles.menuIcon}>☰</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.menuButton} />
+      )}
       <View style={styles.titleWrap}>
         <Text style={styles.title}>{title}</Text>
       </View>

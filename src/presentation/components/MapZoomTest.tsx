@@ -1,38 +1,18 @@
 import React from 'react';
-import { View, Platform } from 'react-native';
+import { View } from 'react-native';
+import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet';
 
 const MAX_MAP_ZOOM = 21;
 
-// Simple test component to render two markers ~1m apart for visual verification
-// This component dynamically requires react-leaflet and only attempts to render
-// on web. Dynamic require is used to avoid Jest attempting to statically parse
-// ESM-only modules during tests.
+// Simple test component to render two markers ~1m apart for visual verification.
+// Uses static ESM imports for Vite/web compatibility.
 export default function MapZoomTest() {
-  // Only render on web
-  if (Platform.OS !== 'web') return null;
-
   // base coords near project sample
   const baseLat = 14.283333;
   const baseLon = -91.366667;
 
   // offset ~1 meter in degrees (approx 1m ~= 1/111320 deg ≈ 8.983e-06; but we use a conservative offset)
   const offsetDeg = 0.000009; // ≈ 1m
-
-  let MapContainer: any = null;
-  let TileLayer: any = null;
-  let CircleMarker: any = null;
-
-  try {
-    // dynamic require to avoid ESM parse errors in Jest
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const rl = require('react-leaflet');
-    MapContainer = rl.MapContainer;
-    TileLayer = rl.TileLayer;
-    CircleMarker = rl.CircleMarker;
-  } catch (e) {
-    // If react-leaflet cannot be loaded (tests or environment), render nothing
-    return null;
-  }
 
   return (
     <View style={{ height: 300 }}>

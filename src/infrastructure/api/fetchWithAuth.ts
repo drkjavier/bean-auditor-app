@@ -1,19 +1,12 @@
-import { refreshToken, introspectToken, shouldAttemptRefresh } from './authApi';
-import { AUTH_USE_API } from './config';
+import { refreshToken, shouldAttemptRefresh } from './authApi';
+import { AUTH_USE_COOKIES } from './config';
 import { getAttemptId, AUTH_DEBUG as CENTRAL_AUTH_DEBUG } from '../logging/authDebug';
+import { createAndRegisterAbortController, registerAbortController, unregisterAbortController } from './abortManager';
 
-// Dynamically pick token storage implementation so the web bundle doesn't
-// accidentally import native-only modules (react-native-keychain).
-// The native implementation exposes getSession/saveToken (session object),
-// while the web implementation exposes getToken/saveToken (string token).
-let tokenStorage: any = null;
-try {
-  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-  tokenStorage = require('../security/tokenStorage.native');
-} catch (e) {
-  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-  tokenStorage = require('../security/tokenStorage.web');
-}
+// Platform-specific token storage resolved at build time via file extensions:
+//   Vite  → tokenStorage.web.ts
+//   Metro → tokenStorage.native.ts
+import * as tokenStorage from '../security/tokenStorage';
 
 const hasGetSession = typeof tokenStorage.getSession === 'function';
 const hasGetToken = typeof tokenStorage.getToken === 'function';
@@ -90,10 +83,8 @@ async function doRefreshIfNeeded(callerSignal?: AbortSignal): Promise<void> {
     ongoingRefresh = { promise, ctrl };
     // register refresh controller so logout can abort the request
     try {
-      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-      const abortManager = require('./abortManager');
-      if (abortManager && typeof abortManager.registerAbortController === 'function') abortManager.registerAbortController(ongoingRefresh.ctrl);
-    } catch (_) {
+      registerAbortController(ongoingRefresh.ctrl);
+    } catch {
       // ignore if abort manager not available
     }
   }
@@ -117,8 +108,6 @@ async function doRefreshIfNeeded(callerSignal?: AbortSignal): Promise<void> {
 
   return ongoingRefresh.promise;
 }
-
-import { createAndRegisterAbortController, registerAbortController, unregisterAbortController } from './abortManager';
 
 export async function fetchWithAuth(input: RequestInfo, init?: RequestInit) {
   // Prepare an AbortSignal to pass to refresh and the eventual fetch.
@@ -147,42 +136,33 @@ export async function fetchWithAuth(input: RequestInfo, init?: RequestInit) {
       // We'll re-read session and only use a token if present.
       if (AUTH_DEBUG) console.warn('[auth] fetchWithAuth: refresh failed, continuing without refresh');
     }
-  } catch (e) {
+  } catch {
     // noop
   }
 
   // Re-read session AFTER refresh completes (or fails) to avoid race conditions
   const session = await _getSessionLike();
   const headers = new Headers(init?.headers as any || {});
+
   // If config indicates cookies-based auth on web, do not set Authorization header
-  try {
-    // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-    const cfg = require('./config');
-    if (!cfg.AUTH_USE_COOKIES && session && session.accessToken) {
-      headers.set('Authorization', `Bearer ${session.accessToken}`);
-    }
-  } catch (_) {
-    // fallback: set header only if token present
-    if (session && session.accessToken) headers.set('Authorization', `Bearer ${session.accessToken}`);
+  if (!AUTH_USE_COOKIES && session && session.accessToken) {
+    headers.set('Authorization', `Bearer ${session.accessToken}`);
   }
+
   // Propagate client attempt id to backend for easier correlation (no sensitive data)
   try {
     const attemptId = getAttemptId();
     if (attemptId) headers.set('X-Client-Log-Id', String(attemptId));
-  } catch (e) {
-    if (AUTH_DEBUG) console.warn('[auth] fetchWithAuth: failed to set X-Client-Log-Id', e);
+  } catch (err) {
+    if (AUTH_DEBUG) console.warn('[auth] fetchWithAuth: failed to set X-Client-Log-Id', err);
   }
 
-  try {
-    // If auth API disabled, just send request without Authorization header
-    // If using cookie-based auth, ensure credentials included
-    let fetchInit = { ...init, headers } as RequestInit;
-    try {
-      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-      const cfg = require('./config');
-      if (cfg.AUTH_USE_COOKIES) fetchInit = { ...fetchInit, credentials: (fetchInit.credentials as RequestCredentials) || 'include' };
-    } catch (_) {}
+  // If auth API disabled, just send request without Authorization header
+  // If using cookie-based auth, ensure credentials included
+  let fetchInit = { ...init, headers } as RequestInit;
+  if (AUTH_USE_COOKIES) fetchInit = { ...fetchInit, credentials: (fetchInit.credentials as RequestCredentials) || 'include' };
 
+  try {
     const resp = await fetch(input, fetchInit);
     return resp;
   } finally {
@@ -190,7 +170,9 @@ export async function fetchWithAuth(input: RequestInfo, init?: RequestInit) {
     if (localCtrl) {
       try {
         unregisterAbortController(localCtrl);
-      } catch (_) {}
+      } catch {
+        // ignore
+      }
     }
   }
 }
