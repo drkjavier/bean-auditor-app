@@ -1,3 +1,17 @@
+// Mock config to avoid import.meta.env (Vite-only, unsupported in Jest/CJS)
+jest.mock('../infrastructure/api/config', () => ({
+  AUTH_BASE_URL: 'http://localhost:3000',
+  AUTH_USE_API: false,
+  AUTH_USE_COOKIES: true,
+  TOKEN_REFRESH_WINDOW_MS: 30000,
+}));
+
+// Mock authApi to avoid transitive import.meta.env through config
+jest.mock('../infrastructure/api/authApi', () => ({
+  shouldAttemptRefresh: jest.fn().mockReturnValue(false),
+  refreshToken: jest.fn(),
+}));
+
 import { AuthRepositoryImpl } from '../data/auth/AuthRepository.native';
 import abortManager from '../infrastructure/api/abortManager';
 

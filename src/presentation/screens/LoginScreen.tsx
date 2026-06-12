@@ -7,6 +7,8 @@ import {
   Platform,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { useAuthStore } from '../../stores';
 import { AUTH_DEBUG, genAttemptId, setAttemptId, getAttemptId, maskUsername, sanitizeError } from '../../infrastructure/logging/authDebug';
@@ -200,8 +202,16 @@ export default function LoginScreen({ navigation }: Props) {
   const isDisabled = loading; // disable only while loading; allow validation presses when fields empty
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.card}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.card}>
         <Text style={styles.appTitle}>BeanAuditor</Text>
         <Text style={styles.appSubtitle}>Sistema de Auditoría de Café</Text>
 
@@ -269,8 +279,9 @@ export default function LoginScreen({ navigation }: Props) {
         {AUTH_DEBUG ? (
           <Text accessibilityRole="text" style={styles.debugText}>{`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}</Text>
         ) : null}
-      </View>
-    </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -278,6 +289,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,

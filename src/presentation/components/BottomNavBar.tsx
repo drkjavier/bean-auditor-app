@@ -68,18 +68,12 @@ export function useBottomBarOffset(): number {
 
 const styles = StyleSheet.create({
   bar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     backgroundColor: '#fff',
-    zIndex: 20,
-    elevation: 8,
   },
   tabItem: {
     flex: 1,

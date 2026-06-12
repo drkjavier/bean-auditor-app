@@ -2,9 +2,8 @@ import React, { useEffect, useState, useCallback, Suspense, lazy } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import HomeScreen from './HomeScreen';
 import SettingsScreen from './SettingsScreen';
-import AppLayout from '../components/AppLayout';
 import DrawerMenu from '../components/DrawerMenu';
-import BottomNavBar, { useBottomBarOffset } from '../components/BottomNavBar';
+import BottomNavBar from '../components/BottomNavBar';
 import { useAuthStore } from '../../stores';
 
 // Lazy-load screens that depend on heavy browser-only libraries (react-leaflet,
@@ -28,7 +27,6 @@ const ROUTES = [
 export default function MainScreen() {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
   const [index, setIndex] = useState(0);
-  const bottomBarOffset = useBottomBarOffset();
   const [visited, setVisited] = useState<Record<string, boolean>>({ home: true });
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -63,14 +61,14 @@ export default function MainScreen() {
   if (!isLoggedIn) return null;
 
   return (
-    <AppLayout title="BeanAuditorApp" onMenuPress={() => setMenuOpen(true)}>
+    <>
       <View style={styles.container}>
         {/*
-          Content area: paddingBottom reserves space so content is never
-          obscured by the fixed BottomNavBar (position: absolute).
-          Scenes MUST NOT add their own bottom padding for the nav bar.
+          Content area: flex: 1 takes remaining space above the footer.
+          The footer sits in normal flow at the bottom — no absolute positioning.
+          This avoids react-native-web's default overflow:hidden clipping.
         */}
-        <View style={[styles.content, { paddingBottom: bottomBarOffset + 12 }]}>
+        <View style={styles.content}>
           <Suspense fallback={<ActivityIndicator size="small" style={styles.loader} />}>
             {renderScene({ routeKey: ROUTES[index].key })}
           </Suspense>
@@ -82,7 +80,7 @@ export default function MainScreen() {
           ) : null}
         </View>
 
-        {/* Fixed footer — stays static across all screens */}
+        {/* Fixed footer — sits in normal flex flow at the bottom */}
         <BottomNavBar
           routes={ROUTES}
           activeIndex={index}
@@ -102,7 +100,7 @@ export default function MainScreen() {
           },
         }))}
       />
-    </AppLayout>
+    </>
   );
 }
 
