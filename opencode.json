@@ -42,6 +42,31 @@
       "mode": "subagent",
       "prompt": "{file:.opencode/agents/frontend-architecture-agent.md}"
     },
+    "frontend-cross-platform-agent": {
+      "description": "Especialista en compatibilidad multiplataforma React Native + Vite. Audita extensiones .native/.web, shims en src/web-shims/, alias de vite.config.ts y metro.config.js, comportamiento divergente entre plataformas y fallbacks. Úsalo al crear o modificar componentes con diferencias nativo/web.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-cross-platform-agent.md}"
+    },
+    "frontend-documentation-agent": {
+      "description": "Especialista en documentación técnica frontend. Genera y mantiene JSDoc, comentarios en línea, README de módulos, diagramas de arquitectura y changelogs para el proyecto BeanAuditor. Úsalo al crear/refactorizar componentes, exports públicos o features.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-documentation-agent.md}"
+    },
+    "frontend-navigation-agent": {
+      "description": "Especialista en navegación custom para React y React Native. Audita AppNavigator, useWebHistory, BottomNavBar, deep links, modales, transiciones y el contrato con Zustand (isLoggedIn). Úsalo al crear, modificar o auditar navegación, routing o historial web.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-navigation-agent.md}"
+    },
+    "frontend-performance-agent": {
+      "description": "Especialista en rendimiento frontend para React y React Native. Audita renders, memoización, bundle size, lazy loading, code splitting, listas largas, animaciones y memoria. Úsalo al crear pantallas, listas, mapas o componentes con datos voluminosos.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-performance-agent.md}"
+    },
+    "frontend-testing-agent": {
+      "description": "Especialista en testing automatizado para React y React Native. Diseña, audita y mejora tests Jest + @testing-library/react-native, mocks, cobertura, snapshot serializer de seguridad (redacción de tokens Bearer) y test de flujos. Úsalo al crear, refactorizar o auditar la suite de tests.",
+      "mode": "subagent",
+      "prompt": "{file:.opencode/agents/frontend-testing-agent.md}"
+    },
     "frontend-security-agent": {
       "description": "Especialista en seguridad frontend para React y React Native. Revisa módulos, vistas, componentes y flujos con foco en autenticación, sesión, routing protegido, validación, consumo de APIs, almacenamiento local y exposición de datos sensibles. Úsalo cuando se creen o cambien piezas de UI con superficie de riesgo.",
       "mode": "subagent",

@@ -62,6 +62,11 @@ Este proyecto integra específicamente con las siguientes capacidades de OpenCod
 | `frontend-accessibility-agent` | `subagent` | WCAG 2.1, ARIA, foco, teclado, lector. |
 | `frontend-state-agent` | `subagent` | Zustand, stores, selectores, persistencia. |
 | `frontend-architecture-agent` | `subagent` | Capas, separación, deuda arquitectónica. |
+| `frontend-performance-agent` | `subagent` | Renders, bundle, lazy, listas, mapas. |
+| `frontend-navigation-agent` | `subagent` | Navegación custom, deep links. |
+| `frontend-cross-platform-agent` | `subagent` | .native/.web, shims, alias. |
+| `frontend-testing-agent` | `subagent` | Jest, mocks, cobertura, snapshots. |
+| `frontend-documentation-agent` | `subagent` | JSDoc, README, changelogs. |
 | `frontend-security-agent` | `subagent` | Auth, sesión, storage, APIs, datos sensibles. |
 | `frontend-uiux-agent` | `subagent` | ⚠️ DEPRECATED — usar triada ui+ux+a11y. |
 | `plan-builder` | `all` | Orquestador de planes multi-capa. |
