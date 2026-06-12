@@ -52,6 +52,40 @@ Este proyecto integra específicamente con las siguientes capacidades de OpenCod
   3. Aplicar las recomendaciones respetando la arquitectura de capas definida
   4. Documentar cambios significativos en el código base
 
+## Agentes OpenCode
+
+| Agente | Modo | Foco |
+|---|---|---|
+| `frontend-agent` | `all` | Implementación general React/React Native (default). |
+| `frontend-ui-agent` | `subagent` | Diseño visual: tokens, tema, íconos, responsividad. |
+| `frontend-ux-agent` | `subagent` | Flujos, feedback, microcopy, estados de interfaz. |
+| `frontend-accessibility-agent` | `subagent` | WCAG 2.1, ARIA, foco, teclado, lector. |
+| `frontend-state-agent` | `subagent` | Zustand, stores, selectores, persistencia. |
+| `frontend-architecture-agent` | `subagent` | Capas, separación, deuda arquitectónica. |
+| `frontend-security-agent` | `subagent` | Auth, sesión, storage, APIs, datos sensibles. |
+| `frontend-uiux-agent` | `subagent` | ⚠️ DEPRECATED — usar triada ui+ux+a11y. |
+| `plan-builder` | `all` | Orquestador de planes multi-capa. |
+| `orquestador-tareas` | `primary` | Orquesta tareas individuales o simultáneas. |
+| `skills-agent` | `subagent` | Crea, audita y mantiene agentes y skills. |
+
+### Protocolo de delegación a la familia `frontend-*`
+
+`frontend-agent` y `plan-builder` deben invocar a los subagentes `frontend-*` según esta matriz. Cada subagente entrega auditoría con severidad y veredicto (`approve` / `adjust` / `require_validation`).
+
+| Necesidad | Subagente |
+|---|---|
+| Tokens, color, tipografía, íconos, responsividad visual | `frontend-ui-agent` |
+| Flujos, feedback, microcopy, estados | `frontend-ux-agent` |
+| WCAG, ARIA, foco, teclado, touch targets | `frontend-accessibility-agent` |
+| Zustand, stores, persistencia, dev-bypass | `frontend-state-agent` |
+| Capas, separación, deuda arquitectónica | `frontend-architecture-agent` |
+| Renders, bundle, lazy, listas, mapas | `frontend-performance-agent` |
+| Navegación, AppNavigator, deep links | `frontend-navigation-agent` |
+| .native/.web, shims, alias Vite/Metro | `frontend-cross-platform-agent` |
+| Tests, mocks, cobertura, snapshot serializer | `frontend-testing-agent` |
+| JSDoc, README, changelogs, diagramas | `frontend-documentation-agent` |
+| Auth, sesión, storage, APIs, datos sensibles | `frontend-security-agent` |
+
 ## Instrucciones Permitidas
 - Crear, modificar o eliminar componentes bajo `src/presentation/`
 - Implementar lógica de negocio en `src/domain/`
