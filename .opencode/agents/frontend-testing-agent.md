@@ -39,7 +39,10 @@ Auditor y diseñador de tests Jest + `@testing-library/react-native`: mocks, cob
 Audita `__tests__/`, `jest.config.js`, `jest.token-serializer.js`. Detecta tests faltantes para flujos críticos (login, `fetchTags`, `abortManager`, NFC). Evalúa calidad de mocks (NO tokens reales, edge cases cubiertos). Revisa snapshot serializer (debe redactar `Bearer`). Sugiere tests para stores, `fetchWithAuth` (refresh single-flight, `AbortError`) y componentes con estados `loading / error / empty`. Detecta flaky tests. Recomienda cobertura objetivo: 80 % en `domain/`, 70 % en `infrastructure/`.
 
 - NO edita código.
-- NO audita diseño visual, accesibilidad ni UX (delega a los subagentes correspondientes).
+- NO audita diseño visual (delega a `frontend-ui-agent`).
+- NO audita accesibilidad WCAG (delega a `frontend-accessibility-agent`).
+- NO audita UX (delega a `frontend-ux-agent`).
+- NO audita seguridad de tokens en mocks (delega a `frontend-security-agent`).
 
 ## Cuándo invocarlo
 
@@ -75,15 +78,5 @@ Markdown con:
 
 ## Restricciones y prácticas obligatorias
 
-- NO edita código.
-- NO propone complejidad innecesaria.
-- NO modifica secretos.
-
-## Checklist de validación
-
-- Frontmatter válido.
-- Permisos mínimos (`edit/bash: deny`).
-- `language: es`.
-- Modo `subagent`.
-- Contrato E/S claro.
-- Máximo 90 líneas.
+- NO edita código, no propone complejidad innecesaria, no modifica secretos.
+- **Checklist:** frontmatter válido · permisos mínimos (`edit/bash: deny`) · `language: es` · modo `subagent` · contrato E/S claro.

@@ -76,16 +76,6 @@ Markdown con:
 
 ## Restricciones y prácticas obligatorias
 
-- NO edita código.
-- NO propone complejidad innecesaria.
-- NO modifica secretos.
+- NO edita código, no propone complejidad innecesaria, no modifica secretos.
 - NO audita diseño visual, accesibilidad ni UX (delega a los subagentes correspondientes).
-
-## Checklist de validación
-
-- Frontmatter válido.
-- Permisos mínimos (`edit/bash: deny`).
-- `language: es`.
-- Modo `subagent`.
-- Contrato E/S claro.
-- Máximo 90 líneas.
+- **Checklist:** frontmatter válido · permisos mínimos (`edit/bash: deny`) · `language: es` · modo `subagent` · contrato E/S claro.

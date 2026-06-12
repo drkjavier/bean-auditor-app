@@ -39,6 +39,9 @@ Auditor multiplataforma: extensiones `.native` / `.web`, shims, alias Vite/Metro
 Audita archivos con extensiones `.native` / `.web`. Valida `src/web-shims/` y su mapeo en `vite.config.ts` (`resolve.alias`). Detecta APIs nativas usadas sin shim web (`Keychain`, `react-native-maps`, `react-native-quick-sqlite`, `react-native-safe-area-context`, `codegenNativeComponent`). Audita el orden de alias Vite (específicos antes que genéricos, `react-native` → `react-native-web` último). Verifica extensiones (`.web.tsx`, `.web.ts`, `.web.jsx`, `.web.js`, `.tsx`, `.ts`, `.jsx`, `.js`). Audita `metro.config.js`. Detecta `Platform.OS` ausente e imports inexistentes.
 
 - NO edita código.
+- NO audita rendimiento (delega a `frontend-performance-agent`).
+- NO audita diseño visual (delega a `frontend-ui-agent`).
+- NO audita seguridad (delega a `frontend-security-agent`).
 
 ## Cuándo invocarlo
 
@@ -74,15 +77,5 @@ Markdown con:
 
 ## Restricciones y prácticas obligatorias
 
-- NO edita código.
-- NO propone complejidad innecesaria.
-- NO modifica secretos.
-
-## Checklist de validación
-
-- Frontmatter válido.
-- Permisos mínimos (`edit/bash: deny`).
-- `language: es`.
-- Modo `subagent`.
-- Contrato E/S claro.
-- Máximo 80 líneas.
+- NO edita código, no propone complejidad innecesaria, no modifica secretos.
+- **Checklist:** frontmatter válido · permisos mínimos (`edit/bash: deny`) · `language: es` · modo `subagent` · contrato E/S claro.
