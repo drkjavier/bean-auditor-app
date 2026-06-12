@@ -1,44 +1,45 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Pressable, Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NAV_BAR_HEIGHT } from '../themes/layout';
+import React, { useEffect, useState, useCallback, Suspense, lazy } from 'react';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import HomeScreen from './HomeScreen';
-import AuditScreen from './AuditScreen';
-import MapZoomTest from '../components/MapZoomTest';
 import SettingsScreen from './SettingsScreen';
-import AppLayout from '../components/AppLayout';
 import DrawerMenu from '../components/DrawerMenu';
+import BottomNavBar from '../components/BottomNavBar';
 import { useAuthStore } from '../../stores';
 
-// MainScreen: contenedor con BottomNavigation simple (sin dependencias externas)
-// - Renderiza tres pestañas y deja que el contenedor superior maneje la protección de sesión
+// Lazy-load screens that depend on heavy browser-only libraries (react-leaflet,
+// leaflet.markercluster). A failed static import of those modules aborts the
+// entire module evaluation, preventing constants like ROUTES from being assigned.
+// Using React.lazy isolates failures inside a Suspense boundary instead.
+const AuditScreen = lazy(() => import('./AuditScreen'));
+
+// MainScreen: contenedor con BottomNavigation reutilizable (BottomNavBar)
+// - El footer (BottomNavBar) queda estático en todas las pantallas.
+// - El contenido se desplaza por encima del footer sin solaparse.
+// - Cada escena NO debe agregar su propio paddingBottom para el footer;
+//   esa responsabilidad es exclusiva de este componente.
+const ROUTES = [
+  { key: 'home', title: 'Inicio' },
+  { key: 'audit', title: 'Auditoría' },
+  { key: 'settings', title: 'Ajustes' },
+] as const;
+
 export default function MainScreen() {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
-
-  // If not logged in, don't render content (the App root will show Login)
-  if (!isLoggedIn) return null;
-
   const [index, setIndex] = useState(0);
-  const [routes] = useState([
-    { key: 'home', title: 'Inicio' },
-    { key: 'audit', title: 'Auditoría' },
-    { key: 'settings', title: 'Ajustes' },
-  ] as any[]);
-
-  // Lazy-loading renderScene: solo montar la escena la primera vez que se visita.
   const [visited, setVisited] = useState<Record<string, boolean>>({ home: true });
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Mark initial route as visited on mount
   useEffect(() => {
-    // Mark the initial route as visited
-    setVisited(v => ({ ...v, [routes[index].key]: true }));
+    setVisited(v => ({ ...v, [ROUTES[index].key]: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const renderScene = useCallback(({ route }: { route: any }) => {
+  const renderScene = useCallback(({ routeKey }: { routeKey: string }) => {
     // Only render scenes that were visited (lazy mount) to reduce initial cost
-    if (!visited[route.key]) return null;
+    if (!visited[routeKey]) return null;
 
-    switch (route.key) {
+    switch (routeKey) {
       case 'home':
         return <HomeScreen />;
       case 'audit':
@@ -52,78 +53,52 @@ export default function MainScreen() {
 
   // Update visited when index changes (user navigates)
   useEffect(() => {
-    setVisited(v => ({ ...v, [routes[index].key]: true }));
-  }, [index, routes]);
+    setVisited(v => ({ ...v, [ROUTES[index].key]: true }));
+  }, [index]);
 
-  const insets = useSafeAreaInsets();
-  // Use central NAV_BAR_HEIGHT
+  // If not logged in, don't render content (the App root will show Login)
+  if (!isLoggedIn) return null;
 
   return (
-    <AppLayout title="BeanAuditorApp" onMenuPress={() => setMenuOpen(true)}>
-      <View style={styles.container} accessibilityRole="tablist">
+    <>
+      <View style={styles.container}>
         {/*
-          Content area: reserve space at the bottom so the bottom navigation
-          (positioned absolute) doesn't overlap the scenes. Scenes can scroll
-          internally if their content overflows.
+          Content area: flex: 1 takes remaining space above the footer.
+          The footer sits in normal flow at the bottom — no absolute positioning.
+          This avoids react-native-web's default overflow:hidden clipping.
         */}
-        <View style={[styles.content, { paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 12 }]}>
-          {renderScene({ route: routes[index] })}
-          {/* Dev helper: mount zoom test when on audit tab (only in dev) */}
-          {routes[index].key === 'audit' ? <MapZoomTest /> : null}
+        <View style={styles.content}>
+          <Suspense fallback={<ActivityIndicator size="small" style={styles.loader} />}>
+            {renderScene({ routeKey: ROUTES[index].key })}
+          </Suspense>
         </View>
 
-        {/* Bottom navigation is positioned absolute to remain static on screen */}
-        <View
-          style={[
-            styles.bottomBar,
-            { height: NAV_BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom, zIndex: 100, elevation: 10 },
-          ]}
-          accessibilityRole="tablist"
-          accessibilityLabel="Navegación inferior"
-        >
-          {routes.map((r, i) => (
-            <Pressable
-              key={r.key}
-              style={[styles.tabItem, index === i ? styles.tabItemActive : null]}
-              onPress={() => setIndex(i)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: index === i }}
-              accessibilityLabel={r.title}
-            >
-              <Text style={styles.tabTitle}>{r.title}</Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* Fixed footer — sits in normal flex flow at the bottom */}
+        <BottomNavBar
+          routes={ROUTES}
+          activeIndex={index}
+          onTabPress={setIndex}
+        />
       </View>
 
       <DrawerMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
-        items={routes.map(r => ({ key: r.key, title: r.title, onPress: () => { const idx = routes.findIndex(rr => rr.key === r.key); if (idx >= 0) setIndex(idx); } }))}
+        items={ROUTES.map(r => ({
+          key: r.key,
+          title: r.title,
+          onPress: () => {
+            const idx = ROUTES.findIndex(rr => rr.key === r.key);
+            if (idx >= 0) setIndex(idx);
+          },
+        }))}
       />
-    </AppLayout>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { flex: 1, paddingBottom: 84 },
-  bottomBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 64,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    zIndex: 20,
-    elevation: 8,
-  },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
-  tabItemActive: { backgroundColor: '#eef2ff' },
-  tabTitle: { fontWeight: '600' },
+  content: { flex: 1 },
+  loader: { flex: 1 },
 });

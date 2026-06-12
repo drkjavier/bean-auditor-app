@@ -1,13 +1,17 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Pressable, FlatList, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, FlatList, Modal, ScrollView } from 'react-native';
 import { fetchTags, Tag } from '../../data/tagService';
-import { createAndRegisterAbortController, unregisterAbortController } from '../../infrastructure/api/abortManager';
+import { createAndRegisterAbortController, unregisterAbortController, abortAllControllers } from '../../infrastructure/api/abortManager';
 import MapCanvas from '../components/MapCanvas';
 import { useSettingsStore } from '../../state/settingsStore';
+import { useTheme } from '../themes/ThemeContext';
+import Card from '../components/Card';
+import SectionHeader from '../components/SectionHeader';
 import ColorCombobox from '../components/ColorCombobox';
 import DatePickerInput from '../components/DatePickerInput';
 import TouchableLongPress from '../components/TouchableLongPress';
+import EmptyState from '../components/EmptyState';
+import ErrorBanner from '../components/ErrorBanner';
 import { useAuthStore } from '../../stores';
 
 const FILTER_DEBOUNCE_MS = 350;
@@ -18,6 +22,7 @@ function getAuditStatusLabel(audited: boolean) {
 
 export default function AuditScreen() {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
+  const { colors, typography, spacing, radii } = useTheme();
   const listRef = useRef<FlatList<Tag>>(null);
   const hasLoadedInitially = useRef(false);
   const latestRequestId = useRef(0);
@@ -35,8 +40,7 @@ export default function AuditScreen() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [autoRefreshing, setAutoRefreshing] = useState(false);
-  const insets = useSafeAreaInsets();
-  const NAV_BAR_HEIGHT = require('../themes/layout').NAV_BAR_HEIGHT as number;
+  const showUserLocation = useSettingsStore(state => state.showUserLocation);
 
   const filters = useMemo(
     () => ({
@@ -137,8 +141,7 @@ export default function AuditScreen() {
     }
     // abort in-flight requests started by this screen
     try {
-      const abortManager = require('../../infrastructure/api/abortManager').default;
-      if (abortManager && typeof abortManager.abortAllControllers === 'function') abortManager.abortAllControllers();
+      abortAllControllers();
     } catch (_) {}
   }, []);
 
@@ -172,9 +175,7 @@ export default function AuditScreen() {
     // wrap scroll in a microtask so tests can await it with act
     scrollTimeoutRef.current = setTimeout(() => {
       try {
-        // ensure item is scrolled into view above the bottom navigation
-        // viewOffset ensures the item is not hidden behind the fixed bottom bar
-        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5, viewOffset: insets.bottom + NAV_BAR_HEIGHT });
+        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
       } catch {
         // ignore if list not ready yet
       }
@@ -192,188 +193,209 @@ export default function AuditScreen() {
   }
 
   return (
-    <View style={styles.container} accessibilityLabel="Pantalla Auditoría">
-      <Text style={styles.title}>Auditoría</Text>
-      <Text style={styles.helper}>Mapa OpenStreetMap con marcadores por color.</Text>
-      <Text style={styles.helperSecondary}>
-        {autoRefreshing ? 'Actualizando filtros…' : 'Los filtros se aplican automáticamente. También puedes recargar manualmente.'}
-      </Text>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.surface }]}
+      contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing['2xl'] }}
+      accessibilityLabel="Pantalla Auditoría"
+    >
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <Text style={[styles.title, { color: colors.textPrimary, ...typography.h2 }]}>Auditoría</Text>
 
-      <View style={styles.controls}>
-        <ColorCombobox value={colorFilter} onChange={setColorFilter} placeholder="Filtrar por color" />
+      {/* ── Filtros ────────────────────────────────────────────────────── */}
+      <View id="container-filtros" style={{ marginTop: spacing.lg }}>
+        <SectionHeader title="Filtros" subtitle={autoRefreshing ? 'Actualizando…' : 'Los filtros se aplican automáticamente'} />
+        <Card variant="outlined" accessibilityLabel="Filtros de auditoría">
+          <ColorCombobox value={colorFilter} onChange={setColorFilter} placeholder="Filtrar por color" />
 
-        <View style={styles.row}>
-          <View style={styles.halfField}>
-            <DatePickerInput value={from} onChange={setFrom} label="Desde" mode="from" />
+          <View style={styles.row}>
+            <View style={styles.halfField}>
+              <DatePickerInput value={from} onChange={setFrom} label="Desde" mode="from" />
+            </View>
+            <View style={[styles.halfField, styles.halfFieldOffset]}>
+              <DatePickerInput value={to} onChange={setTo} label="Hasta" mode="to" />
+            </View>
           </View>
-          <View style={[styles.halfField, styles.halfFieldOffset]}>
-            <DatePickerInput value={to} onChange={setTo} label="Hasta" mode="to" />
+
+          <Text style={[styles.filterLabel, { color: colors.textPrimary, ...typography.caption }]}>Estado de auditoría</Text>
+          <View style={[styles.row, styles.filterRow]}>
+            <Pressable style={[styles.filterBtn, { borderColor: colors.border }, auditedFilter === undefined ? [styles.filterActive, { backgroundColor: colors.primaryTonal }] : null]} onPress={() => setAuditedFilter(undefined)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === undefined }} accessibilityLabel="Filtro: Todos">
+              <Text style={{ color: colors.textPrimary, ...typography.caption }}>Todos</Text>
+            </Pressable>
+            <Pressable style={[styles.filterBtn, { borderColor: colors.border }, auditedFilter === true ? [styles.filterActive, { backgroundColor: colors.primaryTonal }] : null]} onPress={() => setAuditedFilter(true)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === true }} accessibilityLabel="Filtro: Auditados">
+              <Text style={{ color: colors.textPrimary, ...typography.caption }}>Auditados</Text>
+            </Pressable>
+            <Pressable style={[styles.filterBtn, { borderColor: colors.border }, auditedFilter === false ? [styles.filterActive, { backgroundColor: colors.primaryTonal }] : null]} onPress={() => setAuditedFilter(false)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === false }} accessibilityLabel="Filtro: Pendientes">
+              <Text style={{ color: colors.textPrimary, ...typography.caption }}>Pendientes</Text>
+            </Pressable>
           </View>
-        </View>
 
-        <Text style={styles.filterLabel}>Auditoría</Text>
-        <View style={[styles.row, styles.filterRow]}>
-          <Pressable style={[styles.filterBtn, auditedFilter === undefined ? styles.filterActive : null]} onPress={() => setAuditedFilter(undefined)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === undefined }}>
-            <Text>Todos</Text>
+          <Text style={[styles.filterSummary, { color: colors.textCaption, ...typography.caption }]} accessibilityLabel="Resumen de filtros activos">
+            {activeFiltersSummary}
+          </Text>
+
+          <ErrorBanner message={dateRangeError} />
+
+          <Pressable onPress={() => load(false, filters, filtersKey)} style={[styles.searchBtn, { backgroundColor: colors.primary, borderRadius: radii.md }, dateRangeError ? styles.searchBtnDisabled : null]} accessibilityRole="button" accessibilityLabel="Recargar datos" disabled={Boolean(dateRangeError)}>
+            <Text style={[styles.searchBtnText, { color: colors.textButton }]}>{loading ? 'Cargando...' : 'Recargar'}</Text>
           </Pressable>
-          <Pressable style={[styles.filterBtn, auditedFilter === true ? styles.filterActive : null]} onPress={() => setAuditedFilter(true)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === true }}>
-            <Text>Auditados</Text>
-          </Pressable>
-          <Pressable style={[styles.filterBtn, auditedFilter === false ? styles.filterActive : null]} onPress={() => setAuditedFilter(false)} accessibilityRole="button" accessibilityState={{ selected: auditedFilter === false }}>
-            <Text>Pendientes</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.filterSummary} accessibilityLabel="Resumen de filtros activos">
-          {activeFiltersSummary}
-        </Text>
-
-        {dateRangeError ? <Text style={styles.errorText}>{dateRangeError}</Text> : null}
-
-        <Pressable onPress={() => load(false, filters, filtersKey)} style={[styles.searchBtn, dateRangeError ? styles.searchBtnDisabled : null]} accessibilityRole="button" disabled={Boolean(dateRangeError)}>
-          <Text style={styles.searchBtnText}>{loading ? 'Cargando...' : 'Recargar'}</Text>
-        </Pressable>
+        </Card>
       </View>
 
+      {/* ── Mapa ───────────────────────────────────────────────────────── */}
+      <View id="container-mapa" style={{ marginTop: spacing.lg }}>
+        <SectionHeader title="Mapa" />
+        <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} showUserLocation={showUserLocation} />
+      </View>
+
+      {/* ── Detalle del tag seleccionado ────────────────────────────────── */}
+      {selectedItem ? (
+        <View id="container-detalle-tag" style={{ marginTop: spacing.lg }}>
+          <SectionHeader title="Detalle del tag" />
+          <Card variant="outlined" accessibilityLabel="Detalle del tag seleccionado">
+            <View style={styles.detailHeader}>
+              <View style={[styles.detailSwatch, { backgroundColor: selectedItem.colorHex }]} />
+              <View style={styles.flexContent}>
+                <Text style={[styles.detailTitle, { color: colors.textPrimary, ...typography.subtitle }]}>
+                  {selectedItem.unique_id}
+                </Text>
+                <Text style={[styles.detailSubtitle, { color: colors.textCaption, ...typography.caption }]}>
+                  Auditoría: {getAuditStatusLabel(selectedItem.audited)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.detailGrid}>
+              <View style={styles.detailCell}>
+                <Text style={[styles.detailLabel, { color: colors.textCaption, ...typography.caption }]}>Color</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary, ...typography.body }]}>{selectedItem.colorHex}</Text>
+              </View>
+              <View style={styles.detailCell}>
+                <Text style={[styles.detailLabel, { color: colors.textCaption, ...typography.caption }]}>Latitud</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary, ...typography.body }]}>{selectedItem.lat.toFixed(4)}</Text>
+              </View>
+              <View style={styles.detailCell}>
+                <Text style={[styles.detailLabel, { color: colors.textCaption, ...typography.caption }]}>Longitud</Text>
+                <Text style={[styles.detailValue, { color: colors.textPrimary, ...typography.body }]}>{selectedItem.lon.toFixed(4)}</Text>
+              </View>
+            </View>
+
+            <Text style={[styles.detailTimestamp, { color: colors.textCaption, ...typography.caption }]}>
+              Actualizado: {new Date(selectedItem.timestamp).toLocaleString()}
+            </Text>
+          </Card>
+        </View>
+      ) : null}
+
+      {/* ── Listado de tags ─────────────────────────────────────────────── */}
+      <View id="container-tags" style={{ marginTop: spacing.lg }}>
+        <SectionHeader title="Tags" subtitle={`Resultados: ${filtered.length}`} />
+        <Card variant="outlined" style={styles.tagListContainer}>
+          <FlatList
+            ref={listRef}
+            data={filtered}
+            style={{ flex: 1 }}
+            nestedScrollEnabled
+            keyExtractor={item => item.unique_id}
+            getItemLayout={(_, index) => ({ length: 49, offset: 49 * index, index })}
+            onScrollToIndexFailed={({ index }) => {
+               const offset = Math.max(0, index * 49);
+               listRef.current?.scrollToOffset({ offset, animated: true });
+            }}
+            ListEmptyComponent={
+              <EmptyState
+                icon="clipboard-text-search-outline"
+                title="Sin resultados"
+                description="Ajusta los filtros o recarga para ver los tags disponibles."
+                actionLabel="Recargar"
+                onAction={() => load(false, filters, filtersKey)}
+              />
+            }
+            renderItem={({ item }) => (
+              <TouchableLongPress
+                delay={650}
+                style={[styles.item, { borderBottomColor: colors.border }, selectedId === item.unique_id ? [styles.itemSelected, { backgroundColor: colors.primaryTonal }] : null]}
+                onPress={() => setSelectedId(item.unique_id)}
+                onLongPress={() => {
+                  if (__DEV__) console.debug(`Long press detected on tag ${item.unique_id}`);
+                  setMarkTargetId(item.unique_id);
+                  setIsMarkModalOpen(true);
+                }}
+              >
+                <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
+                <View style={styles.flexContent}>
+                  <Text style={[styles.itemTitle, { color: colors.textPrimary, ...typography.body }]}>{item.unique_id}</Text>
+                  <Text style={[styles.itemMeta, { color: colors.textCaption, ...typography.caption }]}>
+                    {getAuditStatusLabel(item.audited)}
+                  </Text>
+                </View>
+              </TouchableLongPress>
+            )}
+          />
+        </Card>
+      </View>
+
+      {/* ── Modal de auditoría ──────────────────────────────────────────── */}
       <Modal visible={isMarkModalOpen} transparent animationType="fade" onRequestClose={() => setIsMarkModalOpen(false)}>
         <View style={modalStyles.backdrop}>
-          <View style={modalStyles.container} accessibilityRole="dialog" accessibilityLabel="Marcar modal">
-            <Text style={modalStyles.title}>Marcar</Text>
+          <View style={[modalStyles.container, { borderRadius: radii.lg, backgroundColor: colors.card }]} accessibilityRole="dialog" accessibilityLabel="Marcar modal">
+            <Text style={[modalStyles.title, { color: colors.textPrimary, ...typography.subtitle }]}>Marcar</Text>
             <View style={modalStyles.buttonsRow}>
               <Pressable
-                style={[modalStyles.btn, { backgroundColor: '#10b981' }]}
-                  onPress={() => {
-                    if (!markTargetId) return;
-                    // DEV-only log
-                    if (__DEV__) console.debug(`Mark action: Auditar on ${markTargetId}`);
-                    setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: true } : t)));
-                    setIsMarkModalOpen(false);
-                  }}
+                style={[modalStyles.btn, { backgroundColor: colors.success, borderRadius: radii.md }]}
+                onPress={() => {
+                  if (!markTargetId) return;
+                  if (__DEV__) console.debug(`Mark action: Auditar on ${markTargetId}`);
+                  setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: true } : t)));
+                  setIsMarkModalOpen(false);
+                }}
                 accessibilityRole="button"
+                accessibilityLabel="Marcar como auditado"
               >
-                <Text style={modalStyles.btnText}>Auditar</Text>
+                <Text style={[modalStyles.btnText, { color: colors.textButton }]}>Auditar</Text>
               </Pressable>
 
               <Pressable
-                style={[modalStyles.btn, { backgroundColor: '#ef4444' }]}
-                  onPress={() => {
-                    if (!markTargetId) return;
-                    if (__DEV__) console.debug(`Mark action: Sin auditar on ${markTargetId}`);
-                    setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: false } : t)));
-                    setIsMarkModalOpen(false);
-                  }}
+                style={[modalStyles.btn, { backgroundColor: colors.error, borderRadius: radii.md }]}
+                onPress={() => {
+                  if (!markTargetId) return;
+                  if (__DEV__) console.debug(`Mark action: Sin auditar on ${markTargetId}`);
+                  setItems(prev => prev.map(t => (t.unique_id === markTargetId ? { ...t, audited: false } : t)));
+                  setIsMarkModalOpen(false);
+                }}
                 accessibilityRole="button"
+                accessibilityLabel="Marcar como pendiente"
               >
-                <Text style={modalStyles.btnText}>Sin auditar</Text>
+                <Text style={[modalStyles.btnText, { color: colors.textButton }]}>Sin auditar</Text>
               </Pressable>
             </View>
 
-            <Pressable style={modalStyles.cancel} onPress={() => setIsMarkModalOpen(false)} accessibilityRole="button">
-              <Text style={modalStyles.cancelText}>Cancelar</Text>
+            <Pressable style={modalStyles.cancel} onPress={() => setIsMarkModalOpen(false)} accessibilityRole="button" accessibilityLabel="Cancelar">
+              <Text style={[modalStyles.cancelText, { color: colors.textPrimary }]}>Cancelar</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
-
-      {/* subscribe to settings store so UI updates when user toggles visibility */}
-      <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={item => setSelectedId(item.unique_id)} showUserLocation={useSettingsStore(state => state.showUserLocation)} />
-
-      {selectedItem ? (
-        <View style={styles.detailCard} accessibilityLabel="Detalle del tag seleccionado">
-          <View style={styles.detailHeader}>
-            <View style={[styles.detailSwatch, { backgroundColor: selectedItem.colorHex }]} />
-            <View style={styles.flexContent}>
-              <Text style={styles.detailTitle}>{selectedItem.unique_id}</Text>
-              <Text style={styles.detailSubtitle}>Auditoría: {getAuditStatusLabel(selectedItem.audited)}</Text>
-            </View>
-          </View>
-
-          <View style={styles.detailGrid}>
-            <View style={styles.detailCell}>
-              <Text style={styles.detailLabel}>Color</Text>
-              <Text style={styles.detailValue}>{selectedItem.colorHex}</Text>
-            </View>
-            <View style={styles.detailCell}>
-              <Text style={styles.detailLabel}>Latitud</Text>
-              <Text style={styles.detailValue}>{selectedItem.lat.toFixed(4)}</Text>
-            </View>
-            <View style={styles.detailCell}>
-              <Text style={styles.detailLabel}>Longitud</Text>
-              <Text style={styles.detailValue}>{selectedItem.lon.toFixed(4)}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.detailTimestamp}>
-            Actualizado: {new Date(selectedItem.timestamp).toLocaleString()}
-          </Text>
-        </View>
-      ) : null}
-
-      <View style={[styles.listContainer, { paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 12 }]}> 
-        <Text style={styles.subtitle}>Resultados: {filtered.length}</Text>
-           <FlatList
-             ref={listRef}
-             data={filtered}
-               contentContainerStyle={{ paddingBottom: insets.bottom + NAV_BAR_HEIGHT + 12 }}
-             keyExtractor={item => item.unique_id}
-             getItemLayout={(_, index) => ({ length: 49, offset: 49 * index, index })}
-             onScrollToIndexFailed={({ index }) => {
-                const offset = Math.max(0, index * 49 - (insets.bottom + NAV_BAR_HEIGHT));
-                listRef.current?.scrollToOffset({ offset, animated: true });
-             }}
-           renderItem={({ item }) => (
-             <TouchableLongPress
-               delay={650}
-               style={[styles.item, selectedId === item.unique_id ? styles.itemSelected : null]}
-               onPress={() => setSelectedId(item.unique_id)}
-                 onLongPress={() => {
-                   if (__DEV__) console.debug(`Long press detected on tag ${item.unique_id}`);
-                   setMarkTargetId(item.unique_id);
-                   setIsMarkModalOpen(true);
-                 }}
-             >
-               <View style={[styles.dot, { backgroundColor: item.colorHex }]} />
-               <View style={styles.flexContent}>
-                 <Text style={styles.itemTitle}>{item.unique_id}</Text>
-                 <Text style={styles.itemMeta}>{getAuditStatusLabel(item.audited)}</Text>
-               </View>
-             </TouchableLongPress>
-           )}
-            />
-      </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12 },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  helper: { color: '#475569', marginBottom: 8 },
-  helperSecondary: { color: '#64748b', marginBottom: 12, fontSize: 12 },
-  controls: { marginBottom: 8, width: '100%', minWidth: 0 },
-  row: { flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start', flexWrap: 'wrap' },
+  container: { flex: 1 },
+  title: {},
+  row: { flexDirection: 'row', marginTop: 12, alignItems: 'flex-start', flexWrap: 'wrap' },
   filterRow: { flexWrap: 'wrap' },
-  // Reduce minWidth so fields can fit side-by-side on narrower viewports.
   halfField: { flex: 1, minWidth: 140 },
   halfFieldOffset: { marginLeft: 8, minWidth: 140 },
   flexContent: { flex: 1 },
-  filterLabel: { color: '#0f172a', fontSize: 14, fontWeight: '600', marginBottom: 6 },
-  filterBtn: { padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', marginRight: 8 },
-  filterActive: { backgroundColor: '#e6f0ff' },
-  searchBtn: { backgroundColor: '#2563eb', padding: 10, borderRadius: 8, alignItems: 'center' },
+  filterLabel: { fontWeight: '600', marginTop: 8 },
+  filterBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, marginRight: 8 },
+  filterActive: {},
+  searchBtn: { paddingVertical: 12, alignItems: 'center', marginTop: 12 },
   searchBtnDisabled: { opacity: 0.6 },
-  searchBtnText: { color: '#fff', fontWeight: '700' },
-  filterSummary: { color: '#475569', fontSize: 12, marginBottom: 8 },
-  errorText: { color: '#b91c1c', fontSize: 12, marginBottom: 8 },
-  map: { marginTop: 4 },
-  detailCard: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
+  searchBtnText: { fontWeight: '700' },
+  filterSummary: { marginTop: 8 },
+  map: { height: 300, borderRadius: 12 },
+  tagListContainer: { height: 250 },
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -385,13 +407,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
   },
-  detailTitle: {
-    fontWeight: '700',
-    fontSize: 16,
-    color: '#0f172a',
-  },
+  detailTitle: {},
   detailSubtitle: {
-    color: '#64748b',
     marginTop: 2,
   },
   detailGrid: {
@@ -405,35 +422,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   detailLabel: {
-    fontSize: 12,
-    color: '#64748b',
     marginBottom: 2,
   },
   detailValue: {
-    color: '#0f172a',
     fontWeight: '600',
   },
   detailTimestamp: {
     marginTop: 4,
-    color: '#475569',
-    fontSize: 12,
   },
-  listContainer: { height: 220, marginTop: 8 },
-  subtitle: { marginBottom: 8, color: '#475569' },
-  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  itemSelected: { backgroundColor: '#eff6ff', borderRadius: 8, paddingHorizontal: 8 },
+  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1 },
+  itemSelected: { borderRadius: 8, paddingHorizontal: 8 },
   dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  itemTitle: { fontWeight: '700' },
-  itemMeta: { color: '#6b7280', fontSize: 12 },
+  itemTitle: {},
+  itemMeta: { marginTop: 2 },
 });
 
 const modalStyles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  container: { width: 300, padding: 16, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center' },
-  title: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
+  container: { width: 300, padding: 16, alignItems: 'center' },
+  title: { marginBottom: 12 },
   buttonsRow: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', marginBottom: 12 },
   btn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginHorizontal: 6 },
-  btnText: { color: '#fff', fontWeight: '700' },
+  btnText: { fontWeight: '700' },
   cancel: { paddingVertical: 8 },
-  cancelText: { color: '#334155' },
+  cancelText: {},
 });

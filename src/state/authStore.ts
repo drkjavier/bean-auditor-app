@@ -27,7 +27,7 @@ async function ensureAuthRepo(): Promise<void> {
     return;
   } catch (e) {
     // If tests running, provide a minimal in-memory repo to avoid crashes
-    if (process.env.NODE_ENV === 'test') {
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const testRepo: any = {
         signIn: async (username: string, password: string) => {
@@ -142,21 +142,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         set({ isLoggedIn: false, username: '' });
       }
-      } catch (err: any) {
-        // swallow but set a generic error
-        set({ isLoggedIn: false, username: '', error: 'No fue posible restaurar sesión' });
-        if (AUTH_DEBUG) {
-          // eslint-disable-next-line no-console
-          console.warn('[auth] restoreSession: error', sanitizeError(err));
-        }
-      } finally {
-        set({ isRestoring: false });
-        if (AUTH_DEBUG) {
-          // eslint-disable-next-line no-console
-          console.debug('[auth] restoreSession: finished');
-        }
+    } catch (err: any) {
+      // swallow but set a generic error
+      set({ isLoggedIn: false, username: '', error: 'No fue posible restaurar sesión' });
+      if (AUTH_DEBUG) {
+        // eslint-disable-next-line no-console
+        console.warn('[auth] restoreSession: error', sanitizeError(err));
       }
-    },
+    } finally {
+      set({ isRestoring: false });
+      if (AUTH_DEBUG) {
+        // eslint-disable-next-line no-console
+        console.debug('[auth] restoreSession: finished');
+      }
+    }
+  },
   logout: () => {
     // Clear client state synchronously so callers/tests observe immediate effect
     set({ isLoggedIn: false, username: '' });

@@ -12,7 +12,8 @@ export const AuthRepositoryImpl: AuthRepository = {
     const attemptId = getAttemptId();
     if (AUTH_DEBUG) console.debug('[auth][repo:web] signIn:start', { attemptId, username: maskUsername(username) });
     // DEV-only stubbed authentication
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    const isDev = typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production';
+    if (isDev) {
       if (username === 'admin' && password === 'admin') {
         const now = Date.now();
         const session: AuthSession = {

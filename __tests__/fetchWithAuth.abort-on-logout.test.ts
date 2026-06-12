@@ -1,3 +1,11 @@
+// Mock config to avoid import.meta.env (Vite-only, unsupported in Jest/CJS)
+jest.mock('../src/infrastructure/api/config', () => ({
+  AUTH_BASE_URL: 'http://localhost:3000',
+  AUTH_USE_API: false,
+  AUTH_USE_COOKIES: true,
+  TOKEN_REFRESH_WINDOW_MS: 30000,
+}));
+
 import { fetchWithAuth } from '../src/infrastructure/api/fetchWithAuth';
 import * as tokenStorage from '../src/infrastructure/security/tokenStorage.native';
 import * as authApi from '../src/infrastructure/api/authApi';

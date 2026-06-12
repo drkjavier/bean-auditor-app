@@ -1,25 +1,31 @@
 import React from 'react';
-import {StatusBar, StyleSheet, View, Platform} from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar, StyleSheet, View, Platform } from 'react-native';
 import AppNavigator from './src/presentation/navigation/AppNavigator';
+import { ThemeProvider, useTheme } from './src/presentation/themes/ThemeContext';
+
+function AppShell() {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.root, { backgroundColor: colors.surface }, Platform.OS === 'web' ? styles.rootWeb : undefined]}>
+      <StatusBar barStyle={colors.textPrimary === '#0F1724' ? 'dark-content' : 'light-content'} />
+      <AppNavigator />
+    </View>
+  );
+}
 
 export default function App() {
   return (
-    <View style={[styles.root, Platform.OS === 'web' ? styles.rootWeb : undefined]}>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaProvider>
-        <AppNavigator />
-      </SafeAreaProvider>
-    </View>
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#f5f7fb',
   },
   rootWeb: {
-    minHeight: '100vh',
+    height: '100%',
   },
 });
