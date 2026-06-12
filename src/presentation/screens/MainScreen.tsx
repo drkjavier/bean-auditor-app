@@ -11,7 +11,6 @@ import { useAuthStore } from '../../stores';
 // entire module evaluation, preventing constants like ROUTES from being assigned.
 // Using React.lazy isolates failures inside a Suspense boundary instead.
 const AuditScreen = lazy(() => import('./AuditScreen'));
-const MapZoomTest = lazy(() => import('../components/MapZoomTest'));
 
 // MainScreen: contenedor con BottomNavigation reutilizable (BottomNavBar)
 // - El footer (BottomNavBar) queda estático en todas las pantallas.
@@ -72,12 +71,6 @@ export default function MainScreen() {
           <Suspense fallback={<ActivityIndicator size="small" style={styles.loader} />}>
             {renderScene({ routeKey: ROUTES[index].key })}
           </Suspense>
-          {/* Dev helper: mount zoom test when on audit tab (only in dev) */}
-          {ROUTES[index].key === 'audit' ? (
-            <Suspense fallback={<ActivityIndicator size="small" />}>
-              <MapZoomTest />
-            </Suspense>
-          ) : null}
         </View>
 
         {/* Fixed footer — sits in normal flex flow at the bottom */}
