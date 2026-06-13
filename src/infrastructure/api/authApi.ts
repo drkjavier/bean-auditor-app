@@ -24,7 +24,7 @@ async function fetchJson(input: string, init?: RequestInit) {
   return res.json();
 }
 
-export async function refreshToken(refreshToken: string, init?: RequestInit): Promise<RefreshResponse> {
+export async function refreshToken(token: string, init?: RequestInit): Promise<RefreshResponse> {
   if (!AUTH_USE_API) throw new Error('Auth API disabled');
   const url = `${AUTH_BASE_URL}/auth/refresh`;
   return fetchJson(
@@ -32,7 +32,7 @@ export async function refreshToken(refreshToken: string, init?: RequestInit): Pr
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      body: JSON.stringify({ refresh_token: token }),
       ...(init || {}),
     }
   ) as Promise<RefreshResponse>;
@@ -57,7 +57,7 @@ export async function getSessionFromCookie(init?: RequestInit): Promise<{ userna
     const res = await fetch(url, { method: 'GET', credentials: 'include', ...(init || {}) });
     if (!res.ok) return null;
     return (await res.json()) as any;
-  } catch (err) {
+  } catch {
     // network or other issue - return null to indicate no session
     return null;
   }

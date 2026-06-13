@@ -37,7 +37,7 @@ export default function SettingsScreen() {
   const handleToggleLocation = () => {
     const next = !showUserLocation;
     setShowUserLocation(next);
-    try { logEvent('settings_toggle_showUserLocation', { enabled: next }); } catch (_) { /* noop */ }
+    try { logEvent('settings_toggle_showUserLocation', { enabled: next }); } catch { /* noop */ }
   };
 
   return (

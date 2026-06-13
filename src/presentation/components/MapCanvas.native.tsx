@@ -38,8 +38,10 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
     try {
       const getLast = rnMapsModule.__getLastProps || rnMapsModule.default?.__getLastProps;
       if (typeof getLast === 'function') getLast();
-    } catch (_) {}
-  } catch (e) {
+    } catch {
+      // noop — best-effort mock introspection
+    }
+  } catch {
     rnMapsModule = null;
   }
 
@@ -53,7 +55,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [confirmedPosition, setConfirmedPosition] = useState<{ latitude: number; longitude: number } | null>(null);
   // track last-known user location reported by the native map (if enabled)
-  const [lastKnownUserPosition, setLastKnownUserPosition] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [_lastKnownUserPosition, setLastKnownUserPosition] = useState<{ latitude: number; longitude: number } | null>(null);
   // do not persist user coordinates by default to minimize exposure; only center the map
   // if needed in future, introduce a prop to show a pin
 
@@ -97,7 +99,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
       }
 
       return false;
-    } catch (e) {
+    } catch {
       // don't leak detailed errors
       return false;
     }
@@ -119,7 +121,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
           if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
             try {
               mapRef.current.animateToRegion({ latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 } as Region);
-            } catch (e) {
+            } catch {
               // swallow animation errors in tests/runtime to avoid crash
             }
             return;
@@ -134,7 +136,7 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
               getAnimate()({ latitude, longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 });
               return;
             }
-          } catch (_) {
+          } catch {
             // ignore if module not present or fallback not available
           }
 
@@ -158,7 +160,9 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
         setAccuracy(p.accuracy ?? null);
         setReceiverStatus({ connected: (locService as any).getStatus().receiverConnected, rtkState: (locService as any).getStatus().rtkState });
       });
-    } catch (_) {}
+    } catch {
+      // noop — best-effort mock introspection
+    }
 
     return () => { if (unsub) unsub(); };
   }, [locService]);
@@ -186,16 +190,18 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
         // setPadding(left, top, right, bottom) for react-native-maps
         mapRef.current.setPadding(0, 0, 0, padBottom);
       }
-    } catch (_) {}
+    } catch {
+      // noop — best-effort mock introspection
+    }
   }, [insets]);
 
   async function connectMockReceiver() {
     try {
       await (locService as any).connectExternalReceiver({ transport: 'mock', id: 'sim-01' });
       setReceiverStatus({ connected: true, rtkState: (locService as any).getStatus().rtkState });
-    } catch (e) {
-      // ignore in stub
-    }
+      } catch {
+        // ignore in stub
+      }
   }
 
   async function confirmPosition() {
@@ -205,7 +211,9 @@ export default function MapCanvasNative({ items, style, selectedId, onSelect, lo
         locService.getCurrentPosition((p: any) => res({ latitude: p.coords.latitude, longitude: p.coords.longitude }), () => rej(new Error('no-pos')), { enableHighAccuracy: true });
       });
       setConfirmedPosition(pos);
-    } catch (_) {}
+    } catch {
+      // noop — best-effort mock introspection
+    }
   }
 
   function handleUserLocationChange(e: any) {

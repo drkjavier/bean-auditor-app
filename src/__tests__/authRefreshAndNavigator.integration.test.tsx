@@ -8,8 +8,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import AppNavigator from '../presentation/navigation/AppNavigator';
 import * as tokenStorageNative from '../infrastructure/security/tokenStorage.native';
-import { AUTH_USE_API } from '../infrastructure/api/config';
-import { AuthSession } from '../../domain/auth/AuthSession';
+
 
 jest.mock('../infrastructure/api/authApi', () => ({
   introspectToken: jest.fn(),

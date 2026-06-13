@@ -38,7 +38,7 @@ export function maskUsername(s?: string | null): string | null {
     const str = String(s);
     if (str.length <= 2) return '*'.repeat(str.length);
     return `${str[0]}${'*'.repeat(Math.max(1, str.length - 2))}${str.slice(-1)}`;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

@@ -114,7 +114,9 @@ export default function AuditScreen() {
       }
       throw err;
     } finally {
-      try { unregisterAbortController(ctrl); } catch (_) {}
+      try { unregisterAbortController(ctrl);     } catch {
+      // noop — best-effort abort
+    }
       if (isMounted.current && requestId === latestRequestId.current) {
         setLoading(false);
         setAutoRefreshing(false);
@@ -142,7 +144,9 @@ export default function AuditScreen() {
     // abort in-flight requests started by this screen
     try {
       abortAllControllers();
-    } catch (_) {}
+    } catch {
+      // noop — best-effort unregister
+    }
   }, []);
 
   useEffect(() => {

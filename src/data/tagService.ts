@@ -27,7 +27,7 @@ export async function fetchTags(filter?: TagFilter, options?: FetchTagsOptions):
         if (timeoutId) clearTimeout(timeoutId as any);
         try {
           reject(new DOMException('Aborted', 'AbortError'));
-        } catch (_) {
+        } catch {
           // node env may not have DOMException
           reject(new Error('Aborted'));
         }
@@ -40,7 +40,7 @@ export async function fetchTags(filter?: TagFilter, options?: FetchTagsOptions):
           // attach to onabort if available
           (options.signal as any).onabort = onAbort;
         }
-      } catch (_) {
+      } catch {
         // ignore
       }
     }

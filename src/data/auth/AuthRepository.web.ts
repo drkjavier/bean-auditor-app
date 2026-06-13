@@ -26,7 +26,7 @@ export const AuthRepositoryImpl: AuthRepository = {
         // Store username in localStorage (non-sensitive) for web dev
         try {
           if (typeof localStorage !== 'undefined') localStorage.setItem(USER_KEY, username);
-        } catch (err) {
+        } catch {
           // ignore in test env
         }
 
@@ -40,11 +40,11 @@ export const AuthRepositoryImpl: AuthRepository = {
             try {
               // Notify backend to issue session cookie (endpoint may be a no-op in dev)
               void authApi.refreshToken(session.refreshToken || session.accessToken).catch(() => {});
-            } catch (_) {
+            } catch {
               // ignore
             }
           }
-        } catch (_) {
+        } catch {
           await saveToken(session.accessToken);
         }
         if (AUTH_DEBUG) console.info('[auth][repo:web] signIn:stored', { attemptId, username: maskUsername(username) });
@@ -83,7 +83,6 @@ export const AuthRepositoryImpl: AuthRepository = {
         expiresAt: Date.now() + 1000 * 60 * 30,
       } as AuthSession;
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.warn('restoreSession (web) failed', err);
       return null;
     }
@@ -93,7 +92,6 @@ export const AuthRepositoryImpl: AuthRepository = {
       if (typeof localStorage !== 'undefined') localStorage.removeItem(USER_KEY);
       await clearToken();
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.warn('clearSession (web) failed', err);
     }
   },

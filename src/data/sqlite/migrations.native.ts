@@ -22,7 +22,6 @@ export async function runMigrations(): Promise<void> {
   } catch (err) {
     // Surface the error but keep it explicit for callers to decide recovery
     // Do not silently swallow migration errors.
-    // eslint-disable-next-line no-console
     console.error('runMigrations failed', err);
     throw err;
   }

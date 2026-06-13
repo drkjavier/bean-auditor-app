@@ -28,7 +28,9 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
           document.removeEventListener('contextmenu', contextHandlerRef.current as any);
           contextHandlerRef.current = null;
         }
-      } catch (_) {}
+      } catch {
+        // noop — cleanup
+      }
     };
   }, []);
 
@@ -40,11 +42,13 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
       try {
         if (typeof document !== 'undefined') {
           contextHandlerRef.current = (ev: Event) => {
-            try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+            try { ev.preventDefault(); ev.stopPropagation(); } catch {}
           };
           document.addEventListener('contextmenu', contextHandlerRef.current as any, { passive: false });
         }
-      } catch (_) {}
+      } catch {
+        // noop — cleanup
+      }
 
       timerRef.current = setTimeout(() => {
         handledRef.current = true;
@@ -66,7 +70,9 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
         document.removeEventListener('contextmenu', contextHandlerRef.current as any);
         contextHandlerRef.current = null;
       }
-    } catch (_) {}
+    } catch {
+      // noop
+    }
     onPressOut?.(e);
   };
 
@@ -83,7 +89,9 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
       } else {
         lastTapRef.current = now;
       }
-    } catch (_) {}
+    } catch {
+      // noop
+    }
 
     onPress?.(e);
   };

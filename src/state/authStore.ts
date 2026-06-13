@@ -13,14 +13,16 @@ async function ensureAuthRepo(): Promise<void> {
   // Try native implementation first, then fallback to web. Use dynamic import
   // so bundlers can split chunks and avoid top-level require() in the browser.
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await import('../data/auth/AuthRepository.native');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     authRepo = (mod as any).AuthRepositoryImpl;
     return;
-  } catch (_) {
+  } catch {
     // ignore
   }
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await import('../data/auth/AuthRepository.web');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     authRepo = (mod as any).AuthRepositoryImpl;
@@ -174,7 +176,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // best-effort abort
         abortManager.abortAllControllers();
       }
-    } catch (_) {}
+    } catch {
+      // noop — best-effort abort
+    }
   },
 }));
 

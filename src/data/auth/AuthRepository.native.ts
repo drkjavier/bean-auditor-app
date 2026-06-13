@@ -1,6 +1,6 @@
 import { AuthRepository } from '../../domain/auth/AuthRepository';
 import { AuthSession } from '../../domain/auth/AuthSession';
-import { saveToken, getToken, clearToken, getSession } from '../../infrastructure/security/tokenStorage.native';
+import { saveToken, clearToken, getSession } from '../../infrastructure/security/tokenStorage.native';
 import { refreshToken, introspectToken, shouldAttemptRefresh } from '../../infrastructure/api/authApi';
 import { createAndRegisterAbortController, unregisterAbortController } from '../../infrastructure/api/abortManager';
 import { execute, queryRows } from '../sqlite/db.native';
@@ -74,7 +74,6 @@ export const AuthRepositoryImpl: AuthRepository = {
                   expiresAt: resp.expires_at || Date.now() + 1000 * 60 * 60,
                 };
                 await saveToken(newSession);
-                // use refreshed sessionObj
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 Object.assign(sessionObj, newSession as any);
               }
@@ -91,10 +90,9 @@ export const AuthRepositoryImpl: AuthRepository = {
               try { unregisterAbortController(ctrl); } catch (_) {}
             }
         }
-      } catch (insErr) {
-        // ignore introspect errors and return null to force login
-        // eslint-disable-next-line no-console
-        console.warn('introspect/refresh failed during restoreSession', insErr);
+    } catch (insErr) {
+      // ignore introspect errors and return null to force login
+      console.warn('introspect/refresh failed during restoreSession', insErr);
         return null;
       }
 
@@ -106,7 +104,6 @@ export const AuthRepositoryImpl: AuthRepository = {
       };
       return session;
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.warn('restoreSession (native) failed', err);
       return null;
     }
@@ -117,7 +114,6 @@ export const AuthRepositoryImpl: AuthRepository = {
       execute(`DELETE FROM ${TABLE} WHERE id = 1;`);
       await clearToken();
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.warn('clearSession (native) failed', err);
     }
   },

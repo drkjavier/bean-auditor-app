@@ -19,8 +19,8 @@ export function logEvent(eventName: string, payload?: Record<string, any>) {
           // truncate long strings
           if (str.length > 256) str = str.slice(0, 256) + '...';
           safePayload[k] = str;
-        } catch (_) {
-          try { safePayload[k] = String(payload[k]).slice(0, 256); } catch (__){ /* ignore */ }
+        } catch {
+          try { safePayload[k] = String(payload[k]).slice(0, 256); } catch { /* ignore */ }
         }
       });
     }
@@ -32,7 +32,7 @@ export function logEvent(eventName: string, payload?: Record<string, any>) {
     // production: this is a no-op placeholder. Integrate actual backend with
     // care: do not send PII, apply sampling and rate limits.
     return true;
-  } catch (_) {
+  } catch {
     return false;
   }
 }

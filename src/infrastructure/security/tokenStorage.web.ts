@@ -58,8 +58,8 @@ export async function clearToken(): Promise<void> {
     if (IS_PROD && AUTH_USE_COOKIES) return;
     if (hasSessionStorage) (globalThis as any).sessionStorage.removeItem(KEY);
     __inMemoryToken = null;
-    } catch (err) {
+    } catch {
     // eslint-disable-next-line no-console
-    console.warn('clearToken (web) failed', err);
+    console.warn('clearToken (web) failed');
   }
 }
