@@ -1,0 +1,157 @@
+---
+name: spec-driven-development
+description: Sistema de desarrollo basado en especificaciones. Descompone specs maestras en sub-specs atómicas, gestiona su ciclo de vida (pending → in_progress → completed) y mantiene un reporte de progreso sincronizado. Trigger: Cuando el usuario presente una spec o solicite descomponer una funcionalidad en subtareas de implementación.
+license: MIT
+compatibility: opencode
+---
+
+# Spec-Driven Development
+
+## Propósito
+Sistema de desarrollo que parte de especificaciones (specs) para guiar la implementación de código. Cada spec se descompone en sub-specs atómicas, que se implementan de forma iterativa con validación del usuario entre cada paso.
+
+## Cuándo usarlo
+- Cuando el usuario presente una spec de funcionalidad, API o UI/UX
+- Cuando se necesite descomponer un problema complejo en subtareas implementables
+- Cuando se requiera trazabilidad completa entre lo solicitado y lo implementado
+- Cuando se necesite mantener un historial de decisiones de diseño
+
+## Alcance
+- **Cubre**: Creación, descomposición, implementación y seguimiento de specs
+- **No cubre**: Configuración de entorno, CI/CD, o tareas fuera del scope del proyecto
+
+## Estructura de archivos
+
+```
+specs/
+├── _templates/           # Plantillas reutilizables
+│   ├── feature.spec.md   # Para funcionalidades
+│   ├── api.spec.md       # Para contratos de API
+│   └── ui-ux.spec.md     # Para pantallas/componentes
+├── features/             # Specs de funcionalidades
+├── api/                  # Specs de API
+├── ui/                   # Specs de UI/UX
+└── PROGRESS.md           # Reporte maestro de progreso
+```
+
+## Flujo principal
+
+### Paso 1: Recibir spec del usuario
+```
+1. Leer la spec presentada (puede ser texto libre o archivo .spec.md)
+2. Validar que tenga información suficiente para descomponer
+3. Si hay ambigüedades → usar herramienta `question` para aclarar
+4. Clasificar el tipo: feature | api | ui-ux
+```
+
+### Paso 2: Descomponer en sub-specs
+```
+1. Identificar las partes atómicas de la spec
+2. Para cada parte, crear una sub-spec usando la plantilla correspondiente
+3. Asignar IDs secuenciales (FEAT-001a, FEAT-001b, etc.)
+4. Definir dependencias entre sub-specs
+5. Presentar la descomposición al usuario para validación
+```
+
+**Formato de presentación al usuario:**
+```
+He descomponido la spec [ID] en las siguientes sub-specs:
+
+| # | ID | Nombre | Tipo | Capa | Dependencias |
+|---|-----|--------|------|------|--------------|
+| T1 | FEAT-001a | Login Screen | ui-ux | presentation | — |
+| T2 | FEAT-001b | Auth Store | feature | state | — |
+| T3 | FEAT-001c | Auth API | api | data | T2 |
+| T4 | FEAT-001d | Auth Integration | feature | domain | T1,T2,T3 |
+
+¿Validas este orden? ¿O prefieres ajustar alguna sub-spec?
+```
+
+### Paso 3: Implementar sub-specs iterativamente
+```
+1. Tomar la primera sub-spec sin dependencias pendientes
+2. Leer su contenido completo
+3. Implementar el código correspondiente
+4. Actualizar su frontmatter: status → in_progress
+5. Al completar: status → completed
+6. Actualizar PROGRESS.md
+7. Preguntar al usuario: "Sub-spec [ID] completada. ¿Continúo con [siguiente]?"
+8. Repetir hasta completar todas
+```
+
+### Paso 4: Mantener PROGRESS.md sincronizado
+```
+Al cada cambio de estado:
+1. Actualizar tabla resumen (totales, % avance)
+2. Actualizar tabla del tipo de spec correspondiente
+3. Agregar entrada en historial de actividad
+4. Recalcular grafo de dependencias si cambió
+```
+
+## Reglas de descomposición
+
+### Criterios para sub-specs atómicas
+- **Una responsabilidad**: Cada sub-spec describe UNA cosa
+- **Un paso lógico**: Se puede implementar en una sesión de trabajo
+- **Independiente posible**: Minimiza dependencias cruzadas
+- **Tamaño consistente**: Ni muy grande (una feature entera) ni muy pequeña (un solo import)
+
+### Orden de implementación por capa
+```
+1. Modelos de datos (domain/models)
+2. Repositorios (data/repositories)
+3. Servicios (domain/services)
+4. Estado (state/stores)
+5. UI Components (presentation/components)
+6. Pantallas (presentation/screens)
+7. Navegación (presentation/navigation)
+8. Integración y tests
+```
+
+### Dependencias entre capas
+```
+presentation → state → domain → data → infrastructure
+     ↓            ↓        ↓        ↓
+   (consume)   (consume) (consume) (depende de)
+```
+
+## Formato de frontmatter
+
+Todos los archivos .spec.md deben tener este frontmatter mínimo:
+
+```yaml
+---
+id: [TYPE]-XXX          # ID único: FEAT-001, API-001, UI-001
+title: [Título]         # Nombre descriptivo
+type: feature|api|ui-ux # Tipo de spec
+status: pending|in_progress|completed|blocked|cancelled
+parent: null|SPEC-ID    # ID de spec padre (si es sub-spec)
+children: []            # IDs de sub-specs generadas
+layer: presentation|domain|data|infrastructure|state
+priority: high|medium|low
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+```
+
+## Integración con otros agentes
+
+### Para UI/UX specs
+- Usar `frontend-ui-agent` para validar diseño visual
+- Usar `frontend-ux-agent` para validar flujos y microcopy
+- Usar `frontend-accessibility-agent` para validar WCAG
+
+### Para API specs
+- Usar `frontend-security-agent` para validar autenticación
+- Usar `frontend-state-agent` para integrar con Zustand
+
+### Para Feature specs
+- Usar `frontend-architecture-agent` para validar separación de capas
+- Usar `frontend-testing-agent` para generar tests
+
+## Restricciones
+- No implementar código sin que la spec esté en estado `completed` o `in_progress`
+- No saltarse el orden de dependencias definido en la descomposición
+- No marcar como `completed` sin que el usuario valide
+- No modificar PROGRESS.md manualmente (solo el agente lo actualiza)
+- Respetar la arquitectura de capas del proyecto en toda implementación
