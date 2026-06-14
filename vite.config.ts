@@ -39,6 +39,10 @@ export default defineConfig({
         find: 'react-native-nfc-manager',
         replacement: path.resolve(__dirname, 'src/web-shims/react-native-nfc-manager.js'),
       },
+      {
+        find: 'react-native-vector-icons/MaterialCommunityIcons',
+        replacement: path.resolve(__dirname, 'src/web-shims/react-native-vector-icons/MaterialCommunityIcons.js'),
+      },
     ],
     extensions: ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', '.tsx', '.ts', '.jsx', '.js'],
   },
