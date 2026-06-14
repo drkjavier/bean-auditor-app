@@ -1,5 +1,9 @@
 module.exports = {
   preset: '@react-native/jest-preset',
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/__tests__/helpers/',
+  ],
   moduleNameMapper: {
     '^react-native-vector-icons/MaterialCommunityIcons$': '<rootDir>/__mocks__/MaterialCommunityIcons.js',
     '^react-native-maps$': '<rootDir>/__mocks__/react-native-maps.js',

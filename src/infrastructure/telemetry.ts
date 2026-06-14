@@ -19,20 +19,20 @@ export function logEvent(eventName: string, payload?: Record<string, any>) {
           // truncate long strings
           if (str.length > 256) str = str.slice(0, 256) + '...';
           safePayload[k] = str;
-        } catch (_) {
-          try { safePayload[k] = String(payload[k]).slice(0, 256); } catch (__){ /* ignore */ }
+        } catch {
+          try { safePayload[k] = String(payload[k]).slice(0, 256); } catch { /* ignore */ }
         }
       });
     }
 
-    if (__DEV__) {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
       // eslint-disable-next-line no-console
       console.debug('[telemetry]', eventName, safePayload);
     }
     // production: this is a no-op placeholder. Integrate actual backend with
     // care: do not send PII, apply sampling and rate limits.
     return true;
-  } catch (_) {
+  } catch {
     return false;
   }
 }

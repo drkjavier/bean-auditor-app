@@ -77,3 +77,6 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# WASM (copied by postinstall from node_modules/sql.js/dist/)
+public/sql-wasm.wasm

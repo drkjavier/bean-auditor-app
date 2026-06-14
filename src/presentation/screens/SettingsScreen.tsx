@@ -5,7 +5,7 @@
  * Wrapped in ScrollView for small-screen safety.
  * Preserves existing test contract: 'Visible'/'Oculto' text for toggle.
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, Alert, StyleSheet } from 'react-native';
 import { useAuthStore } from '../../stores';
 import { useSettingsStore } from '../../state/settingsStore';
@@ -15,13 +15,27 @@ import Card from '../components/Card';
 import SectionHeader from '../components/SectionHeader';
 import SettingsRow from '../components/SettingsRow';
 import Button from '../components/Button';
+import DatabaseDebugPanel from '../components/DatabaseDebugPanel';
+import SyncStatusBadge from '../components/SyncStatusBadge';
+import SessionSection from '../components/SessionSection';
 
 export default function SettingsScreen() {
   const { colors, typography, spacing } = useTheme();
   const logout = useAuthStore(state => state.logout);
   const username = useAuthStore(state => state.username);
+  const user = useAuthStore(state => state.user);
+  const accessToken = useAuthStore(state => state.accessToken);
   const showUserLocation = useSettingsStore(state => state.showUserLocation);
   const setShowUserLocation = useSettingsStore(state => state.setShowUserLocation);
+  const [debugInfo, setDebugInfo] = useState<string>('Cargando...');
+
+  useEffect(() => {
+    const tokenPreview = accessToken ? `${accessToken.substring(0, 20)}...` : 'null';
+    const userRoles = user?.roles?.join(', ') || 'no roles';
+    const isAdmin = user?.roles?.includes('admin') ?? false;
+    setDebugInfo(`Token: ${tokenPreview} | Admin: ${isAdmin} | Roles: ${userRoles}`);
+    console.log('[SettingsScreen] Token:', tokenPreview, 'IsAdmin:', isAdmin);
+  }, [accessToken, user]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -37,7 +51,7 @@ export default function SettingsScreen() {
   const handleToggleLocation = () => {
     const next = !showUserLocation;
     setShowUserLocation(next);
-    try { logEvent('settings_toggle_showUserLocation', { enabled: next }); } catch (_) { /* noop */ }
+    try { logEvent('settings_toggle_showUserLocation', { enabled: next }); } catch { /* noop */ }
   };
 
   return (
@@ -90,6 +104,24 @@ export default function SettingsScreen() {
         </Card>
       </View>
 
+      {/* ── Synchronization ───────────────────────────────────────────── */}
+      <View style={{ marginTop: spacing.lg }}>
+        <SectionHeader title="Sincronización" subtitle="Gestiona la sincronización con el servidor" />
+        <SyncStatusBadge detailed showAutoSync />
+      </View>
+
+      {/* ── Session & Security (Admin only) ─────────────────────────── */}
+      {/* Debug info - always visible */}
+      <View style={{ marginTop: spacing.lg }}>
+        <SectionHeader title="Debug Sesión" subtitle="Estado actual" />
+        <Card variant="outlined">
+          <Text style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>
+            {debugInfo}
+          </Text>
+        </Card>
+      </View>
+      {accessToken && <SessionSection token={accessToken} />}
+
       {/* ── About ──────────────────────────────────────────────────────── */}
       <View style={{ marginTop: spacing.lg }}>
         <SectionHeader title="Acerca de" />
@@ -97,6 +129,12 @@ export default function SettingsScreen() {
           <SettingsRow label="Versión" trailing={<Text style={{ color: colors.textSecondary }}>1.0.0</Text>} />
           <SettingsRow label="Plataforma" trailing={<Text style={{ color: colors.textSecondary }}>BeanAuditor</Text>} showDivider={false} />
         </Card>
+      </View>
+
+      {/* ── Database Debug (dev only) ────────────────────────────────── */}
+      <View style={{ marginTop: spacing.lg }}>
+        <SectionHeader title="Base de datos (Debug)" subtitle="Solo visible en desarrollo" />
+        <DatabaseDebugPanel />
       </View>
 
       {/* ── Logout ─────────────────────────────────────────────────────── */}

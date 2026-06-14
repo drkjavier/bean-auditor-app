@@ -17,7 +17,9 @@ export function createAndRegisterAbortController(): AbortControllerLike {
       abort() {
         try {
           (this.signal as any).aborted = true;
-        } catch (_) {}
+        } catch {
+          // ignore — best-effort abort
+        }
       },
     } as AbortControllerLike;
   }
@@ -29,14 +31,16 @@ export function createAndRegisterAbortController(): AbortControllerLike {
 export function registerAbortController(ctrl: AbortControllerLike) {
   try {
     controllers.add(ctrl);
-  } catch (_) {}
+  } catch {
+    // noop — best-effort register
+  }
 }
 
 export function unregisterAbortController(ctrl: AbortControllerLike) {
   try {
     controllers.delete(ctrl);
-  } catch (_) {
-    // noop
+  } catch {
+    // noop — best-effort unregister
   }
 }
 
@@ -48,9 +52,13 @@ export function registerSignalAsController(signal: AbortSignal) {
   // hook external signal to abort the proxy so that logout also stops it
   try {
     signal.addEventListener('abort', () => {
-      try { (proxy as any).abort(); } catch (_) {}
+      try { (proxy as any).abort(); } catch {
+        // noop
+      }
     }, { once: true });
-  } catch (_) {}
+  } catch {
+    // noop — signal.addEventListener may not be available
+  }
   return proxy;
 }
 
@@ -58,12 +66,16 @@ export function abortAllControllers() {
   for (const c of Array.from(controllers)) {
     try {
       c.abort();
-    } catch (_) {}
+    } catch {
+      // noop — best-effort abort
+    }
   }
   // Clear set after attempting aborts to avoid leaking references.
   try {
     controllers.clear();
-  } catch (_) {}
+  } catch {
+    // noop — best-effort cleanup
+  }
 }
 
 export default {

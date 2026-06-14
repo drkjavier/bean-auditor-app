@@ -35,6 +35,10 @@ export default defineConfig({
         find: 'react-native-safe-area-context',
         replacement: path.resolve(__dirname, 'src/web-shims/react-native-safe-area-context.js'),
       },
+      {
+        find: 'react-native-nfc-manager',
+        replacement: path.resolve(__dirname, 'src/web-shims/react-native-nfc-manager.js'),
+      },
     ],
     extensions: ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', '.tsx', '.ts', '.jsx', '.js'],
   },
@@ -45,4 +49,6 @@ export default defineConfig({
   server: {
     port: 3100,
   },
+  // Ensure WASM files are served with correct MIME type
+  assetsInclude: ['**/*.wasm'],
 });

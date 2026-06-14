@@ -4,13 +4,15 @@
  * Shows a welcome message, summary cards and quick-action buttons.
  * Layout adapts responsively via useWindowDimensions (Context7 pattern).
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../themes/ThemeContext';
 import Card from '../components/Card';
 import SectionHeader from '../components/SectionHeader';
 import MdiIcon from '../components/MdiIcon';
-import { useAuthStore } from '../../stores';
+import SyncStatusBadge from '../components/SyncStatusBadge';
+import { getAuditCounts } from '../../data/tagService';
+import { useAuthStore, useSyncStore } from '../../stores';
 
 type Props = {
   onNavigate?: (route: string) => void;
@@ -19,10 +21,28 @@ type Props = {
 export default function HomeScreen({ onNavigate }: Props) {
   const { colors, typography, spacing, radii } = useTheme();
   const username = useAuthStore(state => state.username);
+  const initializeSync = useSyncStore(state => state.initialize);
+  const [counts, setCounts] = useState({ audited: 0, not_audited: 0, pending: 0, total: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    getAuditCounts().then(data => {
+      if (!cancelled) setCounts(data);
+    }).catch(err => {
+      if (process.env.NODE_ENV !== 'production') console.error('HomeScreen: failed to load audit counts', err);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Initialize sync store and subscribe to updates
+  useEffect(() => {
+    const unsubscribe = initializeSync();
+    return unsubscribe;
+  }, [initializeSync]);
 
   const quickActions = [
-    { key: 'audit', icon: 'clipboard-text-search-outline', label: 'Auditoría', color: colors.primary },
-    { key: 'settings', icon: 'cog-outline', label: 'Ajustes', color: colors.textSecondary },
+    { key: 'audit', icon: 'clipboard-text-search-outline', label: 'Auditoría', color: colors.primary, bg: colors.primary },
+    { key: 'settings', icon: 'cog-outline', label: 'Ajustes', color: colors.textSecondary, bg: colors.textSecondary },
   ];
 
   return (
@@ -46,23 +66,29 @@ export default function HomeScreen({ onNavigate }: Props) {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <MdiIcon name="clipboard-check-outline" size={24} color={colors.success} />
-              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>—</Text>
+              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{counts.audited}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textCaption, ...typography.caption }]}>Auditados</Text>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
             <View style={styles.summaryItem}>
               <MdiIcon name="clipboard-clock-outline" size={24} color={colors.warning} />
-              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>—</Text>
+              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{counts.pending}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textCaption, ...typography.caption }]}>Pendientes</Text>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
             <View style={styles.summaryItem}>
               <MdiIcon name="tag-outline" size={24} color={colors.primary} />
-              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>—</Text>
+              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{counts.total}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textCaption, ...typography.caption }]}>Total tags</Text>
             </View>
           </View>
         </Card>
+      </View>
+
+      {/* ── Sync Status ─────────────────────────────────────────────────── */}
+      <View style={{ marginTop: spacing.lg }}>
+        <SectionHeader title="Sincronización" subtitle="Estado de sincronización con el servidor" />
+        <SyncStatusBadge detailed showAutoSync />
       </View>
 
       {/* ── Quick actions ──────────────────────────────────────────────── */}
@@ -78,18 +104,14 @@ export default function HomeScreen({ onNavigate }: Props) {
               style={({ pressed }) => [
                 styles.actionCard,
                 {
-                  backgroundColor: colors.card,
-                  borderColor: colors.cardBorder,
+                  backgroundColor: action.bg,
                   borderRadius: radii.lg,
-                  opacity: pressed ? 0.8 : 1,
-                  ...((styles as any).actionShadow),
+                  opacity: pressed ? 0.85 : 1,
                 },
               ]}
             >
-              <View style={[styles.actionIconWrap, { backgroundColor: action.color + '14' }]}>
-                <MdiIcon name={action.icon} size={28} color={action.color} />
-              </View>
-              <Text style={[styles.actionLabel, { color: colors.textPrimary, ...typography.body }]}>
+              <MdiIcon name={action.icon} size={28} color="#FFFFFF" />
+              <Text style={[styles.actionLabel, { color: '#FFFFFF', ...typography.body }]}>
                 {action.label}
               </Text>
             </Pressable>
@@ -134,25 +156,16 @@ const styles = StyleSheet.create({
     width: '48%',
     padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
     minWidth: 140,
-  },
-  actionShadow: {
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  actionIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   actionLabel: {
-    fontWeight: '500',
+    fontWeight: '600',
+    fontSize: 16,
+    marginTop: 8,
     textAlign: 'center',
   },
 });

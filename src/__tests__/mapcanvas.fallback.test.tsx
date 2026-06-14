@@ -1,7 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import MapCanvasFallback from '../presentation/components/MapCanvas.fallback';
-import tagsMock from '../data/mocks/tagsMock';
+import { tagsMock } from '../data/mocks/tagsMock';
 
 // tagsMock may be a large array or undefined in some test environments; guard it
 const sampleTags = Array.isArray(tagsMock) ? tagsMock.slice(0, 3) : [];

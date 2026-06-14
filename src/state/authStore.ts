@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { AuthRepository } from '../domain/auth/AuthRepository';
+import { AuthUser } from '../domain/auth/AuthSession';
 import { AUTH_DEBUG, getAttemptId, maskUsername, sanitizeError } from '../infrastructure/logging/authDebug';
 import abortManager from '../infrastructure/api/abortManager';
+import { syncApi } from '../infrastructure/api/syncApi';
+import { PullUseCase } from '../domain/sync/PullUseCase';
+import { saveToken } from '../infrastructure/security/tokenStorage';
 
 // Lazy-load platform-specific AuthRepository implementations to avoid runtime
 // "require is not defined" errors in ESM/web environments. Call ensureAuthRepo()
@@ -13,14 +17,16 @@ async function ensureAuthRepo(): Promise<void> {
   // Try native implementation first, then fallback to web. Use dynamic import
   // so bundlers can split chunks and avoid top-level require() in the browser.
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await import('../data/auth/AuthRepository.native');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     authRepo = (mod as any).AuthRepositoryImpl;
     return;
-  } catch (_) {
+  } catch {
     // ignore
   }
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await import('../data/auth/AuthRepository.web');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     authRepo = (mod as any).AuthRepositoryImpl;
@@ -38,6 +44,13 @@ async function ensureAuthRepo(): Promise<void> {
               accessToken: 'test-token',
               refreshToken: 'test-refresh',
               expiresAt: now + 1000 * 60 * 60,
+              user: {
+                id: 'usr_test_001',
+                username,
+                email: 'admin@example.com',
+                roles: ['admin', 'user'],
+                tenant_id: 'tenant_test_001',
+              },
             };
           }
           throw new Error('Credenciales inválidas');
@@ -55,16 +68,31 @@ async function ensureAuthRepo(): Promise<void> {
   }
 }
 
+// Dev bypass flag: controls whether admin/admin bypass is allowed
+// Reads from Vite's import.meta.env (browser) and process.env (Node/test)
+const AUTH_DEV_BYPASS =
+  import.meta.env?.VITE_AUTH_DEV_BYPASS === 'true' ||
+  (typeof process !== 'undefined' && (process as any).env?.AUTH_DEV_BYPASS === 'true') ||
+  (typeof globalThis !== 'undefined' && (globalThis as any).__VITE_AUTH_DEV_BYPASS === 'true');
+
 type AuthState = {
   username: string;
   isLoggedIn: boolean;
   isRestoring: boolean;
   isDevBypass?: boolean;
   error: string | null;
+  /** Authenticated user profile (roles, tenant, email) */
+  user: AuthUser | null;
+  /** Access token from login (for API calls that need it explicitly) */
+  accessToken: string | null;
+  /** Whether initial pull has been completed */
+  hasCompletedInitialPull: boolean;
   setUsername: (username: string) => void;
   login: (password: string) => Promise<void>;
   restoreSession: () => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
+  /** Trigger initial pull after login */
+  triggerInitialPull: () => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -73,7 +101,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isDevBypass: false,
   isRestoring: false,
   error: null,
+  user: null,
+  accessToken: null,
+  hasCompletedInitialPull: false,
   setUsername: (username: string) => set({ username }),
+
+  triggerInitialPull: async () => {
+    const { hasCompletedInitialPull } = get();
+    if (hasCompletedInitialPull) return;
+
+    try {
+      const pullUseCase = new PullUseCase(syncApi);
+      await pullUseCase.execute({ forceFullSync: true });
+      set({ hasCompletedInitialPull: true });
+    } catch (err) {
+      console.warn('[auth] Initial pull failed:', err);
+      // Don't block login flow if pull fails
+    }
+  },
   login: async (password: string) => {
     const { username } = get();
     const usernameTrim = (username || '').trim();
@@ -83,13 +128,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error('Usuario y contraseña requeridos');
     }
 
-    // Temporary bypass requested for local testing: admin/admin logs in without remote request.
-    // NOTE: Remove this before production hardening.
-    if (usernameTrim === 'admin' && passwordTrim === 'admin') {
+    // Dev bypass: allowed only when AUTH_DEV_BYPASS=true
+    if (AUTH_DEV_BYPASS && usernameTrim === 'admin' && passwordTrim === 'admin') {
       const attemptId = getAttemptId();
       if (AUTH_DEBUG) console.info('[auth] store.login:dev-bypass admin accepted', { attemptId, username: maskUsername(usernameTrim) });
-      // Mark as logged in locally, do NOT persist tokens here
-      set({ isLoggedIn: true, username: usernameTrim, isDevBypass: true, error: null });
+      const devUser: AuthUser = {
+        id: 'usr_dev_001',
+        username: usernameTrim,
+        email: 'admin@example.com',
+        roles: ['admin', 'user'],
+        tenant_id: 'tenant_dev_001',
+      };
+      const devToken = 'dev-token-web-123';
+      set({ isLoggedIn: true, username: usernameTrim, isDevBypass: true, error: null, user: devUser, accessToken: devToken });
+      // Persist dev token so SettingsScreen/SessionSection can access it
+      try {
+        await saveToken(devToken);
+      } catch {
+        // ignore storage errors in dev bypass
+      }
       return;
     }
 
@@ -106,13 +163,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const session = await authRepo.signIn(usernameTrim, passwordTrim);
-      // Do NOT store token in global state. Only mark logged in and keep username.
-      // Additionally, validate session freshness if expiresAt exists.
+      // Validate session freshness
       if (session.expiresAt && session.expiresAt < Date.now()) {
         throw new Error('Sesión inválida');
       }
-      set({ isLoggedIn: true, username: session.username });
-      if (AUTH_DEBUG) console.info('[auth] store.login:success', { attemptId, username: maskUsername(session.username), hasRefresh: !!session.refreshToken, expiresAt: session.expiresAt });
+      // Store user data and token from API response
+      set({
+        isLoggedIn: true,
+        username: session.username,
+        user: session.user || null,
+        accessToken: session.accessToken || null,
+        isDevBypass: false,
+      });
+      if (AUTH_DEBUG) console.info('[auth] store.login:success', { attemptId, username: maskUsername(session.username), hasUser: !!session.user, expiresAt: session.expiresAt });
     } catch (err: any) {
       const message = err?.message || 'Error de autenticación';
       set({ error: message });
@@ -136,15 +199,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.debug('[auth] restoreSession: result', { sessionPresent: !!session, username: maskUsername(session?.username), expiresAt: session?.expiresAt });
       }
       if (session) {
-        // Optional: you may want to validate token server-side before marking logged in
-        // but authRepo.restoreSession attempts introspect/refresh when possible.
-        set({ isLoggedIn: true, username: session.username });
+        set({
+          isLoggedIn: true,
+          username: session.username,
+          user: session.user || null,
+        });
       } else {
-        set({ isLoggedIn: false, username: '' });
+        set({ isLoggedIn: false, username: '', user: null });
       }
     } catch (err: any) {
       // swallow but set a generic error
-      set({ isLoggedIn: false, username: '', error: 'No fue posible restaurar sesión' });
+      set({ isLoggedIn: false, username: '', user: null, error: 'No fue posible restaurar sesión' });
       if (AUTH_DEBUG) {
         // eslint-disable-next-line no-console
         console.warn('[auth] restoreSession: error', sanitizeError(err));
@@ -159,7 +224,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   logout: () => {
     // Clear client state synchronously so callers/tests observe immediate effect
-    set({ isLoggedIn: false, username: '' });
+    set({ isLoggedIn: false, username: '', user: null, accessToken: null });
 
     // Perform cleanup asynchronously (fire-and-forget)
     if (authRepo) {
@@ -174,7 +239,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // best-effort abort
         abortManager.abortAllControllers();
       }
-    } catch (_) {}
+    } catch {
+      // noop — best-effort abort
+    }
   },
 }));
 

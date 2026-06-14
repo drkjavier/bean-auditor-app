@@ -39,8 +39,8 @@ export function openSettings(): Promise<void> {
   // prefer library helper, fallback to Linking
   try {
     if (typeof rnOpenSettings === 'function') return rnOpenSettings();
-  } catch (_) {
-    // ignore
+  } catch {
+    // ignore — fallback to Linking
   }
   return Linking.openSettings();
 }
@@ -96,7 +96,9 @@ export async function disconnectReceiver() {
   if (watcherId != null) {
     try {
       Geolocation.clearWatch(watcherId as number);
-    } catch (_) {}
+    } catch {
+      // noop — best-effort clearWatch
+    }
     watcherId = null;
   }
   return Promise.resolve();

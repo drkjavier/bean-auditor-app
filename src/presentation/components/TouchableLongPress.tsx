@@ -28,7 +28,9 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
           document.removeEventListener('contextmenu', contextHandlerRef.current as any);
           contextHandlerRef.current = null;
         }
-      } catch (_) {}
+      } catch {
+        // noop — cleanup
+      }
     };
   }, []);
 
@@ -40,15 +42,17 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
       try {
         if (typeof document !== 'undefined') {
           contextHandlerRef.current = (ev: Event) => {
-            try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+            try { ev.preventDefault(); ev.stopPropagation(); } catch {}
           };
           document.addEventListener('contextmenu', contextHandlerRef.current as any, { passive: false });
         }
-      } catch (_) {}
+      } catch {
+        // noop — cleanup
+      }
 
       timerRef.current = setTimeout(() => {
         handledRef.current = true;
-        if (__DEV__) console.debug('TouchableLongPress: onLongPress fired');
+        if (process.env.NODE_ENV !== 'production') console.debug('TouchableLongPress: onLongPress fired');
         onLongPress();
       }, delay);
     }
@@ -66,7 +70,9 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
         document.removeEventListener('contextmenu', contextHandlerRef.current as any);
         contextHandlerRef.current = null;
       }
-    } catch (_) {}
+    } catch {
+      // noop
+    }
     onPressOut?.(e);
   };
 
@@ -78,12 +84,14 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
       if (lastTapRef.current && now - lastTapRef.current <= (doubleTapDelay || 300)) {
         // double tap detected
         lastTapRef.current = 0;
-        if (__DEV__) console.debug('TouchableLongPress: onDoubleTap fired');
+        if (process.env.NODE_ENV !== 'production') console.debug('TouchableLongPress: onDoubleTap fired');
         if (typeof onDoubleTap === 'function') onDoubleTap(e);
       } else {
         lastTapRef.current = now;
       }
-    } catch (_) {}
+    } catch {
+      // noop
+    }
 
     onPress?.(e);
   };

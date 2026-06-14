@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTheme } from '../themes/ThemeContext';
 
 type DatePickerMode = 'from' | 'to';
 
@@ -26,6 +27,7 @@ type CalendarDate = {
 const WEEK_DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
 export default function DatePickerInput({ value, onChange, label, mode }: Props) {
+  const { colors, typography, radii, spacing } = useTheme();
   const selectedDate = useMemo(() => parseIsoToCalendarDate(value), [value]);
   const [open, setOpen] = useState(false);
   const [draftDate, setDraftDate] = useState<CalendarDate | null>(selectedDate);
@@ -50,10 +52,22 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
 
   if (Platform.OS === 'web') {
     const webValue = selectedDate ? toDateInputValue(selectedDate) : '';
+    const dynamicWebInputStyle: React.CSSProperties = {
+      width: '100%',
+      minHeight: 40,
+      border: `1px solid ${colors.border}`,
+      borderRadius: radii.md,
+      padding: `${spacing.xs}px ${spacing.sm}px`,
+      fontSize: typography.body.fontSize,
+      color: colors.textPrimary,
+      backgroundColor: colors.card,
+      outline: 'none',
+      boxSizing: 'border-box',
+    };
 
     return (
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: colors.textPrimary, ...typography.caption }]}>{label}</Text>
         {/* @ts-ignore web-only input element */}
         <input
           type="date"
@@ -69,7 +83,7 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
             onChange(buildIsoString(nextDate, mode));
           }}
           aria-label={label}
-          style={webInputStyle}
+          style={dynamicWebInputStyle}
         />
       </View>
     );
@@ -100,15 +114,15 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
   return (
     <>
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: colors.textPrimary, ...typography.caption }]}>{label}</Text>
         <Pressable
-          style={styles.trigger}
+          style={[styles.trigger, { borderColor: colors.border, backgroundColor: colors.card }]}
           onPress={handleOpen}
           accessibilityRole="button"
           accessibilityLabel={label}
           accessibilityHint="Abre el selector de fecha"
         >
-          <Text style={[styles.triggerText, !selectedDate && styles.placeholderText]}>{selectedLabel}</Text>
+          <Text style={[styles.triggerText, { color: colors.textPrimary }, !selectedDate && { color: colors.muted }]}>{selectedLabel}</Text>
           <Text style={styles.triggerIcon}>📅</Text>
         </Pressable>
       </View>
@@ -116,34 +130,34 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
       <Modal visible={open} transparent animationType="fade" onRequestClose={handleCancel}>
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={handleCancel} accessibilityRole="button" accessibilityLabel="Cerrar selector" />
-            <View style={[styles.modalCard, Platform.OS === 'web' ? styles.modalCardWeb : undefined]} accessibilityViewIsModal>
-            <Text style={styles.modalTitle}>{label}</Text>
+            <View style={[styles.modalCard, { backgroundColor: colors.card }, Platform.OS === 'web' ? styles.modalCardWeb : undefined]} accessibilityViewIsModal>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary, ...typography.subtitle }]}>{label}</Text>
 
             <View style={styles.monthHeader}>
               <Pressable
                 onPress={() => setVisibleMonth(getPreviousMonth(visibleMonth.year, visibleMonth.month))}
-                style={styles.monthButton}
+                style={[styles.monthButton, { backgroundColor: colors.surface }]}
                 accessibilityRole="button"
                 accessibilityLabel="Mes anterior"
               >
-                <Text style={styles.monthButtonText}>‹</Text>
+                <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>‹</Text>
               </Pressable>
 
-              <Text style={styles.monthTitle}>{formatMonthTitle(visibleMonth.year, visibleMonth.month)}</Text>
+              <Text style={[styles.monthTitle, { color: colors.textPrimary, ...typography.body }]}>{formatMonthTitle(visibleMonth.year, visibleMonth.month)}</Text>
 
               <Pressable
                 onPress={() => setVisibleMonth(getNextMonth(visibleMonth.year, visibleMonth.month))}
-                style={styles.monthButton}
+                style={[styles.monthButton, { backgroundColor: colors.surface }]}
                 accessibilityRole="button"
                 accessibilityLabel="Mes siguiente"
               >
-                <Text style={styles.monthButtonText}>›</Text>
+                <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>›</Text>
               </Pressable>
             </View>
 
             <View style={styles.weekHeader}>
               {WEEK_DAYS.map(day => (
-                <Text key={day} style={styles.weekDayLabel}>
+                <Text key={day} style={[styles.weekDayLabel, { color: colors.muted, ...typography.caption }]}>
                   {day}
                 </Text>
               ))}
@@ -160,13 +174,13 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
                 return (
                   <Pressable
                     key={`${day.year}-${day.month}-${day.day}`}
-                    style={[styles.dayCell, styles.dayButton, isSelected && styles.dayButtonSelected]}
+                    style={[styles.dayCell, styles.dayButton, isSelected && [styles.dayButtonSelected, { backgroundColor: colors.primary }]]}
                     onPress={() => setDraftDate(day)}
                     accessibilityRole="button"
                     accessibilityLabel={`Seleccionar ${formatCalendarDate(day)}`}
                     accessibilityState={{ selected: isSelected }}
                   >
-                    <Text style={[styles.dayText, isSelected && styles.dayTextSelected]}>{day.day}</Text>
+                    <Text style={[styles.dayText, { color: colors.textPrimary, ...typography.body }, isSelected && styles.dayTextSelected]}>{day.day}</Text>
                   </Pressable>
                 );
               })}
@@ -175,15 +189,15 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
             <View style={styles.actions}>
               <Pressable
                 onPress={handleCancel}
-                style={[styles.actionButton, styles.secondaryButton]}
+                style={[styles.actionButton, styles.secondaryButton, { backgroundColor: colors.surface }]}
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar selección"
               >
-                <Text style={[styles.actionText, styles.secondaryButtonText]}>Cancelar</Text>
+                <Text style={[styles.actionText, styles.secondaryButtonText, { color: colors.textPrimary }]}>Cancelar</Text>
               </Pressable>
               <Pressable
                 onPress={handleAccept}
-                style={[styles.actionButton, styles.primaryButton, !draftDate && styles.disabledButton]}
+                style={[styles.actionButton, styles.primaryButton, { backgroundColor: colors.primary }, !draftDate && styles.disabledButton]}
                 accessibilityRole="button"
                 accessibilityLabel="Aceptar selección"
                 disabled={!draftDate}
@@ -317,19 +331,6 @@ function isSameCalendarDate(left: CalendarDate | null, right: CalendarDate | nul
   return left.year === right.year && left.month === right.month && left.day === right.day;
 }
 
-const webInputStyle: React.CSSProperties = {
-  width: '100%',
-  minHeight: 40,
-  border: '1px solid #cbd5e1',
-  borderRadius: 8,
-  padding: '8px 12px',
-  fontSize: 14,
-  color: '#0f172a',
-  backgroundColor: '#ffffff',
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
 const styles = StyleSheet.create({
   fieldContainer: {
     marginBottom: 12,
@@ -338,17 +339,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   label: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '600',
     marginBottom: 6,
   },
   trigger: {
     minHeight: 44,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
     borderRadius: 8,
-    backgroundColor: '#ffffff',
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
@@ -357,12 +353,8 @@ const styles = StyleSheet.create({
   },
   triggerText: {
     flex: 1,
-    color: '#0f172a',
-    fontSize: 14,
   },
-  placeholderText: {
-    color: '#64748b',
-  },
+  placeholderText: {},
   triggerIcon: {
     marginLeft: 12,
     fontSize: 16,
@@ -377,7 +369,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     elevation: 4,
@@ -393,9 +384,6 @@ const styles = StyleSheet.create({
     boxShadow: '0 8px 24px rgba(2,6,23,0.08)',
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
     marginBottom: 16,
   },
   monthHeader: {
@@ -410,16 +398,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
   },
   monthButtonText: {
     fontSize: 20,
-    color: '#0f172a',
   },
   monthTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0f172a',
     textTransform: 'capitalize',
   },
   weekHeader: {
@@ -429,9 +412,7 @@ const styles = StyleSheet.create({
   weekDayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -448,13 +429,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayButtonSelected: {
-    backgroundColor: '#2563eb',
-  },
-  dayText: {
-    color: '#0f172a',
-    fontSize: 14,
-  },
+  dayButtonSelected: {},
+  dayText: {},
   dayTextSelected: {
     color: '#ffffff',
     fontWeight: '700',
@@ -475,15 +451,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  secondaryButton: {
-    backgroundColor: '#e2e8f0',
-  },
-  secondaryButtonText: {
-    color: '#0f172a',
-  },
-  primaryButton: {
-    backgroundColor: '#2563eb',
-  },
+  secondaryButton: {},
+  secondaryButtonText: {},
+  primaryButton: {},
   primaryButtonText: {
     color: '#ffffff',
   },

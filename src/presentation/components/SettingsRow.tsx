@@ -18,7 +18,7 @@ type Props = {
 };
 
 export default function SettingsRow({ label, trailing, onPress, showDivider = true, accessibilityLabel }: Props) {
-  const { colors, typography, spacing } = useTheme();
+  const { colors, typography } = useTheme();
 
   const content = (
     <View style={[styles.row, { minHeight: 48 }]}>
