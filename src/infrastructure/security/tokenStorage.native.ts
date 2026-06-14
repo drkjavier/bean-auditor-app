@@ -56,9 +56,9 @@ export async function saveToken(tokenOrSession: string | StoredSession): Promise
       // for Android ensure use of secure keystore if supported
       // (react-native-keychain may accept 'storage' or platform specific options depending on version)
       // @ts-ignore
-      ...(process.env.ANDROID_USE_KEYSTORE === 'true' ? { storage: 'androidKeyStore' } : {}),
+      ...(typeof process !== 'undefined' && process.env?.ANDROID_USE_KEYSTORE === 'true' ? { storage: 'androidKeyStore' } : {}),
     });
-    if (process.env && process.env.NODE_ENV !== 'production') console.debug('[auth] tokenStorage.native: saved session (masked)');
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') console.debug('[auth] tokenStorage.native: saved session (masked)');
   } catch (err) {
     console.warn('saveToken failed', err);
     throw err;

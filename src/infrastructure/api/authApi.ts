@@ -1,5 +1,31 @@
 import { AUTH_BASE_URL, TOKEN_REFRESH_WINDOW_MS, AUTH_USE_API } from './config';
 
+// ── Types ─────────────────────────────────────────────────────────────────
+
+/** User data returned by POST /api/v1/auth/login */
+type LoginUserResponse = {
+  id: string;
+  username: string;
+  email: string;
+  roles: string[];
+  tenant_id: string;
+};
+
+/** Raw response from POST /api/v1/auth/login */
+type LoginApiResponse = {
+  token: string;
+  expires_at: string; // ISO 8601
+  user: LoginUserResponse;
+};
+
+/** Normalized login result used by repositories */
+export type LoginResult = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt: number; // epoch ms
+  user: LoginUserResponse;
+};
+
 type RefreshResponse = {
   access_token: string;
   refresh_token?: string;
@@ -22,6 +48,51 @@ async function fetchJson(input: string, init?: RequestInit) {
     throw err;
   }
   return res.json();
+}
+
+/**
+ * Authenticate user against POST /api/v1/auth/login
+ *
+ * Request:
+ *   { username: string, password: string }
+ *
+ * Response:
+ *   { token: string, expires_at: string (ISO), user: { id, username, email, roles, tenant_id } }
+ *
+ * The ISO expires_at string is converted to epoch milliseconds for internal use.
+ * The token field is mapped to accessToken.
+ *
+ * @throws {Error} On network error or invalid credentials (HTTP 401/403)
+ */
+export async function login(
+  username: string,
+  password: string,
+  init?: RequestInit
+): Promise<LoginResult> {
+  if (!AUTH_USE_API) throw new Error('Auth API disabled');
+
+  const url = `${AUTH_BASE_URL}/api/v1/auth/login`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body: LoginApiResponse = (await fetchJson(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+    ...(init || {}),
+  })) as any;
+
+  // Convert ISO expires_at to epoch ms
+  const expiresAt = new Date(body.expires_at).getTime();
+
+  // Validate conversion
+  if (Number.isNaN(expiresAt)) {
+    throw new Error('Invalid expires_at format from auth API');
+  }
+
+  return {
+    accessToken: body.token,
+    expiresAt,
+    user: body.user,
+  };
 }
 
 export async function refreshToken(token: string, init?: RequestInit): Promise<RefreshResponse> {

@@ -37,7 +37,7 @@ function loadImpl(): ImplType {
     cachedImpl = mod.default;
     return cachedImpl;
   } catch {
-    if (__DEV__) {
+    if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
       console.warn('MapCanvas.native failed to load, falling back to MapCanvas.fallback.');
     }

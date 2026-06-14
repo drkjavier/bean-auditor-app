@@ -27,13 +27,15 @@ jest.mock('../src/data/tagService', () => ({
       uuid: '550e8400-e29b-41d4-a716-000000001000',
       colorHex: '#ef4444',
       unique_id: 'TAG-1000',
-      color: '#ef4444',
       lat: 37.77,
       lon: -122.42,
       timestamp: '2026-05-01T00:00:00.000Z',
-      audited: true,
+      audit_status: 'audited',
+      sync_pending: false,
     },
   ]),
+  saveTagAudit: jest.fn().mockResolvedValue(undefined),
+  getAuditCounts: jest.fn().mockResolvedValue({ audited: 1, not_audited: 0, pending: 0, total: 1 }),
 }));
 
 // ── Mock stores ───────────────────────────────────────────────────────────────

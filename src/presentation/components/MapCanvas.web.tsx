@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
 import type { Tag } from '../../data/mocks/tagsMock';
+import type { AuditStatus } from '../../domain/audit/AuditRecord';
 import { NAV_BAR_HEIGHT } from '../themes/layout';
 
 // Maximum zoom allowed by the map UI. Note: tile providers may have a lower
@@ -15,8 +16,17 @@ import { NAV_BAR_HEIGHT } from '../themes/layout';
 // your tileserver supplies higher-resolution tiles.
 const MAX_MAP_ZOOM = 21;
 
-function getAuditStatusLabel(audited: boolean) {
-  return audited ? 'Auditado' : 'Pendiente';
+function getAuditStatusLabel(status: AuditStatus | null | undefined) {
+  switch (status) {
+    case 'audited':
+      return 'Auditado';
+    case 'not_audited':
+      return 'No auditado';
+    case 'pending':
+      return 'Pendiente';
+    default:
+      return 'Sin auditar';
+  }
 }
 
 type Props = {
@@ -134,7 +144,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
   const legendItems = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach(item => {
-      const label = getAuditStatusLabel(item.audited);
+      const label = getAuditStatusLabel(item.audit_status);
       if (!map.has(label)) {
         map.set(label, item.colorHex);
       }
@@ -391,7 +401,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                       </div>
 
                       <div style={{ color: '#475569', fontSize: 12, marginBottom: 6 }}>
-                        Auditoría: <strong style={{ color: '#0f172a' }}>{getAuditStatusLabel(item.audited)}</strong>
+                        Auditoría: <strong style={{ color: '#0f172a' }}>{getAuditStatusLabel(item.audit_status)}</strong>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>

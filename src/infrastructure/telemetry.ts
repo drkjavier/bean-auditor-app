@@ -25,7 +25,7 @@ export function logEvent(eventName: string, payload?: Record<string, any>) {
       });
     }
 
-    if (__DEV__) {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
       // eslint-disable-next-line no-console
       console.debug('[telemetry]', eventName, safePayload);
     }

@@ -144,9 +144,20 @@ export async function fetchWithAuth(input: RequestInfo, init?: RequestInit) {
   const session = await _getSessionLike();
   const headers = new Headers(init?.headers as any || {});
 
-  // If config indicates cookies-based auth on web, do not set Authorization header
-  if (!AUTH_USE_COOKIES && session && session.accessToken) {
+  // Only set Authorization from storage if the caller didn't already provide one.
+  // This allows callers (e.g. SessionRepository) to pass their own token.
+  if (!headers.has('Authorization') && !AUTH_USE_COOKIES && session && session.accessToken) {
     headers.set('Authorization', `Bearer ${session.accessToken}`);
+  }
+
+  // Debug: log token being used (masked)
+  if (AUTH_DEBUG) {
+    const authHeader = headers.get('Authorization');
+    console.debug('[auth] fetchWithAuth: using token', { 
+      url: typeof input === 'string' ? input : 'Request object',
+      hasToken: !!authHeader,
+      tokenPreview: authHeader ? authHeader.substring(0, 30) + '...' : 'none'
+    });
   }
 
   // Propagate client attempt id to backend for easier correlation (no sensitive data)

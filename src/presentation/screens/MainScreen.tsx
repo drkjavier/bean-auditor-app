@@ -4,6 +4,7 @@ import HomeScreen from './HomeScreen';
 import SettingsScreen from './SettingsScreen';
 import DrawerMenu from '../components/DrawerMenu';
 import BottomNavBar from '../components/BottomNavBar';
+import SyncBanner from '../components/SyncBanner';
 import { useAuthStore } from '../../stores';
 
 // Lazy-load screens that depend on heavy browser-only libraries (react-leaflet,
@@ -11,17 +12,19 @@ import { useAuthStore } from '../../stores';
 // entire module evaluation, preventing constants like ROUTES from being assigned.
 // Using React.lazy isolates failures inside a Suspense boundary instead.
 const AuditScreen = lazy(() => import('./AuditScreen'));
+const NFCScreen = lazy(() => import('./NFCScreen'));
 
 // MainScreen: contenedor con BottomNavigation reutilizable (BottomNavBar)
 // - El footer (BottomNavBar) queda estático en todas las pantallas.
 // - El contenido se desplaza por encima del footer sin solaparse.
 // - Cada escena NO debe agregar su propio paddingBottom para el footer;
 //   esa responsabilidad es exclusiva de este componente.
-const ROUTES = [
+const ROUTES: { key: string; title: string }[] = [
   { key: 'home', title: 'Inicio' },
   { key: 'audit', title: 'Auditoría' },
+  { key: 'nfc', title: 'NFC' },
   { key: 'settings', title: 'Ajustes' },
-] as const;
+];
 
 export default function MainScreen() {
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
@@ -41,9 +44,14 @@ export default function MainScreen() {
 
     switch (routeKey) {
       case 'home':
-        return <HomeScreen />;
+        return <HomeScreen onNavigate={(key) => {
+          const idx = ROUTES.findIndex(r => r.key === key);
+          if (idx >= 0) setIndex(idx);
+        }} />;
       case 'audit':
         return <AuditScreen />;
+      case 'nfc':
+        return <NFCScreen />;
       case 'settings':
         return <SettingsScreen />;
       default:
@@ -62,6 +70,9 @@ export default function MainScreen() {
   return (
     <>
       <View style={styles.container}>
+        {/* Sync status banner */}
+        <SyncBanner />
+
         {/*
           Content area: flex: 1 takes remaining space above the footer.
           The footer sits in normal flow at the bottom — no absolute positioning.

@@ -40,3 +40,40 @@ export const AUTH_USE_COOKIES = _AUTH_USE_COOKIES;
 
 // Token refresh window (ms): if token expires within this window, attempt refresh
 export const TOKEN_REFRESH_WINDOW_MS = 30 * 1000; // 30 seconds
+
+// ── Sync Configuration ─────────────────────────────────────────────────────
+
+export const SYNC_BASE_URL =
+  getEnv('SYNC_BASE_URL') ||
+  getEnv('REACT_APP_SYNC_BASE_URL') ||
+  import.meta.env.VITE_SYNC_BASE_URL ||
+  AUTH_BASE_URL; // Default to same as auth
+
+export const SYNC_ENDPOINTS = {
+  pull: '/api/sync/pull',
+  push: '/api/sync/push',
+  health: '/api/sync/health',
+} as const;
+
+export const SYNC_CONFIG = {
+  /** Auto-sync interval in milliseconds (0 = disabled) */
+  autoSyncInterval: 30_000, // 30 seconds
+
+  /** Max retries per sync attempt */
+  maxRetries: 3,
+
+  /** Base delay between retries (ms) - increases exponentially */
+  retryBaseDelay: 1000,
+
+  /** Batch size for push (max records per request) */
+  batchSize: 50,
+
+  /** Timeout for pull requests (ms) */
+  pullTimeout: 30_000,
+
+  /** Timeout for push requests (ms) */
+  pushTimeout: 30_000,
+
+  /** Enable console logging */
+  enableLogging: typeof __DEV__ !== 'undefined' ? __DEV__ : false,
+} as const;

@@ -1,0 +1,53 @@
+services:
+  posthog:
+    image: posthog/posthog:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://posthog:posthog@postgres:5432/posthog
+      - REDIS_URL=redis://redis:6379/
+      - SECRET_KEY=unsafe-secret-key-change-in-production
+      - SELF_HOSTED=true
+      - SITE_URL=http://localhost:8000
+      - DISABLE_TELEMETRY=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - posthog-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=posthog
+      - POSTGRES_PASSWORD=posthog
+      - POSTGRES_DB=posthog
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U posthog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  posthog-data:
+  postgres-data:

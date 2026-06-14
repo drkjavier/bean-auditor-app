@@ -55,5 +55,8 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<!-- NFC Tag Reading capability -->
+	<key>NFCReaderUsageDescription</key>
+	<string>BeanAuditor necesita acceso a NFC para leer y escribir tags de auditoría.</string>
 </dict>
 </plist>

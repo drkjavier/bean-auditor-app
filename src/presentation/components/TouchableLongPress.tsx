@@ -52,7 +52,7 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
 
       timerRef.current = setTimeout(() => {
         handledRef.current = true;
-        if (__DEV__) console.debug('TouchableLongPress: onLongPress fired');
+        if (process.env.NODE_ENV !== 'production') console.debug('TouchableLongPress: onLongPress fired');
         onLongPress();
       }, delay);
     }
@@ -84,7 +84,7 @@ export default function TouchableLongPress({ onLongPress, delay = 600, onPress, 
       if (lastTapRef.current && now - lastTapRef.current <= (doubleTapDelay || 300)) {
         // double tap detected
         lastTapRef.current = 0;
-        if (__DEV__) console.debug('TouchableLongPress: onDoubleTap fired');
+        if (process.env.NODE_ENV !== 'production') console.debug('TouchableLongPress: onDoubleTap fired');
         if (typeof onDoubleTap === 'function') onDoubleTap(e);
       } else {
         lastTapRef.current = now;

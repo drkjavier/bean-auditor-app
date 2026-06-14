@@ -3,6 +3,7 @@
 // Coordenadas base: 14.283333, -91.366667
 // Radio máximo por tag: ~3 metros (≈ 0.000027 grados)
 import { TAG_COLORS } from '../../domain/constants/tagColors';
+import { AuditStatus } from '../../domain/audit/AuditRecord';
 
 export type Tag = {
   uuid: string;     // identificador técnico único
@@ -11,7 +12,8 @@ export type Tag = {
   lat: number;
   lon: number;
   timestamp: string; // ISO
-  audited: boolean;
+  audit_status: AuditStatus | null;
+  sync_pending: boolean;
 };
 
 const LAT_BASE = 14.283333;
@@ -52,6 +54,7 @@ export const tagsMock: Tag[] = Array.from({ length: 175 }).map((_, i) => {
     lat,
     lon,
     timestamp: ts,
-    audited: i % 2 === 0,
+    audit_status: i % 3 === 0 ? 'audited' : i % 3 === 1 ? 'not_audited' : 'pending',
+    sync_pending: false,
   };
 });
