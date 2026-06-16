@@ -181,15 +181,6 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
       ) : (
         <>
           <View style={styles.toolbar}>
-            <View style={styles.legend}>
-              {legendItems.map(item => (
-                <View key={item.label} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                  <Text style={styles.legendText}>{item.label}</Text>
-                </View>
-              ))}
-            </View>
-
             <View style={styles.actions}>
               {selectedItem ? (
                 <Pressable
@@ -358,7 +349,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     width: '100%',
-    height: 320,
+    height: 370,
   },
   toolbar: {
     paddingHorizontal: 12,
