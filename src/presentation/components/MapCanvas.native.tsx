@@ -202,15 +202,6 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                 <Text style={styles.mapToggleButtonText}>Ver todos</Text>
               </Pressable>
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Mi ubicación"
-                onPress={handleCenterOnMe}
-                style={[styles.mapToggleButton, styles.locationButton]}
-              >
-                <Text style={styles.mapToggleButtonText}>📍</Text>
-              </Pressable>
-
               <View style={{ width: 6 }} />
               <Pressable
                 accessibilityRole="button"
