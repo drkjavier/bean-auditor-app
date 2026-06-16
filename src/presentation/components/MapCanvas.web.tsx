@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     width: '100%',
-    height: 490,
+    height: 505,
   },
   toolbar: {
     paddingHorizontal: 12,
