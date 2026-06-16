@@ -1,20 +1,27 @@
+/**
+ * MapCanvas Component (Web)
+ * 
+ * Web implementation using MapTiler SDK JS.
+ * Provides high-precision mapping with zoom up to level 22 (3.7cm/pixel).
+ * 
+ * Features:
+ * - High-precision zoom (up to level 22)
+ * - Custom colored markers
+ * - Popups with detailed information
+ * - Legend by audit status
+ * - Center on user location
+ * - Fit all markers view
+ * - Street/Satellite/Hybrid toggle
+ * - Marker selection with visual feedback
+ */
+
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-// Marker cluster CSS is required for proper cluster styling (react-leaflet-cluster v4+)
-import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
-import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { MAPTILER_CONFIG } from '../../infrastructure/config/maptiler.config';
 import type { Tag } from '../../data/mocks/tagsMock';
 import type { AuditStatus } from '../../domain/audit/AuditRecord';
 import { NAV_BAR_HEIGHT } from '../themes/layout';
-
-// Maximum zoom allowed by the map UI. Note: tile providers may have a lower
-// native max (configured per TileLayer via maxNativeZoom). Increase only if
-// your tileserver supplies higher-resolution tiles.
-const MAX_MAP_ZOOM = 21;
+import '@maptiler/sdk/dist/maptiler-sdk.css';
 
 function getAuditStatusLabel(status: AuditStatus | null | undefined) {
   switch (status) {
@@ -34,110 +41,31 @@ type Props = {
   style?: any;
   selectedId?: string | null;
   onSelect?: (item: Tag) => void;
+  showUserLocation?: boolean;
 };
 
-function FocusController({
-  selectedItem,
-  bounds,
-  fitAllSignal,
-  centerSignal,
-  selectionZoom,
-  fitAllMaxZoom,
-  insetsBottom,
-}: {
-  selectedItem?: Tag | null;
-  bounds?: L.LatLngBounds | null;
-  fitAllSignal?: number;
-  centerSignal?: number;
-  selectionZoom: number;
-  fitAllMaxZoom: number;
-  insetsBottom?: number;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (selectedItem) {
-      map.flyTo([selectedItem.lat, selectedItem.lon], Math.max(map.getZoom(), selectionZoom), {
-        animate: true,
-        duration: 0.75,
-      });
-    }
-  }, [map, selectedItem, selectionZoom]);
-
-  // Allow explicit recenter requests even when the selectedItem reference
-  // hasn't changed (e.g. user clicks "Centrar selección"). The parent will
-  // increment `centerSignal` to trigger this effect.
-  useEffect(() => {
-    if (selectedItem && typeof centerSignal === 'number') {
-      map.flyTo([selectedItem.lat, selectedItem.lon], Math.max(map.getZoom(), selectionZoom), {
-        animate: true,
-        duration: 0.75,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, centerSignal, selectionZoom]);
-
-  useEffect(() => {
-    if (bounds && fitAllSignal) {
-      // Keep enough context, but allow zooming close enough to separate tags.
-      map.fitBounds(bounds, { padding: [36, 36 + (insetsBottom || 0)], animate: true, duration: 0.75, maxZoom: fitAllMaxZoom } as any);
-    }
-  }, [map, bounds, fitAllSignal, fitAllMaxZoom, insetsBottom]);
-
-  return null;
-}
-
-function getBounds(items: Tag[]) {
-  if (items.length === 0) return null;
-  const latLngs = items.map(item => [item.lat, item.lon] as [number, number]);
-  return L.latLngBounds(latLngs);
-}
-
-function createClusterIcon(cluster: L.MarkerCluster) {
-  const count = cluster.getChildCount();
-
-  return L.divIcon({
-    html: `
-      <div style="
-        background:#2563eb;
-        color:white;
-        width:40px;
-        height:40px;
-        border-radius:999px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        font-weight:700;
-        border:3px solid white;
-        box-shadow:0 4px 12px rgba(15,23,42,0.2);
-      ">${count}</div>
-    `,
-    className: 'custom-cluster-icon',
-    iconSize: [40, 40],
-  });
-}
-
-export default function MapCanvas({ items, style, selectedId, onSelect }: Props) {
-  // Read CSS env safe-area-bottom for web if available (e.g. iOS Safari with notch)
-  const insetsBottom = typeof window !== 'undefined' ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') || 0 : 0;
-  const bounds = useMemo(() => getBounds(items), [items]);
-  const center: [number, number] = items.length > 0 ? [items[0].lat, items[0].lon] : [37.77, -122.42];
-  const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
-  const [fitAllSignal, setFitAllSignal] = React.useState(0);
-  // signal used to request recentring on the already-selected item even when
-  // `selectedItem` value doesn't change. Incrementing this value will trigger
-  // FocusController to flyTo the currently selected item.
-  const [centerSignal, setCenterSignal] = React.useState(0);
-  const [mapType, setMapType] = React.useState<'street' | 'satellite'>('street');
+export default function MapCanvas({ items, style, selectedId, onSelect, showUserLocation = false }: Props) {
+  const insetsBottom = typeof window !== 'undefined' 
+    ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') || 0 
+    : 0;
+  
+  const [mapReady, setMapReady] = useState(false);
+  const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('street');
   const [toast, setToast] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapLoadError, setMapLoadError] = useState<string | null>(null);
+  const [currentZoom, setCurrentZoom] = useState<number>(12);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const userLocationMarkerRef = useRef<any>(null);
   const toastTimer = useRef<number | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const clusterRef = useRef<any>(null);
+
+  const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
 
   function showToast(message: string, ms = 3000) {
     setToast(message);
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    // @ts-ignore - window.setTimeout returns number in browser
     toastTimer.current = window.setTimeout(() => setToast(null), ms);
   }
 
@@ -152,50 +80,367 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
     return Array.from(map.entries()).map(([label, color]) => ({ label, color }));
   }, [items]);
 
-  const TILESETS: Record<string, { url: string; attribution: string }> = {
-    street: {
-      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attribution: '&copy; OpenStreetMap contributors',
-    },
-    satellite: {
-      // Esri World Imagery (publicly accessible tileset — validar TOS en producción)
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
-    },
+  // Initialize map
+  // NOTE: The map container div is always rendered (even when items is empty)
+  // so mapContainerRef.current should always be available when this effect runs.
+  // The initMap function also checks for null as a safety net.
+  useEffect(() => {
+    let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+
+    // Wait for container to have non-zero dimensions before initializing.
+    // react-native-web may not apply layout immediately on first paint.
+    const initMap = () => {
+      const container = mapContainerRef.current;
+      if (!container || cancelled) return;
+
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        // Retry after a frame if dimensions are not ready yet
+        requestAnimationFrame(initMap);
+        return;
+      }
+
+      import('@maptiler/sdk').then(({ Map: MapTilerMap, config, MapStyle }) => {
+        if (cancelled) return;
+
+        // Validate API key before attempting to create the map
+        if (!MAPTILER_CONFIG.apiKey || MAPTILER_CONFIG.apiKey === 'YOUR_MAPTILER_API_KEY_HERE') {
+          setMapLoadError('API key de MapTiler no configurada. Verifica las variables de entorno.');
+          return;
+        }
+
+        config.apiKey = MAPTILER_CONFIG.apiKey;
+
+        if (!mapInstanceRef.current) {
+          const initialCenter = items.length > 0
+            ? [items[0].lon, items[0].lat]
+            : [-122.42, 37.77];
+
+          try {
+            mapInstanceRef.current = new MapTilerMap({
+              container: container,
+              style: MapStyle.STREETS,
+              zoom: 12,
+              center: initialCenter,
+              maxZoom: MAPTILER_CONFIG.maxZoom,
+            });
+
+            mapInstanceRef.current.on('load', () => {
+              if (!cancelled) {
+                setMapReady(true);
+                setCurrentZoom(mapInstanceRef.current.getZoom());
+              }
+            });
+
+            // Track zoom changes
+            mapInstanceRef.current.on('zoom', () => {
+              if (!cancelled && mapInstanceRef.current) {
+                setCurrentZoom(mapInstanceRef.current.getZoom());
+              }
+            });
+
+            mapInstanceRef.current.on('zoomend', () => {
+              if (!cancelled && mapInstanceRef.current) {
+                setCurrentZoom(mapInstanceRef.current.getZoom());
+              }
+            });
+
+            // Listen for style errors (tiles failing to load)
+            mapInstanceRef.current.on('error', (e: any) => {
+              console.warn('[MapCanvas] Map error:', e?.error?.message || e);
+            });
+
+            // Observe container resizes so the canvas can adjust via map.resize()
+            if (typeof ResizeObserver !== 'undefined') {
+              resizeObserver = new ResizeObserver(() => {
+                if (mapInstanceRef.current) {
+                  mapInstanceRef.current.resize();
+                }
+              });
+              resizeObserver.observe(container);
+            }
+          } catch (initError) {
+            console.error('[MapCanvas] Map initialization failed:', initError);
+            setMapLoadError('Error al inicializar el mapa. Verifica la API key y la conexión.');
+          }
+        }
+      }).catch((error) => {
+        if (!cancelled) {
+          console.error('[MapCanvas] Failed to load MapTiler SDK:', error);
+          setMapLoadError('No se pudo cargar el SDK de MapTiler. Verifica la instalación de @maptiler/sdk.');
+        }
+      });
+    };
+
+    // Defer initialization to ensure react-native-web layout is applied
+    const rafId = requestAnimationFrame(() => {
+      setTimeout(initMap, 100);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Add/update markers
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+
+    import('@maptiler/sdk').then(({ Marker, Popup }) => {
+      // Clear existing markers
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
+
+      items.forEach((item) => {
+        const isSelected = selectedItem?.uuid === item.uuid;
+        
+        const marker = new Marker({
+          color: item.colorHex,
+          scale: isSelected ? 1.3 : 1,
+        })
+          .setLngLat([item.lon, item.lat])
+          .setPopup(
+            new Popup().setHTML(`
+              <div style="max-width: 300px; font-family: system-ui, sans-serif;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                  <span style="width: 12px; height: 12px; border-radius: 999px; background-color: ${item.colorHex}; display: inline-block; margin-right: 8px;"></span>
+                  <strong style="color: #0f172a; font-size: 14px;">${item.unique_id}</strong>
+                </div>
+                <div style="color: #475569; font-size: 12px; margin-bottom: 6px;">
+                  Auditoría: <strong style="color: #0f172a;">${getAuditStatusLabel(item.audit_status)}</strong>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px;">
+                  <div>
+                    <div style="color: #64748b;">UUID</div>
+                    <div style="color: #0f172a; font-weight: 600;">${item.uuid}</div>
+                  </div>
+                  <div>
+                    <div style="color: #64748b;">Color</div>
+                    <div style="color: #0f172a; font-weight: 600;">${item.colorHex}</div>
+                  </div>
+                  <div>
+                    <div style="color: #64748b;">Lat</div>
+                    <div style="color: #0f172a; font-weight: 600;">${item.lat.toFixed(6)}</div>
+                  </div>
+                  <div>
+                    <div style="color: #64748b;">Lon</div>
+                    <div style="color: #0f172a; font-weight: 600;">${item.lon.toFixed(6)}</div>
+                  </div>
+                </div>
+                <div style="color: #64748b; font-size: 11px; margin-top: 8px;">
+                  Actualizado: ${new Date(item.timestamp).toLocaleString()}
+                </div>
+              </div>
+            `)
+          )
+          .addTo(mapInstanceRef.current);
+
+        if (onSelect) {
+          marker.getElement().addEventListener('click', () => {
+            onSelect(item);
+          });
+        }
+
+        markersRef.current.push(marker);
+      });
+    });
+  }, [items, selectedId, mapReady]);
+
+  // Update map style
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+
+    import('@maptiler/sdk').then(({ MapStyle }) => {
+      const styleMap = {
+        street: MapStyle.STREETS,
+        satellite: MapStyle.SATELLITE,
+        hybrid: MapStyle.HYBRID,
+      };
+      mapInstanceRef.current.setStyle(styleMap[mapType]);
+    });
+  }, [mapType, mapReady]);
+
+  // Center on selected item
+  useEffect(() => {
+    if (!selectedItem || !mapReady || !mapInstanceRef.current) return;
+
+    mapInstanceRef.current.flyTo({
+      center: [selectedItem.lon, selectedItem.lat],
+      zoom: Math.max(mapInstanceRef.current.getZoom(), 18),
+      duration: 1500,
+    });
+  }, [selectedItem, mapReady]);
+
+  // When items load for the first time and no selection exists, center on data
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || items.length === 0) return;
+    if (selectedId) return; // already handled by selection effect
+
+    import('@maptiler/sdk').then(({ LngLatBounds }) => {
+      const bounds = new LngLatBounds(
+        [Math.min(...items.map(i => i.lon)), Math.min(...items.map(i => i.lat))],
+        [Math.max(...items.map(i => i.lon)), Math.max(...items.map(i => i.lat))]
+      );
+      mapInstanceRef.current.fitBounds(bounds, {
+        padding: 50,
+        maxZoom: 16,
+        duration: 1000,
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, mapReady]);
+
+  // Get user location when showUserLocation is true
+  useEffect(() => {
+    if (!showUserLocation || !mapReady || !mapInstanceRef.current) return;
+
+    if (!navigator.geolocation) {
+      console.warn('Geolocation not available');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lon: longitude });
+      },
+      (error) => {
+        console.error('Error getting user location:', error);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, [showUserLocation, mapReady]);
+
+  // Add/update user location marker
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !userLocation) return;
+
+    import('@maptiler/sdk').then(({ Marker }) => {
+      // Remove existing user location marker
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+      }
+
+      // Add new user location marker
+      const element = document.createElement('div');
+      element.style.width = '20px';
+      element.style.height = '20px';
+      element.style.borderRadius = '50%';
+      element.style.backgroundColor = '#4285F4';
+      element.style.border = '3px solid white';
+      element.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+      userLocationMarkerRef.current = new Marker({ element })
+        .setLngLat([userLocation.lon, userLocation.lat])
+        .addTo(mapInstanceRef.current);
+    });
+
+    return () => {
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
+      }
+    };
+  }, [userLocation, mapReady]);
+
+  const handleCenterOnMe = () => {
+    if (!navigator.geolocation) {
+      showToast('La geolocalización no está disponible');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo({
+            center: [longitude, latitude],
+            zoom: 18,
+            duration: 1500,
+          });
+        }
+      },
+      (error) => {
+        console.error('Error al obtener ubicación:', error);
+        showToast('No se pudo obtener tu ubicación');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
-  // Determine provider-native max zoom to avoid requesting tiles that the provider
-  // does not serve (which causes 400 responses). For OSM street tiles we assume
-  // native up to 19; for Esri satellite we allow up to 20.
-  const providerNativeMax = mapType === 'street' ? 19 : 20;
-  const mapMaxZoom = Math.min(MAX_MAP_ZOOM, providerNativeMax);
-  const selectionZoom = Math.min(mapMaxZoom, providerNativeMax);
-  const fitAllMaxZoom = Math.min(mapMaxZoom, 19);
+  const handleFitAll = () => {
+    if (!mapInstanceRef.current || items.length === 0) return;
+
+    import('@maptiler/sdk').then(({ LngLatBounds }) => {
+      const bounds = new LngLatBounds(
+        [Math.min(...items.map(i => i.lon)), Math.min(...items.map(i => i.lat))],
+        [Math.max(...items.map(i => i.lon)), Math.max(...items.map(i => i.lat))]
+      );
+
+      mapInstanceRef.current.fitBounds(bounds, {
+        padding: 50,
+        maxZoom: 18,
+        duration: 1500,
+      });
+    });
+  };
+
+  const handleCenterSelection = () => {
+    if (!selectedItem || !mapInstanceRef.current) return;
+
+    mapInstanceRef.current.flyTo({
+      center: [selectedItem.lon, selectedItem.lat],
+      zoom: Math.max(mapInstanceRef.current.getZoom(), 18),
+      duration: 1500,
+    });
+  };
+
+  // Compute the map container height from style prop or default
+  const mapHeight = (style as any)?.height || 470;
 
   return (
-    <View style={[styles.wrapper, style]} accessibilityLabel="Mapa de auditorías">
-      {items.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No hay puntos para mostrar</Text>
+    <View style={[styles.wrapper, style && { borderRadius: (style as any).borderRadius }]} accessibilityLabel="Mapa de auditorías">
+      {mapLoadError ? (
+        <View style={styles.errorState}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Error al cargar el mapa</Text>
+          <Text style={styles.errorMessage}>{mapLoadError}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reintentar carga del mapa"
+            onPress={() => {
+              setMapLoadError(null);
+              setMapReady(false);
+              // Force re-initialization by triggering a re-render
+              setTimeout(() => {
+                window.location.reload();
+              }, 100);
+            }}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </Pressable>
         </View>
       ) : (
         <>
+          {/* Toolbar: only shown when there are items to interact with */}
+          {items.length > 0 && (
             <View style={styles.toolbar}>
-              <View style={styles.legend}>
-                {legendItems.map(item => (
-                  <View key={item.label} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: item.colorHex }]} />
-                  <Text style={styles.legendText}>{item.label}</Text>
-                </View>
-              ))}
-              </View>
-
               <View style={styles.actions}>
                 {selectedItem ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Centrar selección"
-                    onPress={() => setCenterSignal(v => v + 1)}
+                    onPress={handleCenterSelection}
                     style={[styles.mapToggleButton, styles.actionInlineButton]}
                   >
                     <Text style={styles.mapToggleButtonText}>Centrar</Text>
@@ -205,242 +450,102 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Ver todos"
-                  onPress={() => {
-                    // trigger fit-all behaviour
-                    setFitAllSignal(value => value + 1);
-
-                    // Try to expand clusters gracefully using the cluster instance API.
-                    // We attempt several approaches (spiderfy a visible cluster, call zoomToBounds
-                    // on the cluster instance, or as a last resort call map.fitBounds).
-                    setTimeout(() => {
-                      try {
-                        const grp = clusterRef.current;
-                        const instance = grp?.leafletElement ?? grp?.instance ?? grp;
-
-                        if (instance) {
-                          // Try to spiderfy a visible cluster if present
-                          try {
-                            const fg = instance._featureGroup ?? instance._group ?? instance;
-                            const layers = fg && typeof fg.getLayers === 'function' ? fg.getLayers() : [];
-                            const clusterLayer = layers.find((l: any) => l && typeof l.getChildCount === 'function' && l.getChildCount() > 1);
-                            if (clusterLayer && typeof clusterLayer.spiderfy === 'function') {
-                              clusterLayer.spiderfy();
-                              return;
-                            }
-                          } catch (e) {
-                            // ignore and try other methods
-                          }
-
-                          if (typeof instance.zoomToBounds === 'function') {
-                            try { instance.zoomToBounds(); return; } catch (e) {}
-                          }
-
-                          if (typeof instance.zoomToShowLayer === 'function') {
-                            try {
-                              const anyLayer = instance.getLayers?.()?.[0];
-                              if (anyLayer) instance.zoomToShowLayer(anyLayer, () => {});
-                              return;
-                            } catch (e) {}
-                          }
-                        }
-
-                        // fallback: use map.fitBounds (respect bottom inset)
-                          if (mapRef.current && bounds) {
-                            try { mapRef.current.fitBounds(bounds, { padding: [36, 36 + (insetsBottom || 0) + NAV_BAR_HEIGHT], maxZoom: fitAllMaxZoom } as any); } catch (e) {}
-                          }
-                      } catch (e) {
-                        // final fallback noop
-                      }
-                    }, 200);
-                  }}
+                  onPress={handleFitAll}
                   style={[styles.mapToggleButton, styles.actionInlineButton]}
                 >
                   <Text style={styles.mapToggleButtonText}>Ver todos</Text>
                 </Pressable>
 
-                {/* Toggle controls aligned to 'Ver todos' */}
                 <View style={{ width: 6 }} />
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Vista Street"
                   accessibilityState={{ pressed: mapType === 'street' }}
-                  onPress={() => {
-                    setMapType('street');
-                    // notify user about native max zoom when switching provider
-                    const nativeMax = 19;
-                    showToast(`Tiles nativos disponibles hasta z=${nativeMax}. Zoom superior será reescalado.`, 4000);
-                  }}
+                  onPress={() => setMapType('street')}
                   style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
                 >
                   <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
                 </Pressable>
 
                 <View style={{ width: 6 }} />
-
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Vista Satellite"
                   accessibilityState={{ pressed: mapType === 'satellite' }}
-                  onPress={() => {
-                    setMapType('satellite');
-                    // notify user about native max zoom when switching provider
-                    const nativeMax = 20;
-                    showToast(`Tiles nativos disponibles hasta z=${nativeMax}. Zoom superior será reescalado.`, 4000);
-                  }}
+                  onPress={() => setMapType('satellite')}
                   style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
                 >
                   <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
                 </Pressable>
-              </View>
-              <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${providerNativeMax}`}>Máx. zoom: {providerNativeMax}</Text>
-          </View>
 
-    <MapContainer
-              center={center}
-              zoom={12}
-              style={styles.map as any}
-              bounds={bounds ?? undefined}
-              scrollWheelZoom
-              whenCreated={m => (mapRef.current = m)}
-              // Cap the map max zoom to the provider's native max to avoid 400 errors
-              maxZoom={mapMaxZoom}
-            >
-              <FocusController selectedItem={selectedItem} bounds={bounds} fitAllSignal={fitAllSignal} centerSignal={centerSignal} selectionZoom={selectionZoom} fitAllMaxZoom={fitAllMaxZoom} insetsBottom={insetsBottom} />
-            <TileLayer
-              attribution={TILESETS[mapType].attribution}
-              url={TILESETS[mapType].url}
-              // Do not request tiles beyond providerNativeMax
-              maxNativeZoom={providerNativeMax}
-              maxZoom={mapMaxZoom}
-              detectRetina={true}
-              eventHandlers={{
-                tileerror: () => {
-                  // fallback to street tiles if satellite fails
-                  if (mapType === 'satellite') {
-                    setMapType('street');
-                    showToast('Vista satélite no disponible. Usando Street.');
-                  }
-                },
+                <View style={{ width: 6 }} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Vista Hybrid"
+                  accessibilityState={{ pressed: mapType === 'hybrid' }}
+                  onPress={() => setMapType('hybrid')}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'hybrid' ? styles.mapToggleButtonActive : undefined]}
+                >
+                  <Text style={[styles.mapToggleButtonText, mapType === 'hybrid' ? styles.mapToggleButtonTextActive : undefined]}>Hybrid</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${MAPTILER_CONFIG.maxZoom}`}>
+                Máx. zoom: {MAPTILER_CONFIG.maxZoom}
+              </Text>
+            </View>
+          )}
+
+          {/*
+            CRITICAL: The map container div is ALWAYS rendered, even when items is empty.
+            This ensures the useEffect initialization finds the ref in the DOM on mount.
+            Previously, the div was conditionally rendered (only when items.length > 0),
+            causing a race condition where the init effect ran before the div existed.
+          */}
+          <View style={styles.mapArea}>
+            {/*
+              CRITICAL: Use a plain <div> for the map container instead of <View>.
+              react-native-web's <View> applies overflow:hidden and flexbox styles
+              that can clip or collapse the WebGL canvas created by MapLibre GL.
+              A native <div> with explicit CSS ensures the map canvas renders correctly.
+            */}
+            <div
+              ref={mapContainerRef}
+              style={{
+                width: '100%',
+                height: `${mapHeight}px`,
+                position: 'relative',
+                backgroundColor: '#e2e8f0',
               }}
             />
 
-            {/* Marker clustering options tuned for better UX when using "Ver todos" */}
-            <MarkerClusterGroup
-              ref={clusterRef}
-              chunkedLoading
-              iconCreateFunction={createClusterIcon}
-              // UX tuning
-              // - disable clustering at this zoom so high-zoom shows individuals
-              // set to 19 so individual markers are visible at high zoom (1m separation)
-              disableClusteringAtZoom={19}
-              // - allow spiderfy when at max zoom
-              spiderfyOnMaxZoom={true}
-              // - do not rely on default zoomToBoundsOnClick; handle cluster clicks explicitly
-              zoomToBoundsOnClick={false}
-              // - reduce cluster radius so clusters split more eagerly
-              maxClusterRadius={40}
-              // - show cluster coverage only on hover (helps on desktop)
-              showCoverageOnHover={false}
-              // handle cluster clicks to provide a predictable expand behavior
-              onClusterClick={(e: any) => {
-                try {
-                  const cluster = e?.layer ?? e?.target ?? null;
-                  if (!cluster) return;
+            {/* Loading overlay: shown while the map tiles are loading */}
+            {!mapReady && (
+              <View style={styles.loadingOverlay} pointerEvents="none">
+                <ActivityIndicator size="small" color="#1e40af" />
+                <Text style={styles.loadingText}>Cargando mapa…</Text>
+              </View>
+            )}
 
-                  // Prefer cluster.zoomToBounds() if available (expands/zooms to children)
-                  if (typeof cluster.zoomToBounds === 'function') {
-                    try { cluster.zoomToBounds(); return; } catch (_) {}
-                  }
+            {/* Empty state overlay: shown when map is ready but no items to display */}
+            {items.length === 0 && mapReady && (
+              <View style={styles.emptyStateOverlay} pointerEvents="none">
+                <Text style={styles.emptyText}>No hay puntos para mostrar</Text>
+              </View>
+            )}
 
-                  // If we have a bounds, fit to it with a capped maxZoom
-                  const bounds = typeof cluster.getBounds === 'function' ? cluster.getBounds() : null;
-                  const map = mapRef.current;
-                    if (bounds && map) {
-                      const mapMax = typeof map.getMaxZoom === 'function' ? (map.getMaxZoom() as number) : fitAllMaxZoom;
-                      const targetMax = Math.min(fitAllMaxZoom, isFinite(mapMax) ? mapMax : fitAllMaxZoom);
-                      try {
-                        map.fitBounds(bounds, { padding: [36, 36 + (insetsBottom || 0) + NAV_BAR_HEIGHT], maxZoom: targetMax } as any);
-                        return;
-                      } catch (_) {}
-                    }
-
-                  // As last resort spiderfy the cluster if possible
-                  if (typeof cluster.spiderfy === 'function') {
-                    try { cluster.spiderfy(); } catch (_) {}
-                  }
-                } catch (_) {}
-              }}
-            >
-              {items.map(item => (
-                <CircleMarker
-                  key={item.uuid}
-                  center={[item.lat, item.lon]}
-                  radius={selectedItem?.uuid === item.uuid ? 11 : 8}
-                  eventHandlers={onSelect ? { click: () => onSelect(item) } : undefined}
-                  pathOptions={{
-                    color: item.colorHex,
-                    fillColor: item.colorHex,
-                    fillOpacity: selectedItem?.uuid === item.uuid ? 1 : 0.85,
-                    weight: selectedItem?.uuid === item.uuid ? 3 : 1,
-                  }}
-                >
-                  <Popup>
-                      <div style={{ maxWidth: 300, wordBreak: 'break-word', fontFamily: 'system-ui, sans-serif' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                        <span
-                          style={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '999px',
-                            backgroundColor: item.colorHex,
-                            display: 'inline-block',
-                            marginRight: 8,
-                          }}
-                        />
-                        <strong style={{ color: '#0f172a', fontSize: 14 }}>{item.unique_id}</strong>
-                      </div>
-
-                      <div style={{ color: '#475569', fontSize: 12, marginBottom: 6 }}>
-                        Auditoría: <strong style={{ color: '#0f172a' }}>{getAuditStatusLabel(item.audit_status)}</strong>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>
-                        <div>
-                          <div style={{ color: '#64748b' }}>UUID</div>
-                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.uuid}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: '#64748b' }}>Color</div>
-                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.colorHex}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: '#64748b' }}>Lat</div>
-                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.lat.toFixed(4)}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: '#64748b' }}>Lon</div>
-                          <div style={{ color: '#0f172a', fontWeight: 600 }}>{item.lon.toFixed(4)}</div>
-                        </div>
-                      </div>
-
-                      <div style={{ color: '#64748b', fontSize: 11, marginTop: 8 }}>
-                        Actualizado: {new Date(item.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              ))}
-            </MarkerClusterGroup>
-          </MapContainer>
-          {/* overlay removed - toggles moved inline into toolbar actions */}
+            {/* Zoom indicator */}
+            {mapReady && (
+              <View style={styles.zoomIndicator} pointerEvents="none">
+                <Text style={styles.zoomText} accessibilityLabel={`Zoom nivel ${currentZoom.toFixed(1)}`}>
+                  {currentZoom.toFixed(1)}×
+                </Text>
+              </View>
+            )}
+          </View>
 
           {toast ? (
-            // Position toast above bottom navigation using insetsBottom + NAV height
             <View
-              style={[
-                styles.toast,
-                { bottom: (insetsBottom || 0) + NAV_BAR_HEIGHT + 14, zIndex: 1200 },
-              ]}
+              style={[styles.toast, { bottom: (insetsBottom || 0) + NAV_BAR_HEIGHT + 14, zIndex: 1200 }]}
               accessibilityLiveRegion="polite"
             >
               <Text style={styles.toastText}>{toast}</Text>
@@ -454,19 +559,22 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
 
 const styles = StyleSheet.create({
   wrapper: {
-    minHeight: 320,
     borderRadius: 12,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     backgroundColor: '#fff',
-    // ensure the map wrapper is responsive and does not cause horizontal overflow
     width: '100%',
     minWidth: 0,
+    // NOTE: overflow is intentionally NOT set to 'hidden' here.
+    // overflow:'hidden' clips the WebGL canvas created by MapLibre GL,
+    // causing the map tiles to be invisible even though the container
+    // has the correct dimensions.
   },
-  map: {
-    width: '100%',
-    height: 320,
+  mapArea: {
+    position: 'relative',
+    // This wrapper positions the map container and overlays relative to each other.
+    // The map container div is a child with explicit height, and overlays are
+    // positioned absolutely within this area.
   },
   toolbar: {
     paddingHorizontal: 12,
@@ -476,77 +584,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 12,
-    marginBottom: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 6,
-  },
-  legendText: {
-    color: '#475569',
-    fontSize: 12,
-  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  actionButton: {
-    color: '#2563eb',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  toggleButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  toggleButtonActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#1e40af',
-  },
-  toggleButtonText: {
-    color: '#2563eb',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  toggleButtonTextActive: {
-    color: '#fff',
-  },
-  toggleButtonLarge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: 'rgba(15,23,42,0.06)',
-    // Use CSS boxShadow on web to avoid deprecated shadow* warnings
-    boxShadow: '0 6px 18px rgba(2,6,23,0.08)',
-    elevation: 4,
-  },
-  providerInfo: {
-    color: '#64748b',
-    fontSize: 12,
-    alignSelf: 'flex-end',
-    marginTop: 6,
-  },
-  toggleButtonActiveLarge: {
-    backgroundColor: '#2563eb',
-    borderColor: '#1e40af',
   },
   mapToggleButton: {
     paddingHorizontal: 10,
@@ -580,20 +621,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 6,
   },
-  overlayControls: {
-    position: 'absolute',
-    // place overlay below the toolbar to avoid overlap/clipping
-    top: 64,
-    left: 12,
-    right: 12,
-    alignItems: 'flex-start',
-    pointerEvents: 'box-none',
-    zIndex: 1000,
+  locationButton: {
+    backgroundColor: '#10b981',
+    borderColor: '#059669',
   },
-  overlayInner: {
-    flexDirection: 'row',
+  providerInfo: {
+    color: '#64748b',
+    fontSize: 12,
+    alignSelf: 'flex-end',
+    marginTop: 6,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    zIndex: 10,
+  },
+  loadingText: {
+    color: '#1e40af',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  emptyStateOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    zIndex: 10,
+  },
+  emptyText: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '500',
   },
   toast: {
     position: 'absolute',
@@ -611,12 +680,58 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
   },
-  emptyState: {
+  errorState: {
     minHeight: 320,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
-  emptyText: {
-    color: '#64748b',
+  errorIcon: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
+  errorTitle: {
+    color: '#991b1b',
+    fontWeight: '700',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    color: '#b91c1c',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  retryButton: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  zoomIndicator: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 1000,
+  },
+  zoomText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'monospace',
   },
 });
