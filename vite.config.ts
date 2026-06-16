@@ -49,6 +49,7 @@ export default defineConfig({
   // Avoid Vite trying to pre-bundle react-navigation native modules (they target react-native, not web)
   optimizeDeps: {
     exclude: ['@react-navigation/native', '@react-navigation/native-stack', '@react-navigation/bottom-tabs'],
+    include: ['@maptiler/sdk'],
   },
   server: {
     port: 3100,

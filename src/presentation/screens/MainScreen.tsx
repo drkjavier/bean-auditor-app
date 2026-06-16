@@ -13,6 +13,7 @@ import { useAuthStore } from '../../stores';
 // Using React.lazy isolates failures inside a Suspense boundary instead.
 const AuditScreen = lazy(() => import('./AuditScreen'));
 const NFCScreen = lazy(() => import('./NFCScreen'));
+const MapTilerTestScreen = lazy(() => import('./MapTilerTestScreen'));
 
 // MainScreen: contenedor con BottomNavigation reutilizable (BottomNavBar)
 // - El footer (BottomNavBar) queda estático en todas las pantallas.
@@ -23,6 +24,7 @@ const ROUTES: { key: string; title: string }[] = [
   { key: 'home', title: 'Inicio' },
   { key: 'audit', title: 'Auditoría' },
   { key: 'nfc', title: 'NFC' },
+  { key: 'maptiler-test', title: 'MapTiler Test' },
   { key: 'settings', title: 'Ajustes' },
 ];
 
@@ -52,6 +54,8 @@ export default function MainScreen() {
         return <AuditScreen />;
       case 'nfc':
         return <NFCScreen />;
+      case 'maptiler-test':
+        return <MapTilerTestScreen />;
       case 'settings':
         return <SettingsScreen />;
       default:

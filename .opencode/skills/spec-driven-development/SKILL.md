@@ -149,9 +149,86 @@ updated: YYYY-MM-DD
 - Usar `frontend-architecture-agent` para validar separación de capas
 - Usar `frontend-testing-agent` para generar tests
 
+### Para Cross-platform specs
+- Usar `frontend-cross-platform-agent` para validar compatibilidad
+- Usar `frontend-performance-agent` para validar rendimiento
+
+### Para Navigation specs
+- Usar `frontend-navigation-agent` para validar navegación
+- Usar `frontend-security-agent` para validar seguridad de rutas
+
+### Para State specs
+- Usar `frontend-state-agent` para validar estado global
+- Usar `frontend-security-agent` para validar seguridad de datos
+
+## Validación bidireccional
+
+El sistema SDD implementa validación en dos fases:
+
+### 1. Validación pre-implementación (diseño de spec)
+
+**Cuándo**: Después de descomponer la spec maestra en sub-specs, antes de implementar
+
+**Objetivo**: Detectar problemas de diseño antes de gastar esfuerzo en implementación
+
+**Flujo**:
+1. `frontend-agent` descompone spec maestra en sub-specs
+2. `frontend-agent` invoca auditores relevantes según tipo de spec
+3. Auditores revisan diseño de la spec
+4. Si hay hallazgos críticos → spec marcada como `blocked`
+5. Usuario decide: ajustar spec, resolver problema, o cancelar
+6. Si todo OK → proceder a implementación
+
+### 2. Validación post-implementación (código)
+
+**Cuándo**: Después de implementar cada sub-spec, antes de marcar como `completed`
+
+**Objetivo**: Asegurar que la implementación cumple la spec y no introduce regresiones
+
+**Flujo**:
+1. `frontend-agent` implementa sub-spec
+2. `frontend-agent` invoca mismos auditores que en fase pre
+3. Auditores revisan código implementado
+4. Si hay hallazgos críticos → sub-spec marcada como `blocked`
+5. Usuario decide: corregir implementación, ajustar spec, o cancelar
+6. Si todo OK → sub-spec marcada como `completed`
+7. Actualizar PROGRESS.md
+
+## Protocolo de bloqueo
+
+Cuando un auditor detecta un problema crítico (severity: `critical` o `high`):
+
+1. **Auditor responde** con hallazgos en formato estructurado
+2. **`frontend-agent`** recibe el reporte y:
+   - Cambia estado de la sub-spec a `blocked` en el frontmatter
+   - Documenta el hallazgo en el historial de la spec
+   - Notifica al usuario con resumen del problema
+3. **`orquestador-tareas`** notifica al usuario con:
+   - ID de la sub-spec bloqueada
+   - Severidad del hallazgo
+   - Descripción del problema
+   - Recomendación del auditor
+   - Sub-specs dependientes que están esperando
+4. **Usuario decide**:
+   - **Resolver**: `frontend-agent` corrige el problema
+   - **Ajustar spec**: se modifica la spec para evitar el problema
+   - **Cancelar**: se marca la sub-spec como `cancelled` y se replanifica
+
+## Matriz de auditores por tipo de spec
+
+| Tipo de Spec | Auditores Obligatorios | Auditores Opcionales |
+|--------------|------------------------|----------------------|
+| UI/UX | ui, ux, accessibility | performance, cross-platform |
+| API | security, state | architecture, testing |
+| Feature | architecture, testing | security, performance |
+| Navigation | navigation, security | ux, cross-platform |
+| State | state, security | architecture, testing |
+| Cross-platform | cross-platform, performance | ui, testing |
+
 ## Restricciones
 - No implementar código sin que la spec esté en estado `completed` o `in_progress`
 - No saltarse el orden de dependencias definido en la descomposición
-- No marcar como `completed` sin que el usuario valide
-- No modificar PROGRESS.md manualmente (solo el agente lo actualiza)
+- No marcar como `completed` sin validación automática de auditores
+- No modificar PROGRESS.md manualmente (solo agentes autorizados)
 - Respetar la arquitectura de capas del proyecto en toda implementación
+- Todo hallazgo crítico de auditor bloquea la spec hasta resolución
