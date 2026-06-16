@@ -1,60 +1,80 @@
-// Mock data: 175 tags con uuid único, colorHex, unique_id, lat, lon, timestamp, audited
-// Ubicación base: Finca bananera Tiquisate, Guatemala
-// Coordenadas base: 14.283333, -91.366667
-// Radio máximo por tag: ~3 metros (≈ 0.000027 grados)
-import { TAG_COLORS } from '../../domain/constants/tagColors';
-import { AuditStatus } from '../../domain/audit/AuditRecord';
+/**
+ * Mock data: 6 800 tags simulating 4 hectares (2 × 2) of banana plantation.
+ *
+ * Each hectare has ~1 700 plants placed in a mixed pattern (hileras) with
+ * staggered rows (34 rows × 50 plants = 1 700 plants/ha).
+ *
+ * The grid is centered on Finca bananera Tiquisate, Guatemala:
+ *   Center: 14.283333, -91.366667
+ *
+ * The CENTER tag is the one closest to the center point (intersection of
+ * the 4 hectares). It can be used as the reference point for NFC workflows.
+ *
+ * @module data/mocks/tagsMock
+ */
+
+import { generateStandardPlantation } from '../../domain/farm/tagGenerator';
+import type { AuditStatus } from '../../domain/audit/AuditRecord';
+
+// ── Tag Type ──────────────────────────────────────────────────────────────────
 
 export type Tag = {
-  uuid: string;     // identificador técnico único
-  colorHex: string; // hex del color, ej: '#FF0000'
+  uuid: string;
+  colorHex: string;
   unique_id: string;
   lat: number;
   lon: number;
-  timestamp: string; // ISO
+  timestamp: string;
   audit_status: AuditStatus | null;
   sync_pending: boolean;
 };
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const LAT_BASE = 14.283333;
 const LON_BASE = -91.366667;
-// 3 metros en grados ≈ 0.000027
-const MAX_RADIUS_DEG = 0.000027;
 
-// Generador pseudo-aleatorio determinista (LCG simple)
-function lcg(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff;
-    return (s >>> 0) / 0xffffffff;
-  };
+// ── Generation ────────────────────────────────────────────────────────────────
+
+/**
+ * The full plantation generation result — 4 hectares (2×2 grid).
+ * Generated once at module load time.
+ */
+const generationResult = generateStandardPlantation(
+  LAT_BASE,
+  LON_BASE,
+  2, // hectaresPerSide: 2×2 = 4 ha
+  1700,
+  'mixed',
+);
+
+/** All 6 800 tags for the 4-hectare plantation */
+export const tagsMock: Tag[] = generationResult.tags as Tag[];
+
+/** The tag closest to the center of the 4-hectare grid */
+export const centerTag: Tag = generationResult.centerTag as Tag;
+
+/** Per-hectare metrics */
+export const { hectareMetrics } = generationResult;
+
+/** Total plant count */
+export const { totalPlants } = generationResult;
+
+// ── Dev helper ────────────────────────────────────────────────────────────────
+
+/**
+ * Return a summary string describing the mock plantation.
+ */
+export function getPlantationSummary(): string {
+  const ha = hectareMetrics;
+  const totalHa = ha.length;
+  const avgPlants = totalPlants / totalHa;
+  const firstHa = ha[0];
+  return (
+    `${totalHa} hectáreas (2×2) · ` +
+    `${totalPlants.toLocaleString()} plantas totales · ` +
+    `~${Math.round(avgPlants)} plantas/ha · ` +
+    `Patrón: mixto (${firstHa.rowSpacing.toFixed(2)}m × ${firstHa.plantSpacing.toFixed(2)}m) · ` +
+    `Centro: ${centerTag.unique_id} @ (${LAT_BASE}, ${LON_BASE})`
+  );
 }
-
-const rand = lcg(42);
-
-export const tagsMock: Tag[] = Array.from({ length: 175 }).map((_, i) => {
-  const colorEntry = TAG_COLORS[i % TAG_COLORS.length];
-
-  // Posición aleatoria dentro de un radio de 3m (0.000027°)
-  const angle = rand() * Math.PI * 2;
-  const radius = rand() * MAX_RADIUS_DEG;
-  const lat = +(LAT_BASE + Math.cos(angle) * radius).toFixed(7);
-  const lon = +(LON_BASE + Math.sin(angle) * radius).toFixed(7);
-
-  // Timestamps distribuidos en los últimos 30 días
-  const daysAgo = rand() * 30;
-  const ts = new Date(Date.now() - daysAgo * 86400000).toISOString();
-
-  const seq = String(i + 1).padStart(3, '0');
-
-  return {
-    uuid: `550e8400-e29b-41d4-a716-${String(i + 1).padStart(12, '0')}`,
-    colorHex: colorEntry.hex,
-    unique_id: `TAG-TIQ-${seq}`,
-    lat,
-    lon,
-    timestamp: ts,
-    audit_status: i % 3 === 0 ? 'audited' : i % 3 === 1 ? 'not_audited' : 'pending',
-    sync_pending: false,
-  };
-});

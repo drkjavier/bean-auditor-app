@@ -163,6 +163,13 @@ Se crearon 8 skills especializadas para mejorar productividad y consistencia:
 - Optimizar prompts usando `/prompt` o `reformulacion-prompt`
 - Consultar y modificar configuraciones en `opencode.json` cuando sea necesario
 
+## Metodología de Trabajo
+- **SDD (Spec Design Development)**: Todo cambio, mejora, corrección o nueva funcionalidad debe seguir el flujo SDD:
+  1. **Spec (Especificación)**: Definir claramente qué se va a hacer, alcance, criterios de aceptación y restricciones antes de escribir código.
+  2. **Design (Diseño)**: Planificar la arquitectura, archivos a modificar/crear, dependencias y estrategia de implementación alineada con las capas del proyecto.
+  3. **Development (Desarrollo)**: Implementar los cambios siguiendo el diseño aprobado, ejecutando lint y tests para validar.
+- **Reporte de flujo**: Al finalizar cada ajuste o tarea, mostrar un resumen del flujo realizado indicando: spec definida, decisiones de diseño tomadas, archivos modificados/creados, y resultado de validaciones (lint/tests).
+
 ## Instrucciones Restringidas
 - Modificar archivos de configuración de entorno (.env) o secretos
 - Alterar la estructura de capas definida sin justificación documentada

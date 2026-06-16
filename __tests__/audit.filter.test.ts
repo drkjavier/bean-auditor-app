@@ -3,7 +3,7 @@ import { fetchTags } from '../src/data/tagService';
 describe('tagService filters', () => {
   test('returns all without filter', async () => {
     const all = await fetchTags();
-    expect(all.length).toBe(175);
+    expect(all.length).toBeGreaterThanOrEqual(6_500);
   });
 
   test('search by unique_id via color filter is not supported; smoke test by color', async () => {
@@ -29,7 +29,8 @@ describe('tagService filters', () => {
   test('date range filter', async () => {
     const from = new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString();
     const res = await fetchTags({ from });
-    expect(res.length).toBeLessThanOrEqual(40);
+    // ~6 800 tags spread over 90 days → ~378 in last 5 days
+    expect(res.length).toBeGreaterThanOrEqual(300);
   });
 
   test('filter by color hex', async () => {
