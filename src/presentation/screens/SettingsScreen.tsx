@@ -18,6 +18,10 @@ import Button from '../components/Button';
 import DatabaseDebugPanel from '../components/DatabaseDebugPanel';
 import SyncStatusBadge from '../components/SyncStatusBadge';
 import SessionSection from '../components/SessionSection';
+import PlantingPatternVisualizer from '../components/PlantingPatternVisualizer';
+import PlantationGrid from '../components/PlantationGrid';
+import { centerTag, hectareMetrics, totalPlants } from '../../data/mocks/tagsMock';
+import { getPlantationSummary } from '../../data/mocks/tagsMock';
 
 export default function SettingsScreen() {
   const { colors, typography, spacing } = useTheme();
@@ -28,6 +32,8 @@ export default function SettingsScreen() {
   const showUserLocation = useSettingsStore(state => state.showUserLocation);
   const setShowUserLocation = useSettingsStore(state => state.setShowUserLocation);
   const [debugInfo, setDebugInfo] = useState<string>('Cargando...');
+  const [showPatternVisualizer, setShowPatternVisualizer] = useState(false);
+  const [showPlantationGrid, setShowPlantationGrid] = useState(false);
 
   useEffect(() => {
     const tokenPreview = accessToken ? `${accessToken.substring(0, 20)}...` : 'null';
@@ -122,6 +128,67 @@ export default function SettingsScreen() {
       </View>
       {accessToken && <SessionSection token={accessToken} />}
 
+      {/* ── Tools ─────────────────────────────────────────────────────── */}
+      <View style={{ marginTop: spacing.lg }}>
+        <SectionHeader
+          title="Herramientas"
+          subtitle="Utilidades de planificación"
+        />
+        <Card variant="outlined">
+          <SettingsRow
+            label="Visualizador de patrones de siembra"
+            onPress={() => setShowPatternVisualizer(v => !v)}
+            trailing={
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>
+                {showPatternVisualizer ? 'Ocultar' : 'Mostrar'}
+              </Text>
+            }
+            showDivider={false}
+          />
+        </Card>
+
+        {showPatternVisualizer && <PlantingPatternVisualizer initialPlants={1650} />}
+
+        <Card variant="outlined" style={{ marginTop: spacing.sm }}>
+          <SettingsRow
+            label="Plantación completa: 4 ha"
+            onPress={() => setShowPlantationGrid(v => !v)}
+            trailing={
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>
+                {showPlantationGrid ? 'Ocultar' : 'Mostrar'}
+              </Text>
+            }
+            showDivider={false}
+          />
+          <Text
+            style={[
+              styles.summaryText,
+              { color: colors.textCaption },
+            ]}
+          >
+            {getPlantationSummary()}
+          </Text>
+        </Card>
+
+        {showPlantationGrid && (
+          <PlantationGrid
+            data={{
+              hectares: hectareMetrics.map(h => ({
+                gridRow: h.gridRow,
+                gridCol: h.gridCol,
+                plantCount: h.plantCount,
+              })),
+              totalPlants,
+              centerTagId: centerTag.unique_id,
+              centerLat: centerTag.lat,
+              centerLon: centerTag.lon,
+              plantsPerHectare: 1700,
+              patternType: 'mixed',
+            }}
+          />
+        )}
+      </View>
+
       {/* ── About ──────────────────────────────────────────────────────── */}
       <View style={{ marginTop: spacing.lg }}>
         <SectionHeader title="Acerca de" />
@@ -159,5 +226,11 @@ const styles = StyleSheet.create({
   toggleText: {
     fontWeight: '700',
     fontSize: 13,
+  },
+  summaryText: {
+    fontSize: 11,
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    lineHeight: 16,
   },
 });

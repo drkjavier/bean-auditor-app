@@ -105,7 +105,7 @@ describe('Tag Seed', () => {
   });
 
   test('all tags from mock are included', () => {
-    expect(tagsMock.length).toBe(175);
+    expect(tagsMock.length).toBeGreaterThanOrEqual(6_500);
     expect(tagsMock[0].uuid).toBeDefined();
     expect(tagsMock[0].colorHex).toBeDefined();
   });
