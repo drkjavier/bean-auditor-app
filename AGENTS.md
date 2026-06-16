@@ -93,7 +93,6 @@ Este proyecto integra específicamente con las siguientes capacidades de OpenCod
 | `frontend-testing-agent` | `subagent` | Jest, mocks, cobertura, snapshots. | 82 |
 | `frontend-documentation-agent` | `subagent` | JSDoc, README, changelogs. | 93 |
 | `frontend-security-agent` | `subagent` | Auth, sesión, storage, APIs, datos sensibles. | 90 |
-| `frontend-uiux-agent` | `subagent` | ⚠️ DEPRECATED — usar triada ui+ux+a11y. | 98 |
 | `plan-builder` | `all` | Orquestador de planes multi-capa. | 145 |
 | `orquestador-tareas` | `primary` | Orquesta tareas individuales o simultáneas. | 159 |
 | `skills-agent` | `subagent` | Crea, audita y mantiene agentes y skills. | 212 |

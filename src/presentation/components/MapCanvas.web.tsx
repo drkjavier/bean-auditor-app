@@ -309,7 +309,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
   };
 
   return (
-    <View style={[styles.wrapper, style]} accessibilityLabel="Mapa de auditorías">
+    <View style={[styles.wrapper, style && { borderRadius: (style as any).borderRadius }]} accessibilityLabel="Mapa de auditorías">
       {items.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No hay puntos para mostrar</Text>
@@ -385,7 +385,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
             </Text>
           </View>
 
-          <View style={[styles.mapContainer, style && { height: (style as any).height || 370 }]}>
+          <View style={[styles.mapContainer, style && { height: (style as any).height || 420 }]}>
             <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
           </View>
 
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     width: '100%',
-    height: 505,
+    height: 420,
   },
   toolbar: {
     paddingHorizontal: 12,
