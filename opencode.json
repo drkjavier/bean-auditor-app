@@ -12,11 +12,6 @@
       "mode": "all",
       "prompt": "{file:.opencode/agents/frontend-agent.md}"
     },
-    "frontend-uiux-agent": {
-      "description": "[DEPRECATED 2026-06-11] Reemplazado por frontend-ui-agent + frontend-ux-agent + frontend-accessibility-agent. Se eliminará en el próximo sprint. Conservar solo para auditoría de planes antiguos.",
-      "mode": "subagent",
-      "prompt": "{file:.opencode/agents/frontend-uiux-agent.md}"
-    },
     "frontend-ui-agent": {
       "description": "Especialista en diseño visual de interfaces para React y React Native. Audita tokens, color, tipografía, espaciado, iconografía (@mdi/font), consistencia de componentes y responsividad visual. Úsalo para revisar pantallas y componentes antes de cerrar tareas de UI.",
       "mode": "subagent",

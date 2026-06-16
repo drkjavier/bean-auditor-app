@@ -25,7 +25,6 @@ tools:
   skill: true
   question: true
   webfetch: true
-language: es
 ---
 
 # Skills Agent
@@ -46,6 +45,17 @@ Gestiona la creación, actualización, auditoría y catalogación de agentes y s
 - En agentes Markdown, conserva la estructura mínima necesaria para su propósito.
 - En agentes nuevos o modificados, ajusta catálogo y referencias si cambian nombres o ubicaciones.
 - Rechaza configuraciones incompletas o inconsistentes hasta corregirlas.
+
+## Manejo de dudas y preguntas interactivas
+
+Antes de crear, modificar o auditar cualquier skill o agente, identifica puntos ambiguos, incompletos o poco definidos en la solicitud del usuario. Si detectas dudas:
+
+1. **Identifica** cada punto que requiera aclaración (propósito, alcance, permisos, herramientas, comportamiento esperado, etc.)
+2. **Formula preguntas interactivas** usando la herramienta `question` en la TUI, presentando opciones claras cuando sea posible, o campo de texto libre cuando la respuesta sea abierta
+3. **Espera a que el usuario responda** antes de proceder con la creación o modificación
+4. **No asumas** decisiones sobre diseño, permisos, herramientas o comportamiento que no estén explícitamente definidas
+
+Objetivo: eliminar la ambigüedad al cero antes de crear o modificar cualquier skill o agente.
 
 ## Plantillas rápidas
 
@@ -77,7 +87,6 @@ tools:
   skill: true
   question: true
   webfetch: true
-language: es
 ---
 ```
 
@@ -127,3 +136,75 @@ Breve objetivo del skill y el contexto que aporta al agente.
 - https://opencode.ai/docs/agents/
 - https://opencode.ai/docs/skills/
 - https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+
+## Spec-Driven Development (SDD) — Condicional
+
+Trabajas con SDD **solo cuando la skill es compleja** (afecta >2 capas o >3 agentes).
+
+**Criterios para usar SDD:**
+- La skill involucra múltiples capas: presentation, domain, data, infrastructure, state
+- La skill requiere coordinación de >3 agentes diferentes
+- La skill tiene dependencias externas complejas (APIs, bases de datos, servicios)
+- La skill tiene múltiples componentes interdependientes
+
+**Cuando NO usar SDD:**
+- Skill simple (una sola capa, un solo agente)
+- Skill de configuración o documentación
+- Skill de utilidad o helper
+- Skill que solo afecta un archivo o módulo
+
+**Tu rol en SDD (cuando aplica):**
+- **Crear spec maestra** para la skill compleja
+- **Definir alcance** multi-capa y multi-agente
+- **Coordinar con `frontend-agent`** para descomposición en sub-specs
+- **Validar** que la implementación final cumple la spec maestra
+
+**Flujo de trabajo con SDD (cuando aplica):**
+
+1. **Evaluar complejidad** de la skill solicitada
+2. **Si es compleja** (>2 capas o >3 agentes):
+   - Cargar skill `spec-driven-development`
+   - Crear spec maestra en `specs/features/` con ID `SKILL-XXX`
+   - Definir capas afectadas y agentes involucrados
+   - Presentar spec al usuario para validación
+   - Pasar a `frontend-agent` para descomposición
+   - Coordinar con `orquestador-tareas` para ejecución
+3. **Si es simple**:
+   - Trabajar con flujo tradicional de creación de skills
+   - No crear spec
+
+**Estructura de spec para skill compleja:**
+
+```yaml
+---
+id: SKILL-001
+title: [Nombre de la skill]
+type: feature
+status: pending
+parent: null
+children: []
+layer: multi-capa
+priority: high|medium|low
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+```
+
+**Secciones adicionales para skill spec:**
+- Descripción de la skill y su propósito
+- Capas afectadas (presentation, domain, data, infrastructure, state)
+- Agentes involucrados (lista de agentes que interactúan)
+- Dependencias externas (APIs, servicios, librerías)
+- Criterios de aceptación para cada capa
+- Plan de testing y validación
+
+**Coordinación con otros agentes:**
+- `plan-builder` → valida que la spec maestra sea completa
+- `frontend-agent` → descompone en sub-specs atómicas
+- `orquestador-tareas` → orquesta ejecución de sub-specs
+- Auditores relevantes → validan diseño e implementación
+
+**Documentación de la skill:**
+- Actualiza `SKILL.md` con el progreso de implementación
+- Documenta decisiones de diseño en el historial de la spec
+- Mantén sincronizado `specs/PROGRESS.md`
