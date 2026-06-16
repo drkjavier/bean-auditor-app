@@ -6,8 +6,10 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { MAPTILER_CONFIG, getMapLibreStyle } from '../../infrastructure/config/maptiler.config';
+import * as locationService from '../../infrastructure/locationService';
+import { RESULTS } from 'react-native-permissions';
 
 type Props = {
   style?: any;
@@ -45,6 +47,45 @@ export default function MapTilerPrototype({ style }: Props) {
     const newZoom = Math.max(zoom - 1, MAPTILER_CONFIG.minZoom);
     setZoom(newZoom);
     console.log(`🔍 Zoom level: ${newZoom} (${getResolutionText(newZoom)})`);
+  };
+
+  const handleCenterOnMe = async () => {
+    try {
+      // Verificar permisos
+      const status = await locationService.checkPermission();
+      
+      if (status === RESULTS.GRANTED) {
+        // Obtener ubicación actual
+        locationService.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            console.log(`📍 Centrar en: ${latitude}, ${longitude}`);
+            
+            if (mapRef.current) {
+              mapRef.current.flyTo([longitude, latitude], 18, 1500);
+            }
+          },
+          (error) => {
+            console.error('Error al obtener ubicación:', error);
+            Alert.alert('Error', 'No se pudo obtener tu ubicación');
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      } else if (status === RESULTS.DENIED) {
+        // Solicitar permiso
+        const requestStatus = await locationService.requestPermission();
+        if (requestStatus === RESULTS.GRANTED) {
+          handleCenterOnMe(); // Reintentar
+        } else {
+          Alert.alert('Permiso denegado', 'Necesitamos permiso de ubicación para centrar el mapa');
+        }
+      } else {
+        Alert.alert('Permiso requerido', 'Por favor, habilita el permiso de ubicación en la configuración');
+      }
+    } catch (error) {
+      console.error('Error al verificar permisos:', error);
+      Alert.alert('Error', 'No se pudo verificar los permisos de ubicación');
+    }
   };
 
   const getResolutionText = (zoomLevel: number): string => {
@@ -155,6 +196,14 @@ export default function MapTilerPrototype({ style }: Props) {
               accessibilityLabel="Zoom in"
             >
               <Text style={styles.buttonText}>+</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleCenterOnMe}
+              style={[styles.button, styles.locationButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Centrar en mi ubicación"
+            >
+              <Text style={styles.buttonText}>📍</Text>
             </Pressable>
           </View>
         </View>
@@ -291,6 +340,9 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#cbd5e1',
+  },
+  locationButton: {
+    backgroundColor: '#10b981',
   },
   buttonText: {
     color: '#ffffff',

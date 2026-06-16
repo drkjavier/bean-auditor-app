@@ -30,7 +30,7 @@ export default function MapTilerPrototype({ style }: Props) {
     if (!mapContainerRef.current) return;
 
     // Dynamic import to avoid SSR issues
-    import('@maptiler/sdk').then(({ Map: MapTilerMap, config, MapStyle }) => {
+    import('@maptiler/sdk').then(({ Map: MapTilerMap, config, MapStyle, Marker, Popup }) => {
       config.apiKey = MAPTILER_CONFIG.apiKey;
 
       if (!mapInstanceRef.current) {
@@ -47,11 +47,11 @@ export default function MapTilerPrototype({ style }: Props) {
           
           // Add test markers
           testPoints.forEach((point, index) => {
-            const marker = new (mapInstanceRef.current as any).Marker({ 
+            const marker = new Marker({ 
               color: index === 0 ? '#2563eb' : '#dc2626' 
             })
               .setLngLat([point.lon, point.lat])
-              .setPopup(new (mapInstanceRef.current as any).Popup().setHTML(`<strong>${point.label}</strong>`))
+              .setPopup(new Popup().setHTML(`<strong>${point.label}</strong>`))
               .addTo(mapInstanceRef.current);
           });
         });
@@ -97,6 +97,50 @@ export default function MapTilerPrototype({ style }: Props) {
     const newZoom = Math.max(zoom - 1, MAPTILER_CONFIG.minZoom);
     setZoom(newZoom);
     console.log(`🔍 Zoom level: ${newZoom} (${getResolutionText(newZoom)})`);
+  };
+
+  const handleCenterOnMe = () => {
+    if (!navigator.geolocation) {
+      alert('La geolocalización no está disponible en tu navegador');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log(`📍 Centrar en: ${latitude}, ${longitude}`);
+        
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo({
+            center: [longitude, latitude],
+            zoom: 18, // Zoom alto para ver detalles
+            duration: 1500,
+          });
+        }
+      },
+      (error) => {
+        console.error('Error al obtener ubicación:', error);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            alert('Permiso de ubicación denegado. Por favor, habilita la ubicación en tu navegador.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            alert('Información de ubicación no disponible.');
+            break;
+          case error.TIMEOUT:
+            alert('Tiempo de espera agotado al obtener ubicación.');
+            break;
+          default:
+            alert('Error desconocido al obtener ubicación.');
+            break;
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
   };
 
   const getResolutionText = (zoomLevel: number): string => {
@@ -157,6 +201,14 @@ export default function MapTilerPrototype({ style }: Props) {
               accessibilityLabel="Zoom in"
             >
               <Text style={styles.buttonText}>+</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleCenterOnMe}
+              style={[styles.button, styles.locationButton]}
+              accessibilityRole="button"
+              accessibilityLabel="Centrar en mi ubicación"
+            >
+              <Text style={styles.buttonText}>📍</Text>
             </Pressable>
           </View>
         </View>
@@ -293,6 +345,9 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#cbd5e1',
+  },
+  locationButton: {
+    backgroundColor: '#10b981',
   },
   buttonText: {
     color: '#ffffff',
