@@ -40,9 +40,10 @@ type Props = {
   style?: any;
   selectedId?: string | null;
   onSelect?: (item: Tag) => void;
+  showUserLocation?: boolean;
 };
 
-export default function MapCanvas({ items, style, selectedId, onSelect }: Props) {
+export default function MapCanvas({ items, style, selectedId, onSelect, showUserLocation = false }: Props) {
   const insetsBottom = typeof window !== 'undefined' 
     ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') || 0 
     : 0;
@@ -50,9 +51,11 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
   const [mapReady, setMapReady] = useState(false);
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('satellite');
   const [toast, setToast] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const userLocationMarkerRef = useRef<any>(null);
   const toastTimer = useRef<number | null>(null);
 
   const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
@@ -198,6 +201,59 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
       duration: 1500,
     });
   }, [selectedItem, mapReady]);
+
+  // Get user location when showUserLocation is true
+  useEffect(() => {
+    if (!showUserLocation || !mapReady || !mapInstanceRef.current) return;
+
+    if (!navigator.geolocation) {
+      console.warn('Geolocation not available');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lon: longitude });
+      },
+      (error) => {
+        console.error('Error getting user location:', error);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, [showUserLocation, mapReady]);
+
+  // Add/update user location marker
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !userLocation) return;
+
+    import('@maptiler/sdk').then(({ Marker }) => {
+      // Remove existing user location marker
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+      }
+
+      // Add new user location marker
+      const element = document.createElement('div');
+      element.style.width = '20px';
+      element.style.height = '20px';
+      element.style.borderRadius = '50%';
+      element.style.backgroundColor = '#4285F4';
+      element.style.border = '3px solid white';
+      element.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+      userLocationMarkerRef.current = new Marker({ element })
+        .setLngLat([userLocation.lon, userLocation.lat])
+        .addTo(mapInstanceRef.current);
+    });
+
+    return () => {
+      if (userLocationMarkerRef.current) {
+        userLocationMarkerRef.current.remove();
+        userLocationMarkerRef.current = null;
+      }
+    };
+  }, [userLocation, mapReady]);
 
   const handleCenterOnMe = () => {
     if (!navigator.geolocation) {

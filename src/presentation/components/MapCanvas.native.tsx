@@ -41,12 +41,14 @@ type Props = {
   style?: any;
   selectedId?: string | null;
   onSelect?: (item: Tag) => void;
+  showUserLocation?: boolean;
 };
 
-export default function MapCanvas({ items, style, selectedId, onSelect }: Props) {
+export default function MapCanvas({ items, style, selectedId, onSelect, showUserLocation = false }: Props) {
   const [mapReady, setMapReady] = useState(false);
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('satellite');
   const [MapLibreModule, setMapLibreModule] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const mapRef = useRef<any>(null);
 
   const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
@@ -69,6 +71,39 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
       console.error('Failed to load MapLibre React Native:', error);
     });
   }, []);
+
+  // Get user location when showUserLocation is true
+  useEffect(() => {
+    if (!showUserLocation || !mapReady) return;
+
+    const getUserLocation = async () => {
+      try {
+        const status = await locationService.checkPermission();
+        
+        if (status === RESULTS.GRANTED) {
+          locationService.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords;
+              setUserLocation({ lat: latitude, lon: longitude });
+            },
+            (error) => {
+              console.error('Error getting user location:', error);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        } else if (status === RESULTS.DENIED) {
+          const requestStatus = await locationService.requestPermission();
+          if (requestStatus === RESULTS.GRANTED) {
+            getUserLocation();
+          }
+        }
+      } catch (error) {
+        console.error('Error checking permissions:', error);
+      }
+    };
+
+    getUserLocation();
+  }, [showUserLocation, mapReady]);
 
   const handleCenterOnMe = async () => {
     try {
@@ -272,6 +307,36 @@ export default function MapCanvas({ items, style, selectedId, onSelect }: Props)
                   }}
                 />
               </ShapeSource>
+
+              {/* User Location Marker */}
+              {userLocation && (
+                <ShapeSource
+                  id="user-location"
+                  shape={{
+                    type: 'FeatureCollection',
+                    features: [
+                      {
+                        type: 'Feature',
+                        geometry: {
+                          type: 'Point',
+                          coordinates: [userLocation.lon, userLocation.lat],
+                        },
+                        properties: {},
+                      },
+                    ],
+                  }}
+                >
+                  <CircleLayer
+                    id="user-location-circle"
+                    style={{
+                      circleRadius: 10,
+                      circleColor: '#4285F4',
+                      circleStrokeWidth: 3,
+                      circleStrokeColor: '#ffffff',
+                    }}
+                  />
+                </ShapeSource>
+              )}
             </MapView>
           </View>
         </>
