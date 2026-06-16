@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   searchBtnDisabled: { opacity: 0.6 },
   searchBtnText: { fontWeight: '700' },
   filterSummary: { marginTop: 8 },
-  map: { height: 350, borderRadius: 12 },
+  map: { height: 300, borderRadius: 12 },
   tagListContainer: { height: 250 },
   detailHeader: {
     flexDirection: 'row',

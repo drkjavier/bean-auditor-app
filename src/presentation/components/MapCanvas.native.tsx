@@ -249,7 +249,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
             </Text>
           </View>
 
-          <View style={styles.mapContainer}>
+          <View style={[styles.mapContainer, style && { height: (style as any).height || 370 }]}>
             <MapView
               ref={mapRef}
               style={{ flex: 1 }}
