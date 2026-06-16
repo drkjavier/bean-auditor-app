@@ -5,10 +5,27 @@
  * Supports both web (MapTiler SDK JS) and native (MapLibre React Native).
  */
 
+// Get API key from environment variables
+// For Vite (web): use import.meta.env.VITE_MAPTILER_API_KEY
+// For React Native (native): use process.env.MAPTILER_API_KEY
+const getApiKey = (): string => {
+  // Web environment (Vite)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return (import.meta.env as any).VITE_MAPTILER_API_KEY || 'YOUR_MAPTILER_API_KEY_HERE';
+  }
+  
+  // Native environment (React Native)
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.MAPTILER_API_KEY || 'YOUR_MAPTILER_API_KEY_HERE';
+  }
+  
+  return 'YOUR_MAPTILER_API_KEY_HERE';
+};
+
 export const MAPTILER_CONFIG = {
   // API Key - Get yours at https://cloud.maptiler.com/account/keys/
   // For development, you can use a free tier key
-  apiKey: process.env.MAPTILER_API_KEY || 'YOUR_MAPTILER_API_KEY_HERE',
+  apiKey: getApiKey(),
   
   // Base URL for MapTiler API
   baseUrl: 'https://api.maptiler.com',
