@@ -25,7 +25,6 @@ tools:
   skill: true
   question: true
   webfetch: true
-language: es
 ---
 
 # Skills Agent
@@ -88,7 +87,6 @@ tools:
   skill: true
   question: true
   webfetch: true
-language: es
 ---
 ```
 

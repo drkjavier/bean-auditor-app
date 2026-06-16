@@ -16,7 +16,7 @@
  */
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { MAPTILER_CONFIG } from '../../infrastructure/config/maptiler.config';
 import type { Tag } from '../../data/mocks/tagsMock';
 import type { AuditStatus } from '../../domain/audit/AuditRecord';
@@ -53,6 +53,8 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('street');
   const [toast, setToast] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapLoadError, setMapLoadError] = useState<string | null>(null);
+  const [currentZoom, setCurrentZoom] = useState<number>(12);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -79,34 +81,109 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
   }, [items]);
 
   // Initialize map
+  // NOTE: The map container div is always rendered (even when items is empty)
+  // so mapContainerRef.current should always be available when this effect runs.
+  // The initMap function also checks for null as a safety net.
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
 
-    import('@maptiler/sdk').then(({ Map: MapTilerMap, config, MapStyle }) => {
-      config.apiKey = MAPTILER_CONFIG.apiKey;
+    // Wait for container to have non-zero dimensions before initializing.
+    // react-native-web may not apply layout immediately on first paint.
+    const initMap = () => {
+      const container = mapContainerRef.current;
+      if (!container || cancelled) return;
 
-      if (!mapInstanceRef.current) {
-        const initialCenter = items.length > 0 
-          ? [items[0].lon, items[0].lat] 
-          : [-122.42, 37.77];
-
-        mapInstanceRef.current = new MapTilerMap({
-          container: mapContainerRef.current,
-          style: MapStyle.STREETS,
-          zoom: 12,
-          center: initialCenter,
-          maxZoom: MAPTILER_CONFIG.maxZoom,
-        });
-
-        mapInstanceRef.current.on('load', () => {
-          setMapReady(true);
-        });
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        // Retry after a frame if dimensions are not ready yet
+        requestAnimationFrame(initMap);
+        return;
       }
-    }).catch((error) => {
-      console.error('Failed to load MapTiler SDK:', error);
+
+      import('@maptiler/sdk').then(({ Map: MapTilerMap, config, MapStyle }) => {
+        if (cancelled) return;
+
+        // Validate API key before attempting to create the map
+        if (!MAPTILER_CONFIG.apiKey || MAPTILER_CONFIG.apiKey === 'YOUR_MAPTILER_API_KEY_HERE') {
+          setMapLoadError('API key de MapTiler no configurada. Verifica las variables de entorno.');
+          return;
+        }
+
+        config.apiKey = MAPTILER_CONFIG.apiKey;
+
+        if (!mapInstanceRef.current) {
+          const initialCenter = items.length > 0
+            ? [items[0].lon, items[0].lat]
+            : [-122.42, 37.77];
+
+          try {
+            mapInstanceRef.current = new MapTilerMap({
+              container: container,
+              style: MapStyle.STREETS,
+              zoom: 12,
+              center: initialCenter,
+              maxZoom: MAPTILER_CONFIG.maxZoom,
+            });
+
+            mapInstanceRef.current.on('load', () => {
+              if (!cancelled) {
+                setMapReady(true);
+                setCurrentZoom(mapInstanceRef.current.getZoom());
+              }
+            });
+
+            // Track zoom changes
+            mapInstanceRef.current.on('zoom', () => {
+              if (!cancelled && mapInstanceRef.current) {
+                setCurrentZoom(mapInstanceRef.current.getZoom());
+              }
+            });
+
+            mapInstanceRef.current.on('zoomend', () => {
+              if (!cancelled && mapInstanceRef.current) {
+                setCurrentZoom(mapInstanceRef.current.getZoom());
+              }
+            });
+
+            // Listen for style errors (tiles failing to load)
+            mapInstanceRef.current.on('error', (e: any) => {
+              console.warn('[MapCanvas] Map error:', e?.error?.message || e);
+            });
+
+            // Observe container resizes so the canvas can adjust via map.resize()
+            if (typeof ResizeObserver !== 'undefined') {
+              resizeObserver = new ResizeObserver(() => {
+                if (mapInstanceRef.current) {
+                  mapInstanceRef.current.resize();
+                }
+              });
+              resizeObserver.observe(container);
+            }
+          } catch (initError) {
+            console.error('[MapCanvas] Map initialization failed:', initError);
+            setMapLoadError('Error al inicializar el mapa. Verifica la API key y la conexión.');
+          }
+        }
+      }).catch((error) => {
+        if (!cancelled) {
+          console.error('[MapCanvas] Failed to load MapTiler SDK:', error);
+          setMapLoadError('No se pudo cargar el SDK de MapTiler. Verifica la instalación de @maptiler/sdk.');
+        }
+      });
+    };
+
+    // Defer initialization to ensure react-native-web layout is applied
+    const rafId = requestAnimationFrame(() => {
+      setTimeout(initMap, 100);
     });
 
     return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -202,6 +279,25 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
       duration: 1500,
     });
   }, [selectedItem, mapReady]);
+
+  // When items load for the first time and no selection exists, center on data
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || items.length === 0) return;
+    if (selectedId) return; // already handled by selection effect
+
+    import('@maptiler/sdk').then(({ LngLatBounds }) => {
+      const bounds = new LngLatBounds(
+        [Math.min(...items.map(i => i.lon)), Math.min(...items.map(i => i.lat))],
+        [Math.max(...items.map(i => i.lon)), Math.max(...items.map(i => i.lat))]
+      );
+      mapInstanceRef.current.fitBounds(bounds, {
+        padding: 50,
+        maxZoom: 16,
+        duration: 1000,
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, mapReady]);
 
   // Get user location when showUserLocation is true
   useEffect(() => {
@@ -308,76 +404,143 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
     });
   };
 
+  // Compute the map container height from style prop or default
+  const mapHeight = (style as any)?.height || 470;
+
   return (
     <View style={[styles.wrapper, style && { borderRadius: (style as any).borderRadius }]} accessibilityLabel="Mapa de auditorías">
-      {items.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No hay puntos para mostrar</Text>
+      {mapLoadError ? (
+        <View style={styles.errorState}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Error al cargar el mapa</Text>
+          <Text style={styles.errorMessage}>{mapLoadError}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reintentar carga del mapa"
+            onPress={() => {
+              setMapLoadError(null);
+              setMapReady(false);
+              // Force re-initialization by triggering a re-render
+              setTimeout(() => {
+                window.location.reload();
+              }, 100);
+            }}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </Pressable>
         </View>
       ) : (
         <>
-          <View style={styles.toolbar}>
-            <View style={styles.actions}>
-              {selectedItem ? (
+          {/* Toolbar: only shown when there are items to interact with */}
+          {items.length > 0 && (
+            <View style={styles.toolbar}>
+              <View style={styles.actions}>
+                {selectedItem ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Centrar selección"
+                    onPress={handleCenterSelection}
+                    style={[styles.mapToggleButton, styles.actionInlineButton]}
+                  >
+                    <Text style={styles.mapToggleButtonText}>Centrar</Text>
+                  </Pressable>
+                ) : null}
+
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Centrar selección"
-                  onPress={handleCenterSelection}
+                  accessibilityLabel="Ver todos"
+                  onPress={handleFitAll}
                   style={[styles.mapToggleButton, styles.actionInlineButton]}
                 >
-                  <Text style={styles.mapToggleButtonText}>Centrar</Text>
+                  <Text style={styles.mapToggleButtonText}>Ver todos</Text>
                 </Pressable>
-              ) : null}
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Ver todos"
-                onPress={handleFitAll}
-                style={[styles.mapToggleButton, styles.actionInlineButton]}
-              >
-                <Text style={styles.mapToggleButtonText}>Ver todos</Text>
-              </Pressable>
+                <View style={{ width: 6 }} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Vista Street"
+                  accessibilityState={{ pressed: mapType === 'street' }}
+                  onPress={() => setMapType('street')}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
+                >
+                  <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
+                </Pressable>
 
-              <View style={{ width: 6 }} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Vista Street"
-                accessibilityState={{ pressed: mapType === 'street' }}
-                onPress={() => setMapType('street')}
-                style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
-              >
-                <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
-              </Pressable>
+                <View style={{ width: 6 }} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Vista Satellite"
+                  accessibilityState={{ pressed: mapType === 'satellite' }}
+                  onPress={() => setMapType('satellite')}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
+                >
+                  <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
+                </Pressable>
 
-              <View style={{ width: 6 }} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Vista Satellite"
-                accessibilityState={{ pressed: mapType === 'satellite' }}
-                onPress={() => setMapType('satellite')}
-                style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
-              >
-                <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
-              </Pressable>
-
-              <View style={{ width: 6 }} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Vista Hybrid"
-                accessibilityState={{ pressed: mapType === 'hybrid' }}
-                onPress={() => setMapType('hybrid')}
-                style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'hybrid' ? styles.mapToggleButtonActive : undefined]}
-              >
-                <Text style={[styles.mapToggleButtonText, mapType === 'hybrid' ? styles.mapToggleButtonTextActive : undefined]}>Hybrid</Text>
-              </Pressable>
+                <View style={{ width: 6 }} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Vista Hybrid"
+                  accessibilityState={{ pressed: mapType === 'hybrid' }}
+                  onPress={() => setMapType('hybrid')}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'hybrid' ? styles.mapToggleButtonActive : undefined]}
+                >
+                  <Text style={[styles.mapToggleButtonText, mapType === 'hybrid' ? styles.mapToggleButtonTextActive : undefined]}>Hybrid</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${MAPTILER_CONFIG.maxZoom}`}>
+                Máx. zoom: {MAPTILER_CONFIG.maxZoom}
+              </Text>
             </View>
-            <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${MAPTILER_CONFIG.maxZoom}`}>
-              Máx. zoom: {MAPTILER_CONFIG.maxZoom}
-            </Text>
-          </View>
+          )}
 
-          <View style={[styles.mapContainer, style && { height: (style as any).height || 470 }]}>
-            <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+          {/*
+            CRITICAL: The map container div is ALWAYS rendered, even when items is empty.
+            This ensures the useEffect initialization finds the ref in the DOM on mount.
+            Previously, the div was conditionally rendered (only when items.length > 0),
+            causing a race condition where the init effect ran before the div existed.
+          */}
+          <View style={styles.mapArea}>
+            {/*
+              CRITICAL: Use a plain <div> for the map container instead of <View>.
+              react-native-web's <View> applies overflow:hidden and flexbox styles
+              that can clip or collapse the WebGL canvas created by MapLibre GL.
+              A native <div> with explicit CSS ensures the map canvas renders correctly.
+            */}
+            <div
+              ref={mapContainerRef}
+              style={{
+                width: '100%',
+                height: `${mapHeight}px`,
+                position: 'relative',
+                backgroundColor: '#e2e8f0',
+              }}
+            />
+
+            {/* Loading overlay: shown while the map tiles are loading */}
+            {!mapReady && (
+              <View style={styles.loadingOverlay} pointerEvents="none">
+                <ActivityIndicator size="small" color="#1e40af" />
+                <Text style={styles.loadingText}>Cargando mapa…</Text>
+              </View>
+            )}
+
+            {/* Empty state overlay: shown when map is ready but no items to display */}
+            {items.length === 0 && mapReady && (
+              <View style={styles.emptyStateOverlay} pointerEvents="none">
+                <Text style={styles.emptyText}>No hay puntos para mostrar</Text>
+              </View>
+            )}
+
+            {/* Zoom indicator */}
+            {mapReady && (
+              <View style={styles.zoomIndicator} pointerEvents="none">
+                <Text style={styles.zoomText} accessibilityLabel={`Zoom nivel ${currentZoom.toFixed(1)}`}>
+                  {currentZoom.toFixed(1)}×
+                </Text>
+              </View>
+            )}
           </View>
 
           {toast ? (
@@ -397,16 +560,21 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
 const styles = StyleSheet.create({
   wrapper: {
     borderRadius: 12,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     backgroundColor: '#fff',
     width: '100%',
     minWidth: 0,
+    // NOTE: overflow is intentionally NOT set to 'hidden' here.
+    // overflow:'hidden' clips the WebGL canvas created by MapLibre GL,
+    // causing the map tiles to be invisible even though the container
+    // has the correct dimensions.
   },
-  mapContainer: {
-    width: '100%',
-    height: 470,
+  mapArea: {
+    position: 'relative',
+    // This wrapper positions the map container and overlays relative to each other.
+    // The map container div is a child with explicit height, and overlays are
+    // positioned absolutely within this area.
   },
   toolbar: {
     paddingHorizontal: 12,
@@ -415,27 +583,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
-  },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 12,
-    marginBottom: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 6,
-  },
-  legendText: {
-    color: '#475569',
-    fontSize: 12,
   },
   actions: {
     flexDirection: 'row',
@@ -484,6 +631,39 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginTop: 6,
   },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    zIndex: 10,
+  },
+  loadingText: {
+    color: '#1e40af',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  emptyStateOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    zIndex: 10,
+  },
+  emptyText: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   toast: {
     position: 'absolute',
     left: '50%',
@@ -500,12 +680,58 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
   },
-  emptyState: {
+  errorState: {
     minHeight: 320,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#fef2f2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
-  emptyText: {
-    color: '#64748b',
+  errorIcon: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
+  errorTitle: {
+    color: '#991b1b',
+    fontWeight: '700',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    color: '#b91c1c',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  retryButton: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  zoomIndicator: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 1000,
+  },
+  zoomText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'monospace',
   },
 });

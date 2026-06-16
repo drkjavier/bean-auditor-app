@@ -66,8 +66,18 @@ export default function MapTilerPrototype({ items, style, selectedId, onSelect }
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    let cancelled = false;
+
     // Dynamic import to avoid SSR issues
     import('@maptiler/sdk').then(({ Map: MapTilerMap, config, MapStyle, Marker, Popup }) => {
+      if (cancelled) return;
+
+      // Validate API key before attempting to create the map
+      if (!MAPTILER_CONFIG.apiKey || MAPTILER_CONFIG.apiKey === 'YOUR_MAPTILER_API_KEY_HERE') {
+        console.error('[MapTilerPrototype] API key de MapTiler no configurada.');
+        return;
+      }
+
       config.apiKey = MAPTILER_CONFIG.apiKey;
 
       if (!mapInstanceRef.current) {
@@ -75,24 +85,39 @@ export default function MapTilerPrototype({ items, style, selectedId, onSelect }
           ? [items[0].lon, items[0].lat] 
           : [-122.42, 37.77];
 
-        mapInstanceRef.current = new MapTilerMap({
-          container: mapContainerRef.current,
-          style: MapStyle.SATELLITE,
-          zoom: zoom,
-          center: initialCenter,
-          maxZoom: MAPTILER_CONFIG.maxZoom,
-        });
+        try {
+          mapInstanceRef.current = new MapTilerMap({
+            container: mapContainerRef.current,
+            style: MapStyle.SATELLITE,
+            zoom: zoom,
+            center: initialCenter,
+            maxZoom: MAPTILER_CONFIG.maxZoom,
+          });
 
-        mapInstanceRef.current.on('load', () => {
-          setMapReady(true);
-          addMarkers(MapTilerMap, Marker, Popup);
-        });
+          mapInstanceRef.current.on('load', () => {
+            if (!cancelled) {
+              setMapReady(true);
+              addMarkers(MapTilerMap, Marker, Popup);
+            }
+          });
+
+          mapInstanceRef.current.on('error', (e: any) => {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[MapTilerPrototype] Map error:', e?.error?.message || e);
+            }
+          });
+        } catch (initError) {
+          console.error('[MapTilerPrototype] Map initialization failed:', initError);
+        }
       }
     }).catch((error) => {
-      console.error('Failed to load MapTiler SDK:', error);
+      if (!cancelled) {
+        console.error('[MapTilerPrototype] Failed to load MapTiler SDK:', error);
+      }
     });
 
     return () => {
+      cancelled = true;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -284,7 +309,7 @@ export default function MapTilerPrototype({ items, style, selectedId, onSelect }
 
       {/* Map Container */}
       <View style={styles.mapContainer}>
-        <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+        <div ref={mapContainerRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
 
         {/* Legend */}
         {legendItems.length > 0 && (

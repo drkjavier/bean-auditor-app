@@ -9,14 +9,35 @@
 // For Vite (web): use import.meta.env.VITE_MAPTILER_API_KEY
 // For React Native (native): use process.env.MAPTILER_API_KEY
 const getApiKey = (): string => {
+  // Debug logs to diagnose env loading issues
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[maptiler.config] typeof import.meta:', typeof import.meta);
+    console.log('[maptiler.config] import.meta.env exists:', typeof import.meta !== 'undefined' && !!import.meta.env);
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      console.log('[maptiler.config] import.meta.env.VITE_MAPTILER_API_KEY:', (import.meta.env as any).VITE_MAPTILER_API_KEY);
+    }
+    console.log('[maptiler.config] typeof process:', typeof process);
+    console.log('[maptiler.config] process.env exists:', typeof process !== 'undefined' && !!process.env);
+    if (typeof process !== 'undefined' && process.env) {
+      console.log('[maptiler.config] process.env.VITE_MAPTILER_API_KEY:', (process.env as any).VITE_MAPTILER_API_KEY);
+      console.log('[maptiler.config] process.env.MAPTILER_API_KEY:', process.env.MAPTILER_API_KEY);
+    }
+  }
+
   // Web environment (Vite)
   if (typeof import.meta !== 'undefined' && import.meta.env) {
-    return (import.meta.env as any).VITE_MAPTILER_API_KEY || 'YOUR_MAPTILER_API_KEY_HERE';
+    const key = (import.meta.env as any).VITE_MAPTILER_API_KEY;
+    if (key && key !== 'YOUR_MAPTILER_API_KEY_HERE') {
+      return key;
+    }
   }
   
-  // Native environment (React Native)
+  // Fallback: try process.env (sometimes Vite exposes vars here too)
   if (typeof process !== 'undefined' && process.env) {
-    return process.env.MAPTILER_API_KEY || 'YOUR_MAPTILER_API_KEY_HERE';
+    const key = (process.env as any).VITE_MAPTILER_API_KEY || process.env.MAPTILER_API_KEY;
+    if (key && key !== 'YOUR_MAPTILER_API_KEY_HERE') {
+      return key;
+    }
   }
   
   return 'YOUR_MAPTILER_API_KEY_HERE';

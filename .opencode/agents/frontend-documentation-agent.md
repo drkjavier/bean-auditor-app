@@ -20,7 +20,6 @@ permission:
   bash: "deny"
   task: "deny"
   todowrite: "deny"
-language: es
 ---
 
 # frontend-documentation-agent
@@ -90,4 +89,4 @@ Carga skill `sdd-audit-protocol` para flujo de auditoría bidireccional.
 - Único agente con `edit: allow` limitado a `*.md`, `docs/**` y `**/README.md`
 - NO edita código de producto ni `.env` ni secretos
 - Usa `question` para aclarar ambigüedades antes de documentar
-- **Checklist**: frontmatter válido · permisos mínimos · `language: es` · modo `subagent`
+- **Checklist**: frontmatter válido · permisos mínimos · modo `subagent`

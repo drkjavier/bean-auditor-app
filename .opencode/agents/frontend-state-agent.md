@@ -17,7 +17,6 @@ permission:
   bash: "deny"
   task: "deny"
   todowrite: "deny"
-language: es
 ---
 
 # frontend-state-agent
@@ -78,4 +77,4 @@ Carga skill `sdd-audit-protocol` para flujo completo de auditoría bidireccional
 - NO edita código, no propone complejidad innecesaria, no modifica secretos
 - NO audita seguridad de tokens de auth
 - Usa `question` para aclarar ambigüedades antes de auditar
-- **Checklist**: frontmatter válido · permisos mínimos · `language: es` · modo `subagent`
+- **Checklist**: frontmatter válido · permisos mínimos · modo `subagent`

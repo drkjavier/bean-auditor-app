@@ -24,8 +24,9 @@ tools:
   skill: true
   question: true
   webfetch: true
-language: es
 ---
+
+**Idioma obligatorio**: Todas las respuestas en español.
 
 # Orquestador de Tareas
 
