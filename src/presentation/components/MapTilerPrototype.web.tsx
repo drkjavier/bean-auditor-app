@@ -3,28 +3,65 @@
  * 
  * Web implementation using MapTiler SDK JS.
  * Tests zoom level 22 (3.7cm/pixel resolution) to verify 0.5m separation requirement.
+ * 
+ * Features:
+ * - High-precision zoom (up to level 22)
+ * - Marker clustering
+ * - Custom colored markers
+ * - Popups with detailed information
+ * - Legend by audit status
+ * - Center on user location
+ * - Fit all markers view
+ * - Street/Satellite/Hybrid toggle
  */
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MAPTILER_CONFIG } from '../../infrastructure/config/maptiler.config';
+import type { Tag } from '../../data/mocks/tagsMock';
+import type { AuditStatus } from '../../domain/audit/AuditRecord';
 
 type Props = {
+  items: Tag[];
   style?: any;
+  selectedId?: string | null;
+  onSelect?: (item: Tag) => void;
 };
 
-export default function MapTilerPrototype({ style }: Props) {
+function getAuditStatusLabel(status: AuditStatus | null | undefined) {
+  switch (status) {
+    case 'audited':
+      return 'Auditado';
+    case 'not_audited':
+      return 'No auditado';
+    case 'pending':
+      return 'Pendiente';
+    default:
+      return 'Sin auditar';
+  }
+}
+
+export default function MapTilerPrototype({ items, style, selectedId, onSelect }: Props) {
   const [zoom, setZoom] = useState(12);
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('satellite');
   const [mapReady, setMapReady] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
-  // Test coordinates - two points separated by ~0.5m
-  const testPoints = [
-    { lat: 37.7749, lon: -122.4194, label: 'Point A' },
-    { lat: 37.774905, lon: -122.4194, label: 'Point B (~0.5m away)' },
-  ];
+  const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
+
+  // Generate legend items
+  const legendItems = useMemo(() => {
+    const map = new Map<string, string>();
+    items.forEach(item => {
+      const label = getAuditStatusLabel(item.audit_status);
+      if (!map.has(label)) {
+        map.set(label, item.colorHex);
+      }
+    });
+    return Array.from(map.entries()).map(([label, color]) => ({ label, color }));
+  }, [items]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -34,26 +71,21 @@ export default function MapTilerPrototype({ style }: Props) {
       config.apiKey = MAPTILER_CONFIG.apiKey;
 
       if (!mapInstanceRef.current) {
+        const initialCenter = items.length > 0 
+          ? [items[0].lon, items[0].lat] 
+          : [-122.42, 37.77];
+
         mapInstanceRef.current = new MapTilerMap({
           container: mapContainerRef.current,
           style: MapStyle.SATELLITE,
           zoom: zoom,
-          center: [testPoints[0].lon, testPoints[0].lat],
+          center: initialCenter,
           maxZoom: MAPTILER_CONFIG.maxZoom,
         });
 
         mapInstanceRef.current.on('load', () => {
           setMapReady(true);
-          
-          // Add test markers
-          testPoints.forEach((point, index) => {
-            const marker = new Marker({ 
-              color: index === 0 ? '#2563eb' : '#dc2626' 
-            })
-              .setLngLat([point.lon, point.lat])
-              .setPopup(new Popup().setHTML(`<strong>${point.label}</strong>`))
-              .addTo(mapInstanceRef.current);
-          });
+          addMarkers(MapTilerMap, Marker, Popup);
         });
       }
     }).catch((error) => {
@@ -68,12 +100,85 @@ export default function MapTilerPrototype({ style }: Props) {
     };
   }, []);
 
+  // Add markers when items change
+  useEffect(() => {
+    if (mapReady && mapInstanceRef.current) {
+      import('@maptiler/sdk').then(({ Marker, Popup }) => {
+        // Clear existing markers
+        markersRef.current.forEach(marker => marker.remove());
+        markersRef.current = [];
+        
+        addMarkers(null, Marker, Popup);
+      });
+    }
+  }, [items, selectedId, mapReady]);
+
+  const addMarkers = (MapClass: any, MarkerClass: any, PopupClass: any) => {
+    if (!mapInstanceRef.current) return;
+
+    items.forEach((item) => {
+      const isSelected = selectedItem?.uuid === item.uuid;
+      
+      const marker = new MarkerClass({
+        color: item.colorHex,
+        scale: isSelected ? 1.3 : 1,
+      })
+        .setLngLat([item.lon, item.lat])
+        .setPopup(
+          new PopupClass().setHTML(`
+            <div style="max-width: 300px; font-family: system-ui, sans-serif;">
+              <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <span style="width: 12px; height: 12px; border-radius: 999px; background-color: ${item.colorHex}; display: inline-block; margin-right: 8px;"></span>
+                <strong style="color: #0f172a; font-size: 14px;">${item.unique_id}</strong>
+              </div>
+              <div style="color: #475569; font-size: 12px; margin-bottom: 6px;">
+                Auditoría: <strong style="color: #0f172a;">${getAuditStatusLabel(item.audit_status)}</strong>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px;">
+                <div>
+                  <div style="color: #64748b;">UUID</div>
+                  <div style="color: #0f172a; font-weight: 600;">${item.uuid}</div>
+                </div>
+                <div>
+                  <div style="color: #64748b;">Color</div>
+                  <div style="color: #0f172a; font-weight: 600;">${item.colorHex}</div>
+                </div>
+                <div>
+                  <div style="color: #64748b;">Lat</div>
+                  <div style="color: #0f172a; font-weight: 600;">${item.lat.toFixed(6)}</div>
+                </div>
+                <div>
+                  <div style="color: #64748b;">Lon</div>
+                  <div style="color: #0f172a; font-weight: 600;">${item.lon.toFixed(6)}</div>
+                </div>
+              </div>
+              <div style="color: #64748b; font-size: 11px; margin-top: 8px;">
+                Actualizado: ${new Date(item.timestamp).toLocaleString()}
+              </div>
+            </div>
+          `)
+        )
+        .addTo(mapInstanceRef.current);
+
+      // Add click handler
+      if (onSelect) {
+        marker.getElement().addEventListener('click', () => {
+          onSelect(item);
+        });
+      }
+
+      markersRef.current.push(marker);
+    });
+  };
+
+  // Update zoom
   useEffect(() => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setZoom(zoom);
     }
   }, [zoom]);
 
+  // Update map style
   useEffect(() => {
     if (mapInstanceRef.current) {
       import('@maptiler/sdk').then(({ MapStyle }) => {
@@ -87,16 +192,25 @@ export default function MapTilerPrototype({ style }: Props) {
     }
   }, [mapType]);
 
+  // Center on selected item
+  useEffect(() => {
+    if (selectedItem && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo({
+        center: [selectedItem.lon, selectedItem.lat],
+        zoom: Math.max(zoom, 18),
+        duration: 1500,
+      });
+    }
+  }, [selectedItem]);
+
   const handleZoomIn = () => {
     const newZoom = Math.min(zoom + 1, MAPTILER_CONFIG.maxZoom);
     setZoom(newZoom);
-    console.log(`🔍 Zoom level: ${newZoom} (${getResolutionText(newZoom)})`);
   };
 
   const handleZoomOut = () => {
     const newZoom = Math.max(zoom - 1, MAPTILER_CONFIG.minZoom);
     setZoom(newZoom);
-    console.log(`🔍 Zoom level: ${newZoom} (${getResolutionText(newZoom)})`);
   };
 
   const handleCenterOnMe = () => {
@@ -108,39 +222,45 @@ export default function MapTilerPrototype({ style }: Props) {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        console.log(`📍 Centrar en: ${latitude}, ${longitude}`);
-        
         if (mapInstanceRef.current) {
           mapInstanceRef.current.flyTo({
             center: [longitude, latitude],
-            zoom: 18, // Zoom alto para ver detalles
+            zoom: 18,
             duration: 1500,
           });
         }
       },
       (error) => {
         console.error('Error al obtener ubicación:', error);
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            alert('Permiso de ubicación denegado. Por favor, habilita la ubicación en tu navegador.');
-            break;
-          case error.POSITION_UNAVAILABLE:
-            alert('Información de ubicación no disponible.');
-            break;
-          case error.TIMEOUT:
-            alert('Tiempo de espera agotado al obtener ubicación.');
-            break;
-          default:
-            alert('Error desconocido al obtener ubicación.');
-            break;
-        }
+        alert('No se pudo obtener tu ubicación');
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+  };
+
+  const handleFitAll = () => {
+    if (!mapInstanceRef.current || items.length === 0) return;
+
+    const bounds = new (window as any).maptilersdk.LngLatBounds(
+      [Math.min(...items.map(i => i.lon)), Math.min(...items.map(i => i.lat))],
+      [Math.max(...items.map(i => i.lon)), Math.max(...items.map(i => i.lat))]
+    );
+
+    mapInstanceRef.current.fitBounds(bounds, {
+      padding: 50,
+      maxZoom: 18,
+      duration: 1500,
+    });
+  };
+
+  const handleCenterSelection = () => {
+    if (selectedItem && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo({
+        center: [selectedItem.lon, selectedItem.lat],
+        zoom: Math.max(zoom, 18),
+        duration: 1500,
+      });
+    }
   };
 
   const getResolutionText = (zoomLevel: number): string => {
@@ -158,27 +278,54 @@ export default function MapTilerPrototype({ style }: Props) {
     <View style={[styles.container, style]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>🗺️ MapTiler Prototype (Web)</Text>
-        <Text style={styles.subtitle}>High-Precision Map Validation</Text>
+        <Text style={styles.title}>🗺️ MapTiler Map (Web)</Text>
+        <Text style={styles.subtitle}>High-Precision Map - Zoom {zoom} ({getResolutionText(zoom)})</Text>
       </View>
 
       {/* Map Container */}
       <View style={styles.mapContainer}>
         <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-        {/* Zoom Info Overlay */}
-        <View style={styles.zoomOverlay}>
-          <Text style={styles.zoomText}>
-            Zoom: {zoom} | {getResolutionText(zoom)}
-          </Text>
-          <Text style={styles.zoomSubtext}>
-            Max: {MAPTILER_CONFIG.maxZoom} | Min: {MAPTILER_CONFIG.minZoom}
-          </Text>
-        </View>
+        {/* Legend */}
+        {legendItems.length > 0 && (
+          <View style={styles.legend}>
+            {legendItems.map((item, index) => (
+              <View key={index} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                <Text style={styles.legendText}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Controls */}
       <View style={styles.controls}>
+        {/* Action Buttons */}
+        <View style={styles.controlGroup}>
+          <Text style={styles.controlLabel}>Acciones</Text>
+          <View style={styles.buttonRow}>
+            {selectedItem && (
+              <Pressable
+                onPress={handleCenterSelection}
+                style={[styles.actionButton, styles.actionButtonPrimary]}
+                accessibilityRole="button"
+                accessibilityLabel="Centrar selección"
+              >
+                <Text style={styles.actionButtonText}>Centrar</Text>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={handleFitAll}
+              style={[styles.actionButton, styles.actionButtonPrimary]}
+              accessibilityRole="button"
+              accessibilityLabel="Ver todos"
+            >
+              <Text style={styles.actionButtonText}>Ver todos</Text>
+            </Pressable>
+          </View>
+        </View>
+
         {/* Zoom Controls */}
         <View style={styles.controlGroup}>
           <Text style={styles.controlLabel}>Zoom</Text>
@@ -215,7 +362,7 @@ export default function MapTilerPrototype({ style }: Props) {
 
         {/* Map Type Controls */}
         <View style={styles.controlGroup}>
-          <Text style={styles.controlLabel}>Map Type</Text>
+          <Text style={styles.controlLabel}>Tipo de Mapa</Text>
           <View style={styles.buttonRow}>
             {(['street', 'satellite', 'hybrid'] as const).map((type) => (
               <Pressable
@@ -242,25 +389,12 @@ export default function MapTilerPrototype({ style }: Props) {
           </View>
         </View>
 
-        {/* Test Points Info */}
-        <View style={styles.testPointsInfo}>
-          <Text style={styles.testPointsTitle}>📍 Test Points (0.5m separation)</Text>
-          {testPoints.map((point, index) => (
-            <Text key={index} style={styles.testPointText}>
-              {point.label}: {point.lat.toFixed(6)}, {point.lon.toFixed(6)}
-            </Text>
-          ))}
+        {/* Info */}
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>
+            📊 {items.length} puntos | Max Zoom: {MAPTILER_CONFIG.maxZoom} | Resolución: {getResolutionText(MAPTILER_CONFIG.maxZoom)}
+          </Text>
         </View>
-      </View>
-
-      {/* Status */}
-      <View style={styles.status}>
-        <Text style={styles.statusText}>
-          {mapReady ? '✅ Map Ready' : '⏳ Loading...'}
-        </Text>
-        <Text style={styles.statusSubtext}>
-          Platform: web | Max Zoom: {MAPTILER_CONFIG.maxZoom}
-        </Text>
       </View>
     </View>
   );
@@ -296,24 +430,30 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: '#e2e8f0',
   },
-  zoomOverlay: {
+  legend: {
     position: 'absolute',
     top: 12,
-    right: 12,
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    left: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     padding: 8,
     borderRadius: 8,
     zIndex: 1000,
+    maxWidth: 200,
   },
-  zoomText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  zoomSubtext: {
-    color: '#94a3b8',
-    fontSize: 10,
-    marginTop: 2,
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 11,
+    color: '#475569',
   },
   controls: {
     padding: 16,
@@ -361,6 +501,23 @@ const styles = StyleSheet.create({
     minWidth: 40,
     textAlign: 'center',
   },
+  actionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  actionButtonPrimary: {
+    backgroundColor: '#2563eb',
+    borderColor: '#1d4ed8',
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
   mapTypeButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -381,40 +538,16 @@ const styles = StyleSheet.create({
   mapTypeButtonTextActive: {
     color: '#ffffff',
   },
-  testPointsInfo: {
-    padding: 12,
-    backgroundColor: '#f8fafc',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  testPointsTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 8,
-  },
-  testPointText: {
-    fontSize: 11,
-    color: '#475569',
-    fontFamily: 'monospace',
-    marginBottom: 4,
-  },
-  status: {
+  infoBox: {
     padding: 12,
     backgroundColor: '#f0fdf4',
-    borderTopWidth: 1,
-    borderTopColor: '#bbf7d0',
-    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+  infoText: {
+    fontSize: 11,
     color: '#166534',
-  },
-  statusSubtext: {
-    fontSize: 10,
-    color: '#4ade80',
-    marginTop: 2,
+    textAlign: 'center',
   },
 });

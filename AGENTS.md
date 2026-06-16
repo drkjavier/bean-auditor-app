@@ -23,11 +23,36 @@ React Native app with Vite-powered web support. Requires Node >=22.11.0.
 - No other instruction files (`CLAUDE.md`, `.cursorrules`, etc.) present
 
 ## Conducta del Agente ante la Incertidumbre
-Siempre que el agente no tenga claro un pathway para completar una tarea, debe:
-1. Identificar específicamente los puntos de incertidumbre
-2. Formular las preguntas mínimas y necesarias para cerrar el gap de conocimiento a cero
-3. Esperar aclaraciones antes de proceder con cualquier implementación
-4. Utilizar el comando `/prompt` o la skill `reformulacion-prompt` para optimizar sus preguntas siguiendo las mejores prácticas de OpenCode
+
+**OBLIGATORIO**: Todo agente debe eliminar la ambigüedad al cero antes de proceder con cualquier implementación, auditoría o análisis.
+
+Siempre que el agente no tenga claro un pathway para completar una tarea, detecte puntos ambiguos, o necesite contexto adicional, debe:
+
+1. **Identificar específicamente** los puntos de incertidumbre o ambigüedad
+2. **Formular preguntas interactivas** usando la herramienta `question` en la TUI:
+   - Presenta opciones claras cuando sea posible (ej: "¿Prefieres A, B o C?")
+   - Usa campo de texto libre cuando la respuesta sea abierta
+   - Agrupa preguntas relacionadas en una sola interacción
+   - Sé específico y conciso en cada pregunta
+3. **Esperar aclaraciones** antes de proceder con cualquier implementación, auditoría o análisis
+4. **No asumir** decisiones técnicas, arquitectónicas o de diseño que no estén explícitamente definidas
+5. **Utilizar el comando `/prompt`** o la skill `reformulacion-prompt` para optimizar sus preguntas siguiendo las mejores prácticas de OpenCode
+
+**Ejemplos de cuándo preguntar:**
+- Alcance no está claramente definido
+- Múltiples opciones técnicas viables sin preferencia explícita
+- Dependencias o requisitos no especificados
+- Comportamiento esperado ambiguo
+- Contexto técnico insuficiente para tomar decisiones
+- Riesgos potenciales no evaluados
+
+**Ejemplos de cuándo NO preguntar:**
+- Decisiones ya definidas en la arquitectura del proyecto
+- Convenciones establecidas en el código base
+- Tareas triviales con una sola opción obvia
+- Información disponible en documentación del proyecto
+
+Objetivo: cerrar el gap de conocimiento a cero antes de escribir cualquier código o emitir cualquier recomendación.
 
 ## OpenCode agents and prompts integration
 

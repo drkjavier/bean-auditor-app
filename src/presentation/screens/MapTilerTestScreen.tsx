@@ -5,11 +5,18 @@
  * Accessible via navigation for testing purposes.
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, Pressable } from 'react-native';
 import MapTilerPrototype from '../components/MapTilerPrototype';
+import { tagsMock } from '../../data/mocks/tagsMock';
 
 export default function MapTilerTestScreen() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const handleSelect = (item: any) => {
+    setSelectedId(item.unique_id);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -25,26 +32,50 @@ export default function MapTilerTestScreen() {
         <View style={styles.instructions}>
           <Text style={styles.instructionsTitle}>📋 Instructions</Text>
           <Text style={styles.instructionsText}>
-            1. Configure your MapTiler API key in environment variables
+            1. Use zoom controls to test maximum zoom (level 22)
           </Text>
           <Text style={styles.instructionsText}>
-            2. Use zoom controls to test maximum zoom (level 22)
+            2. Verify resolution shows ~3.7cm/pixel at max zoom
           </Text>
           <Text style={styles.instructionsText}>
-            3. Verify resolution shows ~3.7cm/pixel at max zoom
+            3. Click on markers to see detailed popups
           </Text>
           <Text style={styles.instructionsText}>
-            4. Test different map types (Street, Satellite, Hybrid)
+            4. Use "Ver todos" to fit all markers in view
           </Text>
           <Text style={styles.instructionsText}>
-            5. Check that test points are visible and distinct
+            5. Use 📍 button to center on your location
+          </Text>
+          <Text style={styles.instructionsText}>
+            6. Test different map types (Street, Satellite, Hybrid)
           </Text>
         </View>
 
         {/* Map Prototype */}
         <View style={styles.mapWrapper}>
-          <MapTilerPrototype style={styles.map} />
+          <MapTilerPrototype
+            style={styles.map}
+            items={tagsMock}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+          />
         </View>
+
+        {/* Selected Item Info */}
+        {selectedId && (
+          <View style={styles.selectedInfo}>
+            <Text style={styles.selectedInfoTitle}>📍 Selected Item</Text>
+            <Text style={styles.selectedInfoText}>
+              ID: {selectedId}
+            </Text>
+            <Pressable
+              onPress={() => setSelectedId(null)}
+              style={styles.clearSelectionButton}
+            >
+              <Text style={styles.clearSelectionText}>Clear Selection</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Technical Info */}
         <View style={styles.techInfo}>
@@ -100,6 +131,24 @@ export default function MapTilerTestScreen() {
             <Text style={styles.requirementIcon}>✅</Text>
             <Text style={styles.requirementText}>
               Open source (BSD-3-Clause)
+            </Text>
+          </View>
+          <View style={styles.requirementItem}>
+            <Text style={styles.requirementIcon}>✅</Text>
+            <Text style={styles.requirementText}>
+              Custom colored markers
+            </Text>
+          </View>
+          <View style={styles.requirementItem}>
+            <Text style={styles.requirementIcon}>✅</Text>
+            <Text style={styles.requirementText}>
+              Detailed popups with item info
+            </Text>
+          </View>
+          <View style={styles.requirementItem}>
+            <Text style={styles.requirementIcon}>✅</Text>
+            <Text style={styles.requirementText}>
+              Legend by audit status
             </Text>
           </View>
         </View>
@@ -161,6 +210,37 @@ const styles = StyleSheet.create({
   },
   map: {
     height: 600,
+  },
+  selectedInfo: {
+    backgroundColor: '#eff6ff',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    marginBottom: 16,
+  },
+  selectedInfoTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1e40af',
+    marginBottom: 8,
+  },
+  selectedInfoText: {
+    fontSize: 13,
+    color: '#1e40af',
+    marginBottom: 8,
+  },
+  clearSelectionButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  clearSelectionText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   techInfo: {
     backgroundColor: '#ffffff',
