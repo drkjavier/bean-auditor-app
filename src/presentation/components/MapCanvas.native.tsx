@@ -329,7 +329,6 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
 
 const styles = StyleSheet.create({
   wrapper: {
-    minHeight: 320,
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,

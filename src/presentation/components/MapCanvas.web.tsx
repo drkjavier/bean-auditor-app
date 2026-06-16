@@ -50,7 +50,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
     : 0;
   
   const [mapReady, setMapReady] = useState(false);
-  const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('satellite');
+  const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('street');
   const [toast, setToast] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -92,7 +92,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
 
         mapInstanceRef.current = new MapTilerMap({
           container: mapContainerRef.current,
-          style: MapStyle.SATELLITE,
+          style: MapStyle.STREETS,
           zoom: 12,
           center: initialCenter,
           maxZoom: MAPTILER_CONFIG.maxZoom,
@@ -396,7 +396,6 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
 
 const styles = StyleSheet.create({
   wrapper: {
-    minHeight: 320,
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
