@@ -79,24 +79,60 @@ Este proyecto integra específicamente con las siguientes capacidades de OpenCod
 
 ## Agentes OpenCode
 
-| Agente | Modo | Foco |
+| Agente | Modo | Foco | Líneas |
+|---|---|---|---|
+| `frontend-agent` | `all` | Implementación general React/React Native (default). | 119 |
+| `frontend-ui-agent` | `subagent` | Diseño visual: tokens, tema, íconos, responsividad. | 83 |
+| `frontend-ux-agent` | `subagent` | Flujos, feedback, microcopy, estados de interfaz. | 86 |
+| `frontend-accessibility-agent` | `subagent` | WCAG 2.1, ARIA, foco, teclado, lector. | 85 |
+| `frontend-state-agent` | `subagent` | Zustand, stores, selectores, persistencia. | 81 |
+| `frontend-architecture-agent` | `subagent` | Capas, separación, deuda arquitectónica. | 89 |
+| `frontend-performance-agent` | `subagent` | Renders, bundle, lazy, listas, mapas. | 85 |
+| `frontend-navigation-agent` | `subagent` | Navegación custom, deep links. | 83 |
+| `frontend-cross-platform-agent` | `subagent` | .native/.web, shims, alias. | 83 |
+| `frontend-testing-agent` | `subagent` | Jest, mocks, cobertura, snapshots. | 82 |
+| `frontend-documentation-agent` | `subagent` | JSDoc, README, changelogs. | 93 |
+| `frontend-security-agent` | `subagent` | Auth, sesión, storage, APIs, datos sensibles. | 90 |
+| `frontend-uiux-agent` | `subagent` | ⚠️ DEPRECATED — usar triada ui+ux+a11y. | 98 |
+| `plan-builder` | `all` | Orquestador de planes multi-capa. | 145 |
+| `orquestador-tareas` | `primary` | Orquesta tareas individuales o simultáneas. | 159 |
+| `skills-agent` | `subagent` | Crea, audita y mantiene agentes y skills. | 212 |
+
+### Optimización de Agentes Auditores (2026-06-15)
+
+Los 11 agentes auditores `frontend-*` fueron optimizados para reducir consumo de tokens y mejorar consistencia:
+
+**Cambios realizados:**
+- Reducción promedio de 42% en líneas de prompts (de ~145 a ~85 líneas)
+- Extracción de protocolo SDD común a skill compartida `sdd-audit-protocol`
+- Estandarización de contratos de entrada/salida
+- Eliminación de secciones duplicadas (Manejo de dudas, Directorio de trabajo)
+- Simplificación de formato de idioma obligatorio
+
+**Total: ~580 líneas de duplicación eliminadas**
+
+**Beneficios:**
+- Menor consumo de tokens por interacción
+- Mejor consistencia en protocolo de auditoría SDD
+- Prompts más claros y accionables
+- Mantenimiento simplificado
+
+### Skills Nuevas Creadas (2026-06-15)
+
+Se crearon 8 skills especializadas para mejorar productividad y consistencia:
+
+| Skill | Propósito | Agentes que la usan |
 |---|---|---|
-| `frontend-agent` | `all` | Implementación general React/React Native (default). |
-| `frontend-ui-agent` | `subagent` | Diseño visual: tokens, tema, íconos, responsividad. |
-| `frontend-ux-agent` | `subagent` | Flujos, feedback, microcopy, estados de interfaz. |
-| `frontend-accessibility-agent` | `subagent` | WCAG 2.1, ARIA, foco, teclado, lector. |
-| `frontend-state-agent` | `subagent` | Zustand, stores, selectores, persistencia. |
-| `frontend-architecture-agent` | `subagent` | Capas, separación, deuda arquitectónica. |
-| `frontend-performance-agent` | `subagent` | Renders, bundle, lazy, listas, mapas. |
-| `frontend-navigation-agent` | `subagent` | Navegación custom, deep links. |
-| `frontend-cross-platform-agent` | `subagent` | .native/.web, shims, alias. |
-| `frontend-testing-agent` | `subagent` | Jest, mocks, cobertura, snapshots. |
-| `frontend-documentation-agent` | `subagent` | JSDoc, README, changelogs. |
-| `frontend-security-agent` | `subagent` | Auth, sesión, storage, APIs, datos sensibles. |
-| `frontend-uiux-agent` | `subagent` | ⚠️ DEPRECATED — usar triada ui+ux+a11y. |
-| `plan-builder` | `all` | Orquestador de planes multi-capa. |
-| `orquestador-tareas` | `primary` | Orquesta tareas individuales o simultáneas. |
-| `skills-agent` | `subagent` | Crea, audita y mantiene agentes y skills. |
+| `sdd-audit-protocol` | Protocolo estandarizado de auditoría bidireccional para SDD | Todos los auditores |
+| `code-generation-templates` | Plantillas para generación de componentes, screens, hooks, stores | `frontend-agent` |
+| `debugging-workflow` | Flujo estructurado de diagnóstico y resolución de problemas | `frontend-agent` |
+| `test-coverage-reporter` | Generación de reportes de cobertura con Jest | `frontend-testing-agent` |
+| `design-tokens-validator` | Validación de uso correcto de tokens del theme | `frontend-ui-agent` |
+| `platform-compatibility-matrix` | Matriz de compatibilidad para APIs multiplataforma | `frontend-cross-platform-agent` |
+| `state-migration-helper` | Guía para migración de stores de `src/stores/` a `src/state/` | `frontend-state-agent` |
+| `mermaid-diagram-templates` | Plantillas para diagramas de arquitectura en Mermaid | `frontend-documentation-agent` |
+
+**Ubicación:** Todas las skills están en `.opencode/skills/<nombre>/SKILL.md`
 
 ### Protocolo de delegación a la familia `frontend-*`
 
