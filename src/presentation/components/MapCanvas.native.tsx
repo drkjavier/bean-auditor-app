@@ -249,7 +249,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
             </Text>
           </View>
 
-          <View style={[styles.mapContainer, style && { height: (style as any).height || 420 }]}>
+          <View style={[styles.mapContainer, style && { height: (style as any).height || 450 }]}>
             <MapView
               ref={mapRef}
               style={{ flex: 1 }}
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     width: '100%',
-    height: 420,
+    height: 450,
   },
   toolbar: {
     paddingHorizontal: 12,
