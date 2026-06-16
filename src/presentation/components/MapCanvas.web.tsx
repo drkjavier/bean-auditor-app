@@ -21,6 +21,7 @@ import { MAPTILER_CONFIG } from '../../infrastructure/config/maptiler.config';
 import type { Tag } from '../../data/mocks/tagsMock';
 import type { AuditStatus } from '../../domain/audit/AuditRecord';
 import { NAV_BAR_HEIGHT } from '../themes/layout';
+import '@maptiler/sdk/dist/maptiler-sdk.css';
 
 function getAuditStatusLabel(status: AuditStatus | null | undefined) {
   switch (status) {
@@ -393,7 +394,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
             </Text>
           </View>
 
-          <View style={styles.mapContainer}>
+          <View style={[styles.mapContainer, style && { height: (style as any).height }]}>
             <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
           </View>
 
