@@ -13,6 +13,7 @@
  * - Fit all markers view
  * - Street/Satellite/Hybrid toggle
  * - Marker selection with visual feedback
+ * - Navigation mode with directional arrow overlay
  */
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
@@ -21,6 +22,7 @@ import { MAPTILER_CONFIG } from '../../infrastructure/config/maptiler.config';
 import type { Tag } from '../../data/mocks/tagsMock';
 import type { AuditStatus } from '../../domain/audit/AuditRecord';
 import { NAV_BAR_HEIGHT } from '../themes/layout';
+import NavigationArrow from './NavigationArrow';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 
 function getAuditStatusLabel(status: AuditStatus | null | undefined) {
@@ -42,9 +44,30 @@ type Props = {
   selectedId?: string | null;
   onSelect?: (item: Tag) => void;
   showUserLocation?: boolean;
+  /** Modo navegación activo */
+  isNavigationActive?: boolean;
+  /** Tag destino de navegación */
+  navigationTarget?: Tag | null;
+  /** Distancia al destino en metros */
+  distanceToTarget?: number | null;
+  /** Bearing al destino en grados */
+  bearingToTarget?: number | null;
+  /** Callback al presionar la flecha de navegación */
+  onNavigationPress?: () => void;
 };
 
-export default function MapCanvas({ items, style, selectedId, onSelect, showUserLocation = false }: Props) {
+export default function MapCanvas({
+  items,
+  style,
+  selectedId,
+  onSelect,
+  showUserLocation = false,
+  isNavigationActive = false,
+  navigationTarget = null,
+  distanceToTarget = null,
+  bearingToTarget = null,
+  onNavigationPress,
+}: Props) {
   const insetsBottom = typeof window !== 'undefined' 
     ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') || 0 
     : 0;
@@ -541,6 +564,20 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                 </Text>
               </View>
             )}
+
+            {/* Navigation Arrow Overlay */}
+            {isNavigationActive && navigationTarget && distanceToTarget !== null && bearingToTarget !== null && (
+              <View style={styles.navigationOverlay} pointerEvents="box-none">
+                <NavigationArrow
+                  bearing={bearingToTarget}
+                  distance={distanceToTarget}
+                  tagId={navigationTarget.unique_id}
+                  tagStatus={navigationTarget.audit_status}
+                  visible={true}
+                  onPress={onNavigationPress}
+                />
+              </View>
+            )}
           </View>
 
           {toast ? (
@@ -733,5 +770,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     fontFamily: 'monospace',
+  },
+  navigationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
 });

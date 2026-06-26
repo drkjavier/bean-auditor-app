@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList, Modal, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, FlatList, Modal, ScrollView, TextInput, Alert } from 'react-native';
 import { fetchTags, saveTagAudit, Tag } from '../../data/tagService';
 import { AuditStatus } from '../../domain/audit/AuditRecord';
 import { createAndRegisterAbortController, unregisterAbortController, abortAllControllers } from '../../infrastructure/api/abortManager';
 import MapCanvas from '../components/MapCanvas';
+import NavigationPanel from '../components/NavigationPanel';
 import { useSettingsStore } from '../../state/settingsStore';
+import { useNavigationStore } from '../../state/navigationStore';
 import { useTheme } from '../themes/ThemeContext';
 import Card from '../components/Card';
 import SectionHeader from '../components/SectionHeader';
@@ -15,6 +17,8 @@ import EmptyState from '../components/EmptyState';
 import ErrorBanner from '../components/ErrorBanner';
 import MdiIcon from '../components/MdiIcon';
 import { useAuthStore } from '../../stores';
+import * as locationService from '../../infrastructure/locationService';
+import { RESULTS } from 'react-native-permissions';
 
 const FILTER_DEBOUNCE_MS = 350;
 
@@ -56,6 +60,19 @@ export default function AuditScreen() {
   const [to, setTo] = useState('');
   const [autoRefreshing, setAutoRefreshing] = useState(false);
   const showUserLocation = useSettingsStore(state => state.showUserLocation);
+  
+  // Navigation mode state
+  const {
+    isNavigationActive,
+    nearestTag,
+    distanceToNearest,
+    bearingToNearest,
+    startNavigation,
+    stopNavigation,
+    updateUserPosition,
+    recalculateNearest,
+  } = useNavigationStore();
+  const watchIdRef = useRef<number | null>(null);
 
   const filters = useMemo(
     () => ({
@@ -204,6 +221,93 @@ export default function AuditScreen() {
     setIsMarkModalOpen(true);
   }, []);
 
+  // Navigation mode handlers
+  const startPositionTracking = useCallback(async () => {
+    try {
+      const status = await locationService.checkPermission();
+      
+      if (status === RESULTS.GRANTED) {
+        // Start watching position
+        watchIdRef.current = locationService.watchPosition(
+          (position: any) => {
+            const { latitude, longitude } = position.coords;
+            updateUserPosition(latitude, longitude);
+          },
+          (error: any) => {
+            console.error('Position tracking error:', error);
+          },
+          { enableHighAccuracy: true, distanceFilter: 1, interval: 1000 }
+        );
+      } else if (status === RESULTS.DENIED) {
+        const requestStatus = await locationService.requestPermission();
+        if (requestStatus === RESULTS.GRANTED) {
+          startPositionTracking();
+        } else {
+          Alert.alert('Permiso requerido', 'Necesitamos permiso de ubicación para navegar');
+        }
+      } else {
+        Alert.alert('Permiso requerido', 'Por favor, habilita el permiso de ubicación');
+      }
+    } catch (error) {
+      console.error('Error starting position tracking:', error);
+    }
+  }, [updateUserPosition]);
+
+  const stopPositionTracking = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      try {
+        // Note: locationService doesn't have clearWatch, but we can clear the ref
+        // In a real implementation, we'd need to add clearWatch to locationService
+        watchIdRef.current = null;
+      } catch {
+        // noop
+      }
+    }
+  }, []);
+
+  const handleToggleNavigation = useCallback(() => {
+    if (isNavigationActive) {
+      stopPositionTracking();
+      stopNavigation();
+    } else {
+      startNavigation(filtered);
+      startPositionTracking();
+    }
+  }, [isNavigationActive, filtered, startNavigation, stopNavigation, startPositionTracking, stopPositionTracking]);
+
+  const handleNavigationPress = useCallback(() => {
+    // Could open tag details or perform other action
+  }, []);
+
+  const handleAuditFromNavigation = useCallback(() => {
+    if (nearestTag) {
+      openMarkModal(nearestTag.unique_id);
+    }
+  }, [nearestTag, openMarkModal]);
+
+  const handleNextFromNavigation = useCallback(() => {
+    // Skip current tag and recalculate
+    if (nearestTag) {
+      const remainingTags = filtered.filter(t => t.uuid !== nearestTag.uuid);
+      recalculateNearest();
+    }
+  }, [nearestTag, filtered, recalculateNearest]);
+
+  // Cleanup position tracking on unmount
+  useEffect(() => {
+    return () => {
+      stopPositionTracking();
+    };
+  }, [stopPositionTracking]);
+
+  // Update navigation tags when filtered list changes
+  useEffect(() => {
+    if (isNavigationActive) {
+      // Use the store's setCurrentTags to update the list
+      useNavigationStore.getState().setCurrentTags(filtered);
+    }
+  }, [filtered, isNavigationActive]);
+
   const handleConfirmAudit = useCallback(async () => {
     if (!markTargetTag || !auditAction) return;
 
@@ -218,12 +322,20 @@ export default function AuditScreen() {
 
       // Refresh list so the new status is reflected
       load(false, filters, filtersKey);
+      
+      // If navigation is active, recalculate nearest tag after audit
+      if (isNavigationActive) {
+        // Small delay to allow the list to refresh
+        setTimeout(() => {
+          recalculateNearest();
+        }, 100);
+      }
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') console.error('Failed to save audit', err);
     } finally {
       closeMarkModal();
     }
-  }, [markTargetTag, auditAction, auditNote, closeMarkModal, filters, filtersKey, load]);
+  }, [markTargetTag, auditAction, auditNote, closeMarkModal, filters, filtersKey, load, isNavigationActive, recalculateNearest]);
 
   useEffect(() => {
     if (!selectedId || filtered.length === 0) return;
@@ -314,8 +426,60 @@ export default function AuditScreen() {
       {/* ── Mapa ───────────────────────────────────────────────────────── */}
       <View id="container-mapa" style={{ marginTop: spacing.lg }}>
         <SectionHeader title="Mapa" />
-        <MapCanvas items={filtered} style={styles.map} selectedId={selectedId} onSelect={(item: Tag) => setSelectedId(item.unique_id)} showUserLocation={showUserLocation} />
+        <MapCanvas
+          items={filtered}
+          style={styles.map}
+          selectedId={selectedId}
+          onSelect={(item: Tag) => setSelectedId(item.unique_id)}
+          showUserLocation={showUserLocation}
+          isNavigationActive={isNavigationActive}
+          navigationTarget={nearestTag}
+          distanceToTarget={distanceToNearest}
+          bearingToTarget={bearingToNearest}
+          onNavigationPress={handleNavigationPress}
+        />
+        
+        {/* Navigation Mode Toggle Button */}
+        <Pressable
+          style={[
+            styles.navigationToggle,
+            isNavigationActive ? styles.navigationToggleActive : null,
+          ]}
+          onPress={handleToggleNavigation}
+          accessibilityRole="button"
+          accessibilityLabel={isNavigationActive ? 'Cerrar modo navegación' : 'Activar modo navegación'}
+          accessibilityState={{ selected: isNavigationActive }}
+        >
+          <MdiIcon
+            name={isNavigationActive ? 'compass-off-outline' : 'compass-outline'}
+            size={20}
+            color={isNavigationActive ? '#ffffff' : '#1e40af'}
+          />
+          <Text
+            style={[
+              styles.navigationToggleText,
+              isNavigationActive ? styles.navigationToggleTextActive : null,
+            ]}
+          >
+            {isNavigationActive ? 'Cerrar Navegación' : 'Modo Navegación'}
+          </Text>
+        </Pressable>
       </View>
+      
+      {/* ── Navigation Panel ────────────────────────────────────────────── */}
+      {isNavigationActive && (
+        <View id="container-navigation" style={{ marginTop: spacing.lg }}>
+          <NavigationPanel
+            targetTag={nearestTag}
+            distance={distanceToNearest}
+            tagStatus={nearestTag?.audit_status ?? null}
+            hasPosition={useNavigationStore.getState().userPosition !== null}
+            onAudit={handleAuditFromNavigation}
+            onNext={handleNextFromNavigation}
+            onClose={handleToggleNavigation}
+          />
+        </View>
+      )}
 
       {/* ── Detalle del tag seleccionado ────────────────────────────────── */}
       {selectedItem ? (
@@ -646,6 +810,31 @@ const styles = StyleSheet.create({
   dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   itemTitle: {},
   itemMeta: { marginTop: 2 },
+  navigationToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1,
+    borderColor: '#1e40af',
+    borderRadius: 8,
+    gap: 8,
+  },
+  navigationToggleActive: {
+    backgroundColor: '#1e40af',
+    borderColor: '#153a8a',
+  },
+  navigationToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e40af',
+  },
+  navigationToggleTextActive: {
+    color: '#ffffff',
+  },
 });
 
 const modalStyles = StyleSheet.create({

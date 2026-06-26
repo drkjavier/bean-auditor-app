@@ -12,6 +12,7 @@
  * - Fit all markers view
  * - Street/Satellite/Hybrid toggle
  * - Marker selection with visual feedback
+ * - Navigation mode with directional arrow overlay
  */
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
@@ -22,6 +23,7 @@ import type { AuditStatus } from '../../domain/audit/AuditRecord';
 import * as locationService from '../../infrastructure/locationService';
 import { RESULTS } from 'react-native-permissions';
 import { NAV_BAR_HEIGHT } from '../themes/layout';
+import NavigationArrow from './NavigationArrow';
 
 function getAuditStatusLabel(status: AuditStatus | null | undefined) {
   switch (status) {
@@ -42,9 +44,30 @@ type Props = {
   selectedId?: string | null;
   onSelect?: (item: Tag) => void;
   showUserLocation?: boolean;
+  /** Modo navegación activo */
+  isNavigationActive?: boolean;
+  /** Tag destino de navegación */
+  navigationTarget?: Tag | null;
+  /** Distancia al destino en metros */
+  distanceToTarget?: number | null;
+  /** Bearing al destino en grados */
+  bearingToTarget?: number | null;
+  /** Callback al presionar la flecha de navegación */
+  onNavigationPress?: () => void;
 };
 
-export default function MapCanvas({ items, style, selectedId, onSelect, showUserLocation = false }: Props) {
+export default function MapCanvas({
+  items,
+  style,
+  selectedId,
+  onSelect,
+  showUserLocation = false,
+  isNavigationActive = false,
+  navigationTarget = null,
+  distanceToTarget = null,
+  bearingToTarget = null,
+  onNavigationPress,
+}: Props) {
   const [mapReady, setMapReady] = useState(false);
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('satellite');
   const [MapLibreModule, setMapLibreModule] = useState<any>(null);
@@ -320,6 +343,20 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                 </ShapeSource>
               )}
             </MapView>
+            
+            {/* Navigation Arrow Overlay */}
+            {isNavigationActive && navigationTarget && distanceToTarget !== null && bearingToTarget !== null && (
+              <View style={styles.navigationOverlay} pointerEvents="box-none">
+                <NavigationArrow
+                  bearing={bearingToTarget}
+                  distance={distanceToTarget}
+                  tagId={navigationTarget.unique_id}
+                  tagStatus={navigationTarget.audit_status}
+                  visible={true}
+                  onPress={onNavigationPress}
+                />
+              </View>
+            )}
           </View>
         </>
       )}
@@ -432,5 +469,15 @@ const styles = StyleSheet.create({
   loadingText: {
     color: '#64748b',
     fontSize: 14,
+  },
+  navigationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
 });
