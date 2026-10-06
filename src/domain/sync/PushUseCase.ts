@@ -12,8 +12,7 @@
  */
 
 import { ISyncApi } from './ISyncApi';
-import { PushRequest, PushResponse, SyncConflict } from './SyncContracts';
-import { TagRecord, AuditRecord } from '../audit/AuditRecord';
+import { PushResponse, SyncConflict } from './SyncContracts';
 import * as syncRepo from '../../data/sync';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -218,7 +217,7 @@ export class PushUseCase {
       }
 
       // Process farm batches
-      for (const batch of farmBatches) {
+      for (let i = 0; i < farmBatches.length; i++) {
         if (options?.signal?.aborted) {
           throw new Error('Push cancelled');
         }
@@ -253,7 +252,7 @@ export class PushUseCase {
       }
 
       // Process user batches
-      for (const batch of userBatches) {
+      for (let i = 0; i < userBatches.length; i++) {
         if (options?.signal?.aborted) {
           throw new Error('Push cancelled');
         }

@@ -11,7 +11,6 @@
  */
 
 import { create } from 'zustand';
-import { TagRecord, AuditRecord } from '../domain/audit/AuditRecord';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

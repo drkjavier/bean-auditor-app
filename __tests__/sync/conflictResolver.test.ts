@@ -6,7 +6,6 @@
 
 import { ConflictResolver } from '../../src/domain/sync/ConflictResolver';
 import { TagRecord } from '../../src/domain/audit/AuditRecord';
-import { Farm } from '../../src/domain/farm/Farm';
 
 describe('ConflictResolver', () => {
   let resolver: ConflictResolver;

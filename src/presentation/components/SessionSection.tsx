@@ -73,7 +73,7 @@ export default function SessionSection({ token }: Props) {
       {error && (
         <Card variant="outlined">
           <View style={styles.errorContainer}>
-            <Text style={[styles.errorText, { color: '#EF4444' }]}>
+            <Text style={[styles.errorText, { color: colors.error }]}>
               {error}
             </Text>
           </View>

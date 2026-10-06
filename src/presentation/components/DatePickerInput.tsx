@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from '../themes/ThemeContext';
+import MdiIcon from './MdiIcon';
 
 type DatePickerMode = 'from' | 'to';
 
@@ -123,35 +124,45 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
           accessibilityHint="Abre el selector de fecha"
         >
           <Text style={[styles.triggerText, { color: colors.textPrimary }, !selectedDate && { color: colors.muted }]}>{selectedLabel}</Text>
-          <Text style={styles.triggerIcon}>📅</Text>
+          <MdiIcon name="calendar-outline" size={18} color={colors.textSecondary} />
         </Pressable>
       </View>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={handleCancel}>
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={handleCancel} accessibilityRole="button" accessibilityLabel="Cerrar selector" />
-            <View style={[styles.modalCard, { backgroundColor: colors.card }, Platform.OS === 'web' ? styles.modalCardWeb : undefined]} accessibilityViewIsModal>
+            <View
+              style={[
+                styles.modalCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.cardBorder,
+                  borderWidth: 1,
+                },
+              ]}
+              accessibilityViewIsModal
+            >
             <Text style={[styles.modalTitle, { color: colors.textPrimary, ...typography.subtitle }]}>{label}</Text>
 
             <View style={styles.monthHeader}>
               <Pressable
                 onPress={() => setVisibleMonth(getPreviousMonth(visibleMonth.year, visibleMonth.month))}
-                style={[styles.monthButton, { backgroundColor: colors.surface }]}
+                style={[styles.monthButton, { backgroundColor: colors.actionSecondaryBg }]}
                 accessibilityRole="button"
                 accessibilityLabel="Mes anterior"
               >
-                <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>‹</Text>
+                <Text style={[styles.monthButtonText, { color: colors.onActionSecondary }]}>‹</Text>
               </Pressable>
 
               <Text style={[styles.monthTitle, { color: colors.textPrimary, ...typography.body }]}>{formatMonthTitle(visibleMonth.year, visibleMonth.month)}</Text>
 
               <Pressable
                 onPress={() => setVisibleMonth(getNextMonth(visibleMonth.year, visibleMonth.month))}
-                style={[styles.monthButton, { backgroundColor: colors.surface }]}
+                style={[styles.monthButton, { backgroundColor: colors.actionSecondaryBg }]}
                 accessibilityRole="button"
                 accessibilityLabel="Mes siguiente"
               >
-                <Text style={[styles.monthButtonText, { color: colors.textPrimary }]}>›</Text>
+                <Text style={[styles.monthButtonText, { color: colors.onActionSecondary }]}>›</Text>
               </Pressable>
             </View>
 
@@ -180,7 +191,7 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
                     accessibilityLabel={`Seleccionar ${formatCalendarDate(day)}`}
                     accessibilityState={{ selected: isSelected }}
                   >
-                    <Text style={[styles.dayText, { color: colors.textPrimary, ...typography.body }, isSelected && styles.dayTextSelected]}>{day.day}</Text>
+                    <Text style={[styles.dayText, { color: colors.textPrimary, ...typography.body }, isSelected && [styles.dayTextSelected, { color: colors.textButton }]]}>{day.day}</Text>
                   </Pressable>
                 );
               })}
@@ -189,20 +200,20 @@ export default function DatePickerInput({ value, onChange, label, mode }: Props)
             <View style={styles.actions}>
               <Pressable
                 onPress={handleCancel}
-                style={[styles.actionButton, styles.secondaryButton, { backgroundColor: colors.surface }]}
+                style={[styles.actionButton, styles.secondaryButton, { backgroundColor: colors.actionSecondaryBg }]}
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar selección"
               >
-                <Text style={[styles.actionText, styles.secondaryButtonText, { color: colors.textPrimary }]}>Cancelar</Text>
+                <Text style={[styles.actionText, styles.secondaryButtonText, { color: colors.onActionSecondary }]}>Cancelar</Text>
               </Pressable>
               <Pressable
                 onPress={handleAccept}
-                style={[styles.actionButton, styles.primaryButton, { backgroundColor: colors.primary }, !draftDate && styles.disabledButton]}
+                style={[styles.actionButton, styles.primaryButton, { backgroundColor: !draftDate ? colors.disabledBg : colors.primary }]}
                 accessibilityRole="button"
                 accessibilityLabel="Aceptar selección"
                 disabled={!draftDate}
               >
-                <Text style={[styles.actionText, styles.primaryButtonText]}>Aceptar</Text>
+                <Text style={[styles.actionText, styles.primaryButtonText, { color: !draftDate ? colors.disabledText : colors.textButton }]}>Aceptar</Text>
               </Pressable>
             </View>
           </View>
@@ -220,10 +231,12 @@ function parseIsoToCalendarDate(value: string): CalendarDate | null {
   const parsed = new Date(value);
 
   if (!Number.isNaN(parsed.getTime())) {
+    // Use local getters: DatePickerInput builds its ISO strings in local time
+    // (see buildIsoString) so the displayed day always matches the selected day.
     return {
-      year: parsed.getUTCFullYear(),
-      month: parsed.getUTCMonth() + 1,
-      day: parsed.getUTCDate(),
+      year: parsed.getFullYear(),
+      month: parsed.getMonth() + 1,
+      day: parsed.getDate(),
     };
   }
 
@@ -244,16 +257,19 @@ function buildIsoString(date: CalendarDate, mode: DatePickerMode) {
   const minutes = mode === 'from' ? 0 : 59;
   const seconds = mode === 'from' ? 0 : 59;
 
-  return new Date(Date.UTC(date.year, date.month - 1, date.day, hours, minutes, seconds, 0)).toISOString();
+  // Build the boundary in LOCAL time (not UTC): in negative-offset timezones
+  // (e.g. UTC-6) a UTC-midnight ISO string displayed with toLocaleDateString()
+  // shifts back one day, showing the wrong "Desde/Hasta" to the user.
+  return new Date(date.year, date.month - 1, date.day, hours, minutes, seconds, 0).toISOString();
 }
 
 function getTodayCalendarDate(): CalendarDate {
   const now = new Date();
 
   return {
-    year: now.getUTCFullYear(),
-    month: now.getUTCMonth() + 1,
-    day: now.getUTCDate(),
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    day: now.getDate(),
   };
 }
 
@@ -372,16 +388,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     elevation: 4,
-    // keep native shadow props for iOS/Android — react-native-web will ignore these
-    shadowColor: '#000000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  // Web-specific card shadow to avoid deprecated shadow* warnings on react-native-web
-  modalCardWeb: {
-    // React Native web expects CSS properties in a camelCase object.
-    boxShadow: '0 8px 24px rgba(2,6,23,0.08)',
   },
   modalTitle: {
     marginBottom: 16,
@@ -432,7 +438,6 @@ const styles = StyleSheet.create({
   dayButtonSelected: {},
   dayText: {},
   dayTextSelected: {
-    color: '#ffffff',
     fontWeight: '700',
   },
   actions: {
@@ -454,10 +459,5 @@ const styles = StyleSheet.create({
   secondaryButton: {},
   secondaryButtonText: {},
   primaryButton: {},
-  primaryButtonText: {
-    color: '#ffffff',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
+  primaryButtonText: {},
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, ActivityIndicator, StyleSheet, ViewStyle } from 'react-native';
-import theme from '../themes/theme';
+import { useTheme } from '../themes/ThemeContext';
 
 type ButtonProps = {
   onPress?: () => void;
@@ -14,8 +14,24 @@ type ButtonProps = {
 };
 
 export default function Button({ onPress, children, variant = 'primary', loading = false, disabled = false, accessibilityLabel, style, testID }: ButtonProps) {
-  const bgColor = disabled ? '#e0e0e0' : variant === 'tonal' ? 'rgba(11, 95, 255, 0.12)' : variant === 'primary' ? theme.colors.primary : variant === 'secondary' ? theme.colors.surface : 'transparent';
-  const textColor = disabled ? '#999' : variant === 'primary' ? '#fff' : theme.colors.primary;
+  const { colors, radii } = useTheme();
+
+  const bgColor = disabled
+    ? colors.disabledBg
+    : variant === 'tonal'
+      ? colors.primaryTonal
+      : variant === 'primary'
+        ? colors.primary
+        : variant === 'secondary'
+          ? colors.actionSecondaryBg
+          : 'transparent';
+  const textColor = disabled
+    ? colors.disabledText
+    : variant === 'primary'
+      ? colors.textButton
+      : variant === 'secondary'
+        ? colors.onActionSecondary
+        : colors.primary;
 
   return (
     <Pressable
@@ -26,7 +42,7 @@ export default function Button({ onPress, children, variant = 'primary', loading
       testID={testID}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: bgColor },
+        { backgroundColor: bgColor, borderRadius: radii.md },
         pressed ? styles.pressed : null,
         style,
       ]}
@@ -40,7 +56,6 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
     paddingVertical: 12,
-    borderRadius: theme.radii.md,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Platform, View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { logEvent } from '../../infrastructure/telemetry';
+import { useTheme } from '../themes/ThemeContext';
 
 /**
  * Platform-aware MapCanvas loader.
@@ -32,13 +33,13 @@ function loadImpl(): ImplType {
 
   // Native: try to load the native implementation
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const mod = require('./MapCanvas.native');
     cachedImpl = mod.default;
     return cachedImpl;
   } catch {
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
+       
       console.warn('MapCanvas.native failed to load, falling back to MapCanvas.fallback.');
     }
     try {
@@ -48,7 +49,7 @@ function loadImpl(): ImplType {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       const Fallback = require('./MapCanvas.fallback').default;
       cachedImpl = (props: any) =>
         React.createElement(Fallback, props);
@@ -66,6 +67,7 @@ function loadImpl(): ImplType {
 }
 
 export default function MapCanvas(props: any) {
+  const { colors } = useTheme();
   const [Impl, setImpl] = useState<ImplType>(null);
 
   useEffect(() => {
@@ -76,7 +78,7 @@ export default function MapCanvas(props: any) {
     return (
       <View style={styles.placeholder}>
         <ActivityIndicator size="small" />
-        <Text style={styles.loadingText}>Loading map…</Text>
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading map…</Text>
       </View>
     );
   }
@@ -86,5 +88,5 @@ export default function MapCanvas(props: any) {
 
 const styles = StyleSheet.create({
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
-  loadingText: { marginTop: 8, color: '#64748b' },
+  loadingText: { marginTop: 8 },
 });

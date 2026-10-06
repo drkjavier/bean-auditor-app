@@ -5,41 +5,29 @@
  * Supports both web (MapTiler SDK JS) and native (MapLibre React Native).
  */
 
-// Get API key from environment variables
-// For Vite (web): use import.meta.env.VITE_MAPTILER_API_KEY
-// For React Native (native): use process.env.MAPTILER_API_KEY
+// Get API key from environment variables.
+// Web (Vite): the key is read from globalThis.__VITE_ENV__ (injected from
+// import.meta.env in index.web.jsx — this avoids the import.meta token so
+// Jest/CJS can parse this module).
+// Native (Metro): process.env.MAPTILER_API_KEY / VITE_MAPTILER_API_KEY.
 const getApiKey = (): string => {
-  // Debug logs to diagnose env loading issues
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[maptiler.config] typeof import.meta:', typeof import.meta);
-    console.log('[maptiler.config] import.meta.env exists:', typeof import.meta !== 'undefined' && !!import.meta.env);
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      console.log('[maptiler.config] import.meta.env.VITE_MAPTILER_API_KEY:', (import.meta.env as any).VITE_MAPTILER_API_KEY);
-    }
-    console.log('[maptiler.config] typeof process:', typeof process);
-    console.log('[maptiler.config] process.env exists:', typeof process !== 'undefined' && !!process.env);
-    if (typeof process !== 'undefined' && process.env) {
-      console.log('[maptiler.config] process.env.VITE_MAPTILER_API_KEY:', (process.env as any).VITE_MAPTILER_API_KEY);
-      console.log('[maptiler.config] process.env.MAPTILER_API_KEY:', process.env.MAPTILER_API_KEY);
-    }
-  }
-
   // Web environment (Vite)
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    const key = (import.meta.env as any).VITE_MAPTILER_API_KEY;
+  const viteEnv = (globalThis as Record<string, any>).__VITE_ENV__;
+  if (viteEnv && typeof viteEnv === 'object') {
+    const key = viteEnv.VITE_MAPTILER_API_KEY;
     if (key && key !== 'YOUR_MAPTILER_API_KEY_HERE') {
       return key;
     }
   }
-  
-  // Fallback: try process.env (sometimes Vite exposes vars here too)
+
+  // Fallback: try process.env (native/Metro, and Node tooling)
   if (typeof process !== 'undefined' && process.env) {
     const key = (process.env as any).VITE_MAPTILER_API_KEY || process.env.MAPTILER_API_KEY;
     if (key && key !== 'YOUR_MAPTILER_API_KEY_HERE') {
       return key;
     }
   }
-  
+
   return 'YOUR_MAPTILER_API_KEY_HERE';
 };
 

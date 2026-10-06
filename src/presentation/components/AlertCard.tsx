@@ -16,11 +16,12 @@ type Props = {
 export default function AlertCard({ alert, onPress }: Props) {
   const { colors, typography } = useTheme();
 
-  const severityColors: Record<string, string> = {
-    low: '#3B82F6',
-    medium: '#F59E0B',
-    high: '#EF4444',
-    critical: '#DC2626',
+  /** Maps alert severity to saturated + tonal theme tokens. */
+  const severityTokens: Record<string, { fg: string; bg: string }> = {
+    low: { fg: colors.info, bg: colors.infoTonal },
+    medium: { fg: colors.warning, bg: colors.warningTonal },
+    high: { fg: colors.error, bg: colors.dangerTonal },
+    critical: { fg: colors.error, bg: colors.dangerTonal },
   };
 
   const severityLabels: Record<string, string> = {
@@ -30,7 +31,8 @@ export default function AlertCard({ alert, onPress }: Props) {
     critical: 'Crítica',
   };
 
-  const severityColor = severityColors[alert.severity] || colors.primary;
+  const severity = severityTokens[alert.severity] ?? { fg: colors.primary, bg: colors.primaryTonal };
+  const severityColor = severity.fg;
 
   const formatDate = (dateString: string) => {
     try {
@@ -70,8 +72,8 @@ export default function AlertCard({ alert, onPress }: Props) {
         <Text style={[styles.type, { color: colors.textPrimary, ...typography.body }]}>
           {formatType(alert.type)}
         </Text>
-        <View style={[styles.severityBadge, { backgroundColor: severityColor }]}>
-          <Text style={[styles.severityText, { color: '#FFFFFF' }]}>
+        <View style={[styles.severityBadge, { backgroundColor: severity.bg }]}>
+          <Text style={[styles.severityText, { color: severity.fg }]}>
             {severityLabels[alert.severity] || alert.severity}
           </Text>
         </View>

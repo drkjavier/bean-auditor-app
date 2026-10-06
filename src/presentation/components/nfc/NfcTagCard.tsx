@@ -11,7 +11,6 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../themes/ThemeContext';
 import Card from '../Card';
-import MdiIcon from '../MdiIcon';
 import type { NfcTagData, NfcTagMatchResult, NdefRecord } from '../../../domain/nfc/NfcTypes';
 
 type Props = {
@@ -37,15 +36,15 @@ function renderNdefRecord(record: NdefRecord, index: number): string {
 export default function NfcTagCard({ tagData, matchResult }: Props) {
   const { colors, typography, spacing, radii } = useTheme();
 
-  const matchLabel = (() => {
+  const match = (() => {
     if (!matchResult) return null;
     if (matchResult.type === 'found') {
-      return { text: `Tag encontrado: ${matchResult.uniqueId}`, color: colors.success };
+      return { text: `Tag encontrado: ${matchResult.uniqueId}`, color: colors.success, tonalBg: colors.successTonal };
     }
     if (matchResult.type === 'not_found') {
-      return { text: 'Tag no registrado en la base de datos', color: colors.warning };
+      return { text: 'Tag no registrado en la base de datos', color: colors.warning, tonalBg: colors.warningTonal };
     }
-    return { text: matchResult.message, color: colors.error };
+    return { text: matchResult.message, color: colors.error, tonalBg: colors.dangerTonal };
   })();
 
   return (
@@ -59,10 +58,10 @@ export default function NfcTagCard({ tagData, matchResult }: Props) {
       </View>
 
       {/* Match result */}
-      {matchLabel ? (
-        <View style={[styles.matchBanner, { backgroundColor: matchLabel.color === colors.success ? 'rgba(26, 188, 156, 0.1)' : matchLabel.color === colors.warning ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)', borderRadius: radii.md, marginTop: spacing.sm, padding: spacing.sm }]}>
-          <Text style={[styles.matchText, { color: matchLabel.color, ...typography.caption }]}>
-            {matchLabel.text}
+      {match ? (
+        <View style={[styles.matchBanner, { backgroundColor: match.tonalBg, borderRadius: radii.md, marginTop: spacing.sm, padding: spacing.sm }]}>
+          <Text style={[styles.matchText, { color: match.color, ...typography.caption }]}>
+            {match.text}
           </Text>
         </View>
       ) : null}
@@ -83,7 +82,7 @@ export default function NfcTagCard({ tagData, matchResult }: Props) {
         </View>
       ) : (
         <View style={{ marginTop: spacing.sm }}>
-          <Text style={[styles.emptyText, { color: colors.muted, ...typography.caption }]}>
+          <Text style={[styles.emptyText, { color: colors.textMuted, ...typography.caption }]}>
             Sin registros NDEF
           </Text>
         </View>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform, Text, StyleSheet } from 'react-native';
-import theme from '../themes/theme';
+import { useTheme } from '../themes/ThemeContext';
 
 // Web: use CSS font glyphs; Native: use react-native-vector-icons
 const isWeb = Platform.OS === 'web';
@@ -27,6 +27,11 @@ const NATIVE_ICON_MAP: Record<string, string> = {
   delete: 'delete',
   'close-circle-outline': 'close-circle-outline',
   'clock-outline': 'clock-outline',
+  'compass-outline': 'compass-outline',
+  'compass-off-outline': 'compass-off-outline',
+  'crosshairs-gps': 'crosshairs-gps',
+  'skip-next-outline': 'skip-next-outline',
+  'alert-circle-outline': 'alert-circle-outline',
 };
 
 // Web glyph codepoints
@@ -51,6 +56,11 @@ const WEB_GLYPH: Record<string, string> = {
   delete: String.fromCodePoint(0xF01B4),
   'close-circle-outline': String.fromCodePoint(0xF015A),
   'clock-outline': String.fromCodePoint(0xF057E),
+  'compass-outline': String.fromCodePoint(0xF02CB),
+  'compass-off-outline': String.fromCodePoint(0xF02CC),
+  'crosshairs-gps': String.fromCodePoint(0xF0129),
+  'skip-next-outline': String.fromCodePoint(0xF0472),
+  'alert-circle-outline': String.fromCodePoint(0xF002B),
 };
 
 type Props = {
@@ -60,12 +70,14 @@ type Props = {
 };
 
 /** Renders a Material Design Icon cross-platform (web font + native vector-icons). */
-export default function MdiIcon({ name, size = 20, color = theme.colors.muted }: Props) {
+export default function MdiIcon({ name, size = 20, color }: Props) {
+  const { colors } = useTheme();
+  const resolvedColor = color ?? colors.textMuted;
   if (isWeb) {
     const glyph = WEB_GLYPH[name];
     if (!glyph) return null;
     return (
-      <Text style={[styles.icon, { fontSize: size, color }]} aria-hidden>
+      <Text style={[styles.icon, { fontSize: size, color: resolvedColor }]} aria-hidden>
         {glyph}
       </Text>
     );
@@ -75,7 +87,7 @@ export default function MdiIcon({ name, size = 20, color = theme.colors.muted }:
   try {
     const MaterialCommunityIcons = require('react-native-vector-icons/MaterialCommunityIcons').default;
     const iconName = NATIVE_ICON_MAP[name] ?? name;
-    return <MaterialCommunityIcons name={iconName} size={size} color={color} accessibilityElementsHidden />;
+    return <MaterialCommunityIcons name={iconName} size={size} color={resolvedColor} accessibilityElementsHidden />;
   } catch {
     // Fallback: render nothing if vector-icons not linked
     return null;

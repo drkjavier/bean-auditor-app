@@ -9,9 +9,6 @@
  * - Request/response transformation
  */
 
-import { TagRecord, AuditRecord } from '../audit/AuditRecord';
-import { Farm } from '../farm/Farm';
-import { User } from '../user/User';
 import {
   PullRequest,
   PullResponse,

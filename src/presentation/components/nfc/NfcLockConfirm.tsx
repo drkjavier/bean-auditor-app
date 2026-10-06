@@ -14,7 +14,7 @@
  *   />
  */
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Modal, TextInput } from 'react-native';
 import { useTheme } from '../../themes/ThemeContext';
 import Button from '../Button';
 
@@ -35,19 +35,19 @@ type Props = {
   onCancel: () => void;
 };
 
-const MODE_CONFIG: Record<LockMode, { title: string; description: string; confirmLabel: string; confirmColor: string; requiresPin: boolean }> = {
+const MODE_CONFIG: Record<LockMode, { title: string; description: string; confirmLabel: string; confirmTone: 'warning' | 'error'; requiresPin: boolean }> = {
   lock_pin: {
     title: 'Bloquear tag con PIN',
     description: 'Esta acción protegerá el tag NFC con un PIN. Necesitarás el PIN para modificar el tag en el futuro.',
     confirmLabel: 'Bloquear con PIN',
-    confirmColor: '#F59E0B', // warning
+    confirmTone: 'warning',
     requiresPin: true,
   },
   lock_permanent: {
     title: '⚠️ Bloqueo permanente',
     description: 'ADVERTENCIA: Esta acción es IRREVERSIBLE. El tag NFC quedará permanentemente protegido contra escritura. No podrás modificar los datos del tag nunca más.',
     confirmLabel: 'Bloquear permanentemente',
-    confirmColor: '#EF4444', // error
+    confirmTone: 'error',
     requiresPin: false,
   },
 };
@@ -55,6 +55,7 @@ const MODE_CONFIG: Record<LockMode, { title: string; description: string; confir
 export default function NfcLockConfirm({ visible, mode, uid, isLocking = false, onConfirm, onCancel }: Props) {
   const { colors, typography, spacing, radii } = useTheme();
   const config = MODE_CONFIG[mode];
+  const confirmColor = config.confirmTone === 'warning' ? colors.warning : colors.error;
   const [pin, setPin] = useState('');
   const [confirmText, setConfirmText] = useState('');
 
@@ -162,7 +163,9 @@ export default function NfcLockConfirm({ visible, mode, uid, isLocking = false, 
                 disabled={!canConfirm}
                 loading={isLocking}
                 accessibilityLabel={config.confirmLabel}
-                style={{ backgroundColor: canConfirm ? config.confirmColor : colors.muted }}
+                style={{
+                  backgroundColor: canConfirm ? confirmColor : colors.disabledBg,
+                }}
               >
                 {isLocking ? 'Bloqueando…' : config.confirmLabel}
               </Button>

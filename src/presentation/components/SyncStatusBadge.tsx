@@ -65,7 +65,7 @@ export default function SyncStatusBadge({ detailed = false, showAutoSync = true 
         style={({ pressed }) => [
           styles.syncButton,
           {
-            backgroundColor: hasPending ? colors.primary : colors.muted,
+            backgroundColor: hasPending ? colors.primary : colors.disabledBg,
             borderRadius: radii.md,
           },
           pressed && styles.pressed,
@@ -78,13 +78,13 @@ export default function SyncStatusBadge({ detailed = false, showAutoSync = true 
         <MdiIcon
           name={isSyncing ? 'sync' : 'cloud-upload-outline'}
           size={18}
-          color={colors.textButton}
+          color={hasPending ? colors.textButton : colors.disabledText}
         />
-        <Text style={[styles.syncText, { color: colors.textButton }]}>
+        <Text style={[styles.syncText, { color: hasPending ? colors.textButton : colors.disabledText }]}>
           {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
         </Text>
         {hasPending && !isSyncing && (
-          <View style={[styles.badge, { backgroundColor: colors.error }]}>
+          <View style={[styles.badge, { backgroundColor: colors.warning }]}>
             <Text style={[styles.badgeText, { color: colors.textButton }]}>
               {totalPending}
             </Text>
@@ -94,7 +94,7 @@ export default function SyncStatusBadge({ detailed = false, showAutoSync = true 
 
       {/* ── Countdown ────────────────────────────────────────────────────── */}
       {showCountdown && (
-        <View style={[styles.countdownContainer, { backgroundColor: colors.primary + '14' }]}>
+        <View style={[styles.countdownContainer, { backgroundColor: colors.primaryTonal }]}>
           <MdiIcon name="timer-outline" size={14} color={colors.primary} />
           <Text style={[styles.countdownText, { color: colors.primary, ...typography.caption }]}>
             {formatCountdown(nextSyncIn)}

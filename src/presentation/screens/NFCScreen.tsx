@@ -19,7 +19,6 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Platform,
 } from 'react-native';
 import { useTheme } from '../themes/ThemeContext';
 import { useNfc } from '../hooks/useNfc';
@@ -27,7 +26,6 @@ import { useAuthStore } from '../../stores';
 import Card from '../components/Card';
 import SectionHeader from '../components/SectionHeader';
 import EmptyState from '../components/EmptyState';
-import MdiIcon from '../components/MdiIcon';
 import { NfcScanner, NfcTagCard, NfcWriteForm, NfcLockConfirm } from '../components/nfc';
 import type { NfcPhase, NfcWritePayload } from '../../domain/nfc/NfcTypes';
 import type { NdefRecord } from '../../domain/nfc/NfcTypes';
@@ -76,7 +74,7 @@ export default function NFCScreen() {
   const nfc = useNfc();
 
   const [showLockConfirm, setShowLockConfirm] = useState(false);
-  const [writePayload, setWritePayload] = useState<NfcWritePayload | null>(null);
+  const [, setWritePayload] = useState<NfcWritePayload | null>(null);
 
   // Initialize NFC on mount (works on both native and web)
   useEffect(() => {

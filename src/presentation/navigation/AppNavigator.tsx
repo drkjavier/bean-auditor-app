@@ -3,6 +3,7 @@ import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import LoginScreen from '../screens/LoginScreen';
 import MainScreen from '../screens/MainScreen';
 import { useAuthStore } from '../../stores';
+import { useTheme } from '../themes/ThemeContext';
 
 /** Maximum time (ms) to wait for restoreSession before showing login. */
 const RESTORE_TIMEOUT_MS = 5_000;
@@ -16,6 +17,7 @@ const RESTORE_TIMEOUT_MS = 5_000;
  * screen is shown so the user is never stuck on a loading spinner.
  */
 export default function AppNavigator() {
+  const { colors } = useTheme();
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
   const isRestoring = useAuthStore(state => state.isRestoring);
 
@@ -37,7 +39,7 @@ export default function AppNavigator() {
       } catch (err) {
         // restoreSession already sets state on failure, but ensure
         // any unexpected error is logged and state is reset.
-        // eslint-disable-next-line no-console
+         
         console.warn('restoreSession failed in AppNavigator', err?.message || err);
         if (!cancelled) {
           useAuthStore.setState({ isRestoring: false });
@@ -52,14 +54,18 @@ export default function AppNavigator() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   if (isRestoring) {
     return (
-      <View style={styles.center} accessibilityLabel="Restaurando sesión" accessibilityRole="text">
+      <View
+        style={[styles.center, { backgroundColor: colors.background }]}
+        accessibilityLabel="Restaurando sesión"
+        accessibilityRole="text"
+      >
         <ActivityIndicator size="large" />
-        <Text style={styles.message}>Restaurando sesión...</Text>
+        <Text style={[styles.message, { color: colors.textSecondary }]}>Restaurando sesión...</Text>
       </View>
     );
   }
@@ -70,5 +76,5 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  message: { marginTop: 12, color: '#475569' },
+  message: { marginTop: 12 },
 });

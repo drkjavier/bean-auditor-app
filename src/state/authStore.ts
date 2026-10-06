@@ -68,10 +68,12 @@ async function ensureAuthRepo(): Promise<void> {
   }
 }
 
-// Dev bypass flag: controls whether admin/admin bypass is allowed
-// Reads from Vite's import.meta.env (browser) and process.env (Node/test)
+// Dev bypass flag: controls whether admin/admin bypass is allowed.
+// Reads Vite vars via globalThis.__VITE_ENV__ (injected in index.web.jsx),
+// process.env (Node/test) and the explicit globalThis bypass flag.
+// Intentionally avoids the import.meta token so Jest/CJS can parse this module.
 const AUTH_DEV_BYPASS =
-  import.meta.env?.VITE_AUTH_DEV_BYPASS === 'true' ||
+  ((globalThis as any).__VITE_ENV__?.VITE_AUTH_DEV_BYPASS === 'true') ||
   (typeof process !== 'undefined' && (process as any).env?.AUTH_DEV_BYPASS === 'true') ||
   (typeof globalThis !== 'undefined' && (globalThis as any).__VITE_AUTH_DEV_BYPASS === 'true');
 

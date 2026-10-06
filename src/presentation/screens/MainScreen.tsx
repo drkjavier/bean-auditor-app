@@ -6,6 +6,7 @@ import DrawerMenu from '../components/DrawerMenu';
 import BottomNavBar from '../components/BottomNavBar';
 import SyncBanner from '../components/SyncBanner';
 import { useAuthStore } from '../../stores';
+import { useTheme } from '../themes/ThemeContext';
 
 // Lazy-load screens that depend on heavy browser-only libraries (react-leaflet,
 // leaflet.markercluster). A failed static import of those modules aborts the
@@ -27,6 +28,7 @@ const ROUTES: { key: string; title: string }[] = [
 ];
 
 export default function MainScreen() {
+  const { colors } = useTheme();
   const isLoggedIn = useAuthStore(state => state.isLoggedIn);
   const [index, setIndex] = useState(0);
   const [visited, setVisited] = useState<Record<string, boolean>>({ home: true });
@@ -69,7 +71,7 @@ export default function MainScreen() {
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Sync status banner */}
         <SyncBanner />
 
@@ -109,7 +111,7 @@ export default function MainScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1 },
   content: { flex: 1 },
   loader: { flex: 1 },
 });

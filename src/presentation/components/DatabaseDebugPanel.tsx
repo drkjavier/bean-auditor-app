@@ -133,9 +133,9 @@ export default function DatabaseDebugPanel() {
   const expandedData = expandedTable ? tableData[expandedTable] || [] : [];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderRadius: radii.md }]}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: radii.md }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <MdiIcon name="database" size={18} color={colors.primary} />
           <Text style={[styles.title, { color: colors.textPrimary, ...typography.subtitle }]}>
@@ -168,7 +168,7 @@ export default function DatabaseDebugPanel() {
           </Text>
         ) : (
           tables.map(table => (
-            <View key={table.name} style={styles.tableItem}>
+            <View key={table.name} style={[styles.tableItem, { borderBottomColor: colors.border }]}>
               {/* Table Header */}
               <Pressable
                 style={[
@@ -207,9 +207,9 @@ export default function DatabaseDebugPanel() {
                       <View>
                         {/* Header Row */}
                         {expandedData.length > 0 && (
-                          <View style={[styles.dataRow, styles.headerRow, { backgroundColor: colors.border }]}>
+                          <View style={[styles.dataRow, styles.headerRow, { backgroundColor: colors.border, borderBottomColor: colors.border }]}>
                             {Object.keys(expandedData[0] as Record<string, unknown>).map(col => (
-                              <Text key={col} style={[styles.cell, styles.headerCell, { color: colors.textPrimary, ...typography.caption }]}>
+                              <Text key={col} style={[styles.cell, styles.headerCell, { color: colors.textPrimary, borderRightColor: colors.border, backgroundColor: colors.surface, ...typography.caption }]}>
                                 {col}
                               </Text>
                             ))}
@@ -219,10 +219,10 @@ export default function DatabaseDebugPanel() {
                         {expandedData.map((row, idx) => (
                           <View
                             key={idx}
-                            style={[styles.dataRow, idx % 2 === 0 && { backgroundColor: colors.surface }]}
+                            style={[styles.dataRow, { borderBottomColor: colors.border }, idx % 2 === 0 && { backgroundColor: colors.surface }]}
                           >
                             {Object.values(row as Record<string, unknown>).map((val, i) => (
-                              <Text key={i} style={[styles.cell, { color: colors.textSecondary, ...typography.caption }]} numberOfLines={1}>
+                              <Text key={i} style={[styles.cell, { color: colors.textSecondary, borderRightColor: colors.border, ...typography.caption }]} numberOfLines={1}>
                                 {val === null ? 'NULL' : String(val).substring(0, 30)}
                               </Text>
                             ))}
@@ -251,7 +251,6 @@ export default function DatabaseDebugPanel() {
 const styles = StyleSheet.create({
   container: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     overflow: 'hidden',
   },
   header: {
@@ -260,7 +259,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -285,7 +283,6 @@ const styles = StyleSheet.create({
   },
   tableItem: {
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   tableHeader: {
     flexDirection: 'row',
@@ -323,7 +320,6 @@ const styles = StyleSheet.create({
   dataRow: {
     flexDirection: 'row',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
   },
   headerRow: {
     borderBottomWidth: 1,
@@ -334,11 +330,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: '#e0e0e0',
   },
   headerCell: {
     fontWeight: '700',
-    backgroundColor: 'rgba(0,0,0,0.02)',
   },
   footer: {
     padding: 8,

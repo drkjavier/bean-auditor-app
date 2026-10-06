@@ -22,6 +22,7 @@ import {
 import { useSyncStore } from '../../state/syncStore';
 import { MdiIcon } from '../components/MdiIcon';
 import { Button } from '../components/Button';
+import { useTheme } from '../themes/ThemeContext';
 
 type PullInitScreenProps = {
   /** Called when pull is complete */
@@ -31,6 +32,7 @@ type PullInitScreenProps = {
 };
 
 export function PullInitScreen({ onComplete, onSkip }: PullInitScreenProps) {
+  const { colors, radii } = useTheme();
   const [phase, setPhase] = useState<'idle' | 'connecting' | 'downloading' | 'complete' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('Preparando descarga...');
@@ -83,9 +85,11 @@ export function PullInitScreen({ onComplete, onSkip }: PullInitScreenProps) {
     }
   }, [isConnected, pullNow, onComplete]);
 
-  // Auto-start pull on mount
+  // Auto-start pull on mount (stable ref preserves mount-only behavior)
+  const startPullRef = useRef(startPull);
+  startPullRef.current = startPull;
   useEffect(() => {
-    startPull();
+    startPullRef.current();
   }, []);
 
   const getPhaseIcon = () => {
@@ -106,18 +110,18 @@ export function PullInitScreen({ onComplete, onSkip }: PullInitScreenProps) {
     switch (phase) {
       case 'connecting':
       case 'downloading':
-        return '#2196F3';
+        return colors.info;
       case 'complete':
-        return '#4CAF50';
+        return colors.success;
       case 'error':
-        return '#F44336';
+        return colors.error;
       default:
-        return '#9E9E9E';
+        return colors.textMuted;
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {/* Icon */}
         <View style={[styles.iconContainer, { backgroundColor: getPhaseColor() + '20' }]}>
@@ -129,23 +133,24 @@ export function PullInitScreen({ onComplete, onSkip }: PullInitScreenProps) {
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
           {phase === 'complete' ? '¡Descarga Completa!' : 'Descargando Datos'}
         </Text>
 
         {/* Message */}
-        <Text style={styles.message}>{message}</Text>
+        <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
 
         {/* Progress Bar */}
         {(phase === 'connecting' || phase === 'downloading' || phase === 'complete') && (
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+            <View style={[styles.progressBar, { backgroundColor: colors.border, borderRadius: radii.sm }]}>
               <View
                 style={[
                   styles.progressFill,
                   {
                     width: `${progress}%`,
                     backgroundColor: getPhaseColor(),
+                    borderRadius: radii.sm,
                   },
                 ]}
               />
@@ -158,9 +163,9 @@ export function PullInitScreen({ onComplete, onSkip }: PullInitScreenProps) {
 
         {/* Error */}
         {phase === 'error' && error && (
-          <View style={styles.errorContainer}>
-            <MdiIcon name="alert-circle" size={20} color="#F44336" />
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={[styles.errorContainer, { backgroundColor: colors.dangerTonal, borderRadius: radii.md }]}>
+            <MdiIcon name="alert-circle" size={20} color={colors.error} />
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           </View>
         )}
 
@@ -199,7 +204,7 @@ export function PullInitScreen({ onComplete, onSkip }: PullInitScreenProps) {
         {/* Skip link for non-error states */}
         {phase !== 'error' && phase !== 'complete' && (
           <TouchableOpacity onPress={onSkip} style={styles.skipLink}>
-            <Text style={styles.skipText}>Omitir por ahora</Text>
+            <Text style={[styles.skipText, { color: colors.textSecondary }]}>Omitir por ahora</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -210,7 +215,6 @@ export function PullInitScreen({ onComplete, onSkip }: PullInitScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
   content: {
     flex: 1,
@@ -229,13 +233,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#212121',
     marginBottom: 8,
     textAlign: 'center',
   },
   message: {
     fontSize: 16,
-    color: '#757575',
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -248,13 +250,10 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 4,
   },
   progressText: {
     fontSize: 14,
@@ -265,14 +264,11 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFEBEE',
     padding: 12,
-    borderRadius: 8,
     marginBottom: 24,
   },
   errorText: {
     fontSize: 14,
-    color: '#F44336',
     marginLeft: 8,
     flex: 1,
   },
@@ -289,7 +285,6 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    color: '#757575',
     textDecorationLine: 'underline',
   },
 });

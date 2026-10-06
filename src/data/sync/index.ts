@@ -26,4 +26,4 @@ export {
   getAllTags,
   getAllFarms,
   getAllUsers,
-} from './SyncRepository.native';
+} from './SyncRepository';
