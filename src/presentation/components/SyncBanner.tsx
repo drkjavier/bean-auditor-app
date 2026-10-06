@@ -14,6 +14,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSyncStore, usePendingCount, useIsSyncing, useIsConnected, useSyncProgress } from '../../state/syncStore';
+import { useTheme } from '../themes/ThemeContext';
 import MdiIcon from './MdiIcon';
 
 type SyncBannerProps = {
@@ -24,6 +25,7 @@ type SyncBannerProps = {
 };
 
 export function SyncBanner({ showProgress = false, onPress }: SyncBannerProps) {
+  const { colors } = useTheme();
   const pendingCount = usePendingCount();
   const isSyncing = useIsSyncing();
   const isConnected = useIsConnected();
@@ -43,12 +45,15 @@ export function SyncBanner({ showProgress = false, onPress }: SyncBannerProps) {
     return null;
   }
 
-  const getStatusColor = () => {
-    if (!isConnected) return '#FF5252'; // Red for offline
-    if (isSyncing) return '#FF9800'; // Orange for syncing
-    if (pendingCount > 0) return '#FFC107'; // Yellow for pending
-    return '#4CAF50'; // Green for synced
+  /** Maps the current sync state to saturated + tonal theme tokens. */
+  const getStatusTokens = () => {
+    if (!isConnected) return { fg: colors.error, bg: colors.dangerTonal };
+    if (isSyncing) return { fg: colors.info, bg: colors.infoTonal };
+    if (pendingCount > 0) return { fg: colors.warning, bg: colors.warningTonal };
+    return { fg: colors.success, bg: colors.successTonal };
   };
+
+  const status = getStatusTokens();
 
   const getStatusIcon = () => {
     if (!isConnected) return 'wifi-off';
@@ -67,7 +72,7 @@ export function SyncBanner({ showProgress = false, onPress }: SyncBannerProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: getStatusColor() + '20' }]}
+      style={[styles.container, { backgroundColor: status.bg, borderBottomColor: colors.border }]}
       onPress={handlePress}
       disabled={isSyncing}
       accessibilityRole="button"
@@ -76,36 +81,36 @@ export function SyncBanner({ showProgress = false, onPress }: SyncBannerProps) {
     >
       <View style={styles.content}>
         {isSyncing ? (
-          <ActivityIndicator size="small" color={getStatusColor()} style={styles.icon} />
+          <ActivityIndicator size="small" color={status.fg} style={styles.icon} />
         ) : (
-          <MdiIcon name={getStatusIcon()} size={20} color={getStatusColor()} style={styles.icon} />
+          <MdiIcon name={getStatusIcon()} size={20} color={status.fg} style={styles.icon} />
         )}
 
-        <Text style={[styles.text, { color: getStatusColor() }]} numberOfLines={1}>
+        <Text style={[styles.text, { color: status.fg }]} numberOfLines={1}>
           {getStatusText()}
         </Text>
 
         {showProgress && syncProgress.percent !== null && (
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+            <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
               <View
                 style={[
                   styles.progressFill,
                   {
                     width: `${syncProgress.percent}%`,
-                    backgroundColor: getStatusColor(),
+                    backgroundColor: status.fg,
                   },
                 ]}
               />
             </View>
-            <Text style={[styles.progressText, { color: getStatusColor() }]}>
+            <Text style={[styles.progressText, { color: status.fg }]}>
               {Math.round(syncProgress.percent)}%
             </Text>
           </View>
         )}
 
         {!isSyncing && isConnected && pendingCount > 0 && (
-          <MdiIcon name="refresh" size={16} color={getStatusColor()} />
+          <MdiIcon name="refresh" size={16} color={status.fg} />
         )}
       </View>
     </TouchableOpacity>
@@ -117,7 +122,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   content: {
     flexDirection: 'row',
@@ -139,7 +143,6 @@ const styles = StyleSheet.create({
   progressBar: {
     width: 60,
     height: 4,
-    backgroundColor: '#E0E0E0',
     borderRadius: 2,
     overflow: 'hidden',
   },

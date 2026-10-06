@@ -18,9 +18,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  ScrollView,
 } from 'react-native';
 import { ManualConflict } from '../../domain/sync/ConflictResolver';
+import { useTheme } from '../themes/ThemeContext';
 import MdiIcon from './MdiIcon';
 import Button from './Button';
 
@@ -41,6 +41,7 @@ export function ConflictResolutionModal({
   onResolve,
   onClose,
 }: ConflictResolutionModalProps) {
+  const { colors } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const currentConflict = conflicts[currentIndex];
@@ -89,26 +90,26 @@ export function ConflictResolutionModal({
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modal}>
+        <View style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.cardBorder, borderWidth: 1 }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <MdiIcon name="alert-circle" size={24} color="#FF9800" />
-            <Text style={styles.title}>Conflicto de Sincronización</Text>
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <MdiIcon name="alert-circle" size={24} color={colors.warning} />
+            <Text style={[styles.title, { color: colors.textPrimary }]}>Conflicto de Sincronización</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <MdiIcon name="close" size={24} color="#757575" />
+              <MdiIcon name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Progress indicator */}
           {conflicts.length > 1 && (
-            <Text style={styles.progress}>
+            <Text style={[styles.progress, { color: colors.textSecondary }]}>
               Conflicto {currentIndex + 1} de {conflicts.length}
             </Text>
           )}
 
           {/* Conflict info */}
           <View style={styles.conflictInfo}>
-            <Text style={styles.recordType}>
+            <Text style={[styles.recordType, { color: colors.textMuted }]}>
               {currentConflict.type === 'tag'
                 ? 'Tag'
                 : currentConflict.type === 'farm'
@@ -117,43 +118,43 @@ export function ConflictResolutionModal({
                 ? 'Usuario'
                 : 'Auditoría'}
             </Text>
-            <Text style={styles.recordId}>
+            <Text style={[styles.recordId, { color: colors.textPrimary }]}>
               {getRecordDisplayName(currentConflict.localVersion)}
             </Text>
           </View>
 
           {/* Description */}
-          <Text style={styles.description}>{currentConflict.description}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>{currentConflict.description}</Text>
 
           {/* Versions comparison */}
           <View style={styles.versionsContainer}>
             {/* Local version */}
-            <View style={[styles.versionCard, styles.localVersion]}>
+            <View style={[styles.versionCard, styles.localVersion, { backgroundColor: colors.infoTonal, borderColor: colors.info }]}>
               <View style={styles.versionHeader}>
-                <MdiIcon name="cellphone" size={16} color="#2196F3" />
-                <Text style={[styles.versionTitle, { color: '#2196F3' }]}>
+                <MdiIcon name="cellphone" size={16} color={colors.info} />
+                <Text style={[styles.versionTitle, { color: colors.info }]}>
                   Versión Local
                 </Text>
               </View>
-              <Text style={styles.versionTime}>
+              <Text style={[styles.versionTime, { color: colors.textMuted }]}>
                 {formatTimestamp(currentConflict.localVersion.updated_at)}
               </Text>
             </View>
 
             {/* VS divider */}
             <View style={styles.vsDivider}>
-              <Text style={styles.vsText}>VS</Text>
+              <Text style={[styles.vsText, { color: colors.textMuted }]}>VS</Text>
             </View>
 
             {/* Server version */}
-            <View style={[styles.versionCard, styles.serverVersion]}>
+            <View style={[styles.versionCard, styles.serverVersion, { backgroundColor: colors.successTonal, borderColor: colors.success }]}>
               <View style={styles.versionHeader}>
-                <MdiIcon name="cloud" size={16} color="#4CAF50" />
-                <Text style={[styles.versionTitle, { color: '#4CAF50' }]}>
+                <MdiIcon name="cloud" size={16} color={colors.success} />
+                <Text style={[styles.versionTitle, { color: colors.success }]}>
                   Versión Servidor
                 </Text>
               </View>
-              <Text style={styles.versionTime}>
+              <Text style={[styles.versionTime, { color: colors.textMuted }]}>
                 {formatTimestamp(currentConflict.serverVersion.updated_at)}
               </Text>
             </View>
@@ -180,7 +181,7 @@ export function ConflictResolutionModal({
           {/* Skip all link */}
           {conflicts.length > 1 && (
             <TouchableOpacity onPress={handleClose} style={styles.skipLink}>
-              <Text style={styles.skipText}>Resolver todos después</Text>
+              <Text style={[styles.skipText, { color: colors.textLink }]}>Resolver todos después</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -198,7 +199,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modal: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     width: '100%',
     maxWidth: 400,
@@ -209,13 +209,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   title: {
     flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    color: '#212121',
     marginLeft: 8,
   },
   closeButton: {
@@ -223,7 +221,6 @@ const styles = StyleSheet.create({
   },
   progress: {
     fontSize: 12,
-    color: '#757575',
     textAlign: 'center',
     paddingTop: 8,
   },
@@ -233,19 +230,16 @@ const styles = StyleSheet.create({
   },
   recordType: {
     fontSize: 12,
-    color: '#757575',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   recordId: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#212121',
     marginTop: 4,
   },
   description: {
     fontSize: 14,
-    color: '#757575',
     textAlign: 'center',
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -262,14 +256,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  localVersion: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#2196F3',
-  },
-  serverVersion: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#4CAF50',
-  },
+  localVersion: {},
+  serverVersion: {},
   versionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -282,7 +270,6 @@ const styles = StyleSheet.create({
   },
   versionTime: {
     fontSize: 11,
-    color: '#757575',
   },
   vsDivider: {
     paddingHorizontal: 8,
@@ -290,7 +277,6 @@ const styles = StyleSheet.create({
   vsText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9E9E9E',
   },
   actions: {
     flexDirection: 'row',
@@ -306,7 +292,6 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    color: '#757575',
     textDecorationLine: 'underline',
   },
 });

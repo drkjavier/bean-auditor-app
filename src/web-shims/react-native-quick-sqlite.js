@@ -1,3 +1,5 @@
+/* global localStorage */
+
 /**
  * sql.js SQLite Web Shim for React Native Quick SQLite.
  *
@@ -68,6 +70,13 @@ async function initSqlJs() {
     }
   } catch {
     db = new SQL.Database();
+  }
+
+  // Enforce foreign keys (audit_records → tags ON DELETE CASCADE)
+  try {
+    db.run('PRAGMA foreign_keys = ON');
+  } catch (err) {
+    console.warn('[sql.js shim] Could not enable foreign_keys:', err);
   }
 
   // Expose globally for DevTools access

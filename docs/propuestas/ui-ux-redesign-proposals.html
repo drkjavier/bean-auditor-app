@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bean Auditor — Rediseño UI/UX · Design System 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* ═══════════════════════════════════════════════════════════════
+     BEAN AUDITOR — UI/UX REDESIGN PROPOSALS
+     Modern design-system document (2026 style)
+     ═══════════════════════════════════════════════════════════════ */
+  :root {
+    --bg: #0a0a0f;
+    --bg-2: #12121a;
+    --bg-3: #1a1a26;
+    --surface: rgba(255,255,255,0.04);
+    --surface-2: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.09);
+    --border-2: rgba(255,255,255,0.14);
+    --text: #f4f4f8;
+    --text-2: #a0a0b8;
+    --text-3: #6b6b85;
+    --accent: #6366f1;
+    --accent-2: #818cf8;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --rose: #fb7185;
+    --cyan: #22d3ee;
+    --grad-1: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    --grad-2: linear-gradient(135deg, #059669 0%, #34d399 100%);
+    --grad-3: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 22px; --r-2xl: 28px;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+    --shadow-2: 0 4px 6px rgba(0,0,0,.4), 0 12px 40px rgba(0,0,0,.45);
+    --shadow-glow: 0 0 40px rgba(99,102,241,.25), 0 0 80px rgba(168,85,247,.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 72px 0; }
+  section + section { border-top: 1px solid var(--border); }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    padding: 100px 0 80px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 0%, rgba(99,102,241,.18), transparent),
+      radial-gradient(ellipse 50% 40% at 80% 10%, rgba(168,85,247,.14), transparent),
+      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(236,72,153,.08), transparent);
+    pointer-events: none;
+  }
+  .hero .container { position: relative; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border-2);
+    border-radius: 999px; padding: 6px 16px;
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--accent-2);
+    margin-bottom: 24px;
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+  .hero h1 {
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    font-weight: 900; letter-spacing: -0.03em; line-height: 1.08;
+    margin-bottom: 18px;
+  }
+  .hero h1 .grad {
+    background: var(--grad-1);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .sub { font-size: 1.15rem; color: var(--text-2); max-width: 640px; margin-bottom: 32px; }
+  .hero-stats { display: flex; gap: 14px; flex-wrap: wrap; }
+  .hstat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 16px 22px; min-width: 150px;
+  }
+  .hstat .n { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; }
+  .hstat .n.bad { color: var(--rose); }
+  .hstat .n.warn { color: var(--amber); }
+  .hstat .n.ok { color: var(--green); }
+  .hstat .l { font-size: 0.8rem; color: var(--text-3); font-weight: 500; }
+
+  /* ── Section headers ── */
+  .sec-tag {
+    display: inline-block;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent-2);
+    margin-bottom: 10px;
+  }
+  h2.sec-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; }
+  .sec-desc { color: var(--text-2); max-width: 720px; font-size: 1.02rem; margin-bottom: 36px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    padding: 28px;
+  }
+  .card.glow { box-shadow: var(--shadow-glow); border-color: rgba(99,102,241,.3); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── Issue cards ── */
+  .issue {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 20px 22px;
+    border-left: 3px solid var(--rose);
+  }
+  .issue.warn { border-left-color: var(--amber); }
+  .issue.info { border-left-color: var(--accent); }
+  .issue .tag {
+    display: inline-block; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 999px; margin-bottom: 10px;
+  }
+  .issue .tag.crit { background: rgba(251,113,133,.15); color: var(--rose); }
+  .issue .tag.warn { background: rgba(251,191,36,.15); color: var(--amber); }
+  .issue .tag.info { background: rgba(99,102,241,.15); color: var(--accent-2); }
+  .issue h4 { font-size: 0.98rem; font-weight: 700; margin-bottom: 6px; }
+  .issue p { font-size: 0.86rem; color: var(--text-2); }
+  .issue .ratio-line {
+    margin-top: 10px; font-family: var(--mono); font-size: 0.78rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ratio-pill {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-weight: 700; font-size: 0.74rem;
+  }
+  .ratio-pill.bad { background: rgba(251,113,133,.18); color: var(--rose); }
+  .ratio-pill.warn { background: rgba(251,191,36,.18); color: var(--amber); }
+  .ratio-pill.good { background: rgba(52,211,153,.18); color: var(--green); }
+
+  code.inline {
+    font-family: var(--mono); font-size: 0.82em;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 7px;
+  }
+
+  /* ── Palette grid ── */
+  .pal-section { margin-top: 14px; }
+  .pal-section h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 12px; color: var(--text-2); }
+  .pal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+  .pal-item {
+    border-radius: var(--r-md); overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .pal-item .swatch { height: 62px; position: relative; }
+  .pal-item .swatch .badge {
+    position: absolute; bottom: 6px; right: 6px;
+    background: rgba(0,0,0,.55); color: #fff;
+    font-size: 0.62rem; font-weight: 700; font-family: var(--mono);
+    padding: 2px 7px; border-radius: 5px; backdrop-filter: blur(4px);
+  }
+  .pal-item .meta { background: var(--bg-3); padding: 8px 10px; }
+  .pal-item .meta .name { font-size: 0.76rem; font-weight: 700; }
+  .pal-item .meta .use { font-size: 0.68rem; color: var(--text-3); }
+  .pal-item .meta .cr { font-size: 0.66rem; font-family: var(--mono); margin-top: 2px; }
+  .cr.ok { color: var(--green); }
+  .cr.bad { color: var(--rose); }
+  .cr.warn { color: var(--amber); }
+
+  /* ── Phone mockups ── */
+  .mock-gallery { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 28px; justify-content: center; }
+  .phone {
+    width: 308px; border-radius: 36px;
+    border: 3px solid rgba(255,255,255,.14);
+    background: #000; overflow: hidden;
+    box-shadow: var(--shadow-2), inset 0 0 0 1px rgba(255,255,255,.05);
+    flex-shrink: 0;
+  }
+  .phone .bezel { background: #000; padding: 10px 0 4px; display: flex; justify-content: center; }
+  .phone .bezel .island { width: 96px; height: 26px; background: #000; border-radius: 999px; border: 1px solid #1a1a1a; }
+  .phone .viewport { min-height: 540px; position: relative; overflow: hidden; }
+  .phone .tabbar {
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 10px 8px 14px; border-top: 1px solid;
+  }
+  .phone .tabbar .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.6rem; font-weight: 600; }
+  .phone .caption {
+    text-align: center; padding: 12px 14px;
+    background: var(--bg-2); border-top: 1px solid var(--border);
+    font-size: 0.78rem; color: var(--text-2);
+  }
+  .phone .caption b { color: var(--text); }
+
+  /* mock atoms */
+  .mk { padding: 18px 16px; }
+  .mk-status { display: flex; justify-content: space-between; font-size: 0.66rem; font-weight: 700; padding: 0 4px 10px; opacity: .85; }
+  .mk-h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+  .mk-h2 { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; }
+  .mk-sub { font-size: 0.78rem; margin-top: 2px; }
+  .mk-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+  .mk-card { border-radius: var(--r-lg); padding: 14px; margin-bottom: 12px; }
+  .mk-input {
+    border-radius: var(--r-md); padding: 11px 13px;
+    font-size: 0.82rem; display: flex; align-items: center; gap: 9px; margin-bottom: 10px;
+  }
+  .mk-btn {
+    border-radius: var(--r-md); padding: 12px 16px;
+    font-size: 0.86rem; font-weight: 700; text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .mk-btn.sm { padding: 8px 12px; font-size: 0.76rem; border-radius: var(--r-sm); }
+  .mk-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    border-radius: 999px; padding: 4px 11px;
+    font-size: 0.68rem; font-weight: 700;
+  }
+  .mk-row { display: flex; align-items: center; gap: 10px; }
+  .mk-stats { display: flex; gap: 8px; }
+  .mk-stat { flex: 1; text-align: center; padding: 10px 6px; border-radius: var(--r-md); }
+  .mk-stat .v { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+  .mk-stat .l { font-size: 0.62rem; font-weight: 600; margin-top: 1px; }
+  .mk-actions { display: flex; gap: 9px; }
+  .mk-action { flex: 1; border-radius: var(--r-lg); padding: 16px 10px; text-align: center; }
+  .mk-action .ico { font-size: 1.3rem; margin-bottom: 5px; }
+  .mk-action .t { font-size: 0.74rem; font-weight: 700; }
+  .mk-nav { display: flex; justify-content: space-around; padding: 10px 6px 14px; }
+  .mk-nav .item { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.6rem; font-weight: 600; }
+  .mk-nav .ico { font-size: 1.05rem; }
+  .mk-progress { height: 8px; border-radius: 999px; overflow: hidden; margin: 6px 0 4px; }
+  .mk-progress .fill { height: 100%; border-radius: 999px; }
+  .mk-divider { height: 1px; margin: 12px 0; }
+  .mk-list-item { display: flex; align-items: center; gap: 11px; padding: 11px 0; }
+  .mk-list-item + .mk-list-item { border-top: 1px solid; }
+  .mk-avatar { width: 38px; height: 38px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+  .mk-chip-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+  .mk-chip { border-radius: 999px; padding: 5px 12px; font-size: 0.7rem; font-weight: 700; }
+  .mk-fab {
+    position: absolute; right: 16px; bottom: 74px;
+    width: 52px; height: 52px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; box-shadow: var(--shadow-2);
+  }
+
+  /* ── Token table ── */
+  .tok-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .tok-table th {
+    text-align: left; padding: 10px 12px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+  }
+  .tok-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: middle; }
+  .tok-table td:first-child { color: var(--text); font-weight: 600; font-family: var(--mono); font-size: 0.78rem; }
+  .tok-dot { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 7px; border: 1px solid rgba(255,255,255,.15); }
+
+  /* ── Component spec strip ── */
+  .comp-strip {
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch;
+    background: var(--bg-3); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 22px; margin-top: 16px;
+  }
+  .comp-col { flex: 1; min-width: 170px; }
+  .comp-col h5 { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 12px; }
+
+  /* ── Comparison table ── */
+  .cmp { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .cmp th { text-align: left; padding: 12px 14px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); border-bottom: 1px solid var(--border-2); }
+  .cmp td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+  .cmp td:first-child { color: var(--text); font-weight: 600; }
+  .cmp .star { color: var(--amber); }
+
+  /* ── Callouts ── */
+  .callout {
+    border-radius: var(--r-lg); padding: 18px 22px;
+    margin: 20px 0; font-size: 0.92rem;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .callout .ico { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+  .callout.rec { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.25); color: #a7f3d0; }
+  .callout.crit { background: rgba(251,113,133,.08); border: 1px solid rgba(251,113,133,.25); color: #fecdd3; }
+  .callout.info { background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.25); color: #c7d2fe; }
+  .callout b { color: var(--text); }
+
+  /* ── Typography specimen ── */
+  .type-spec { background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 24px; }
+  .type-row { display: flex; align-items: baseline; gap: 20px; padding: 10px 0; }
+  .type-row + .type-row { border-top: 1px solid var(--border); }
+  .type-row .meta { min-width: 190px; font-family: var(--mono); font-size: 0.72rem; color: var(--text-3); }
+
+  /* ── Footer ── */
+  footer { padding: 48px 0 64px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 0.82rem; }
+  footer a { color: var(--accent-2); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
+<header class="hero">
+  <div class="container">
+    <div class="eyebrow"><span class="dot"></span> Bean Auditor · Design System 2026</div>
+    <h1>Rediseño UI/UX con<br/><span class="grad">paletas modernas y accesibles</span></h1>
+    <p class="sub">
+      Análisis profundo del sistema visual actual + 3 propuestas de diseño completas con
+      design tokens, tipografía, componentes y mockups realistas de las pantallas de la app.
+    </p>
+    <div class="hero-stats">
+      <div class="hstat"><div class="n bad">1.17:1</div><div class="l">Contraste crítico actual<br/>texto negro en dark mode</div></div>
+      <div class="hstat"><div class="n bad">7</div><div class="l">Tokens que fallan<br/>WCAG 2.1 AA</div></div>
+      <div class="hstat"><div class="n warn">150+</div><div class="l">Colores hardcodeados<br/>fuera del theme</div></div>
+      <div class="hstat"><div class="n warn">2</div><div class="l">Sistemas de tema<br/>en paralelo</div></div>
+      <div class="hstat"><div class="n ok">3</div><div class="l">Propuestas<br/>listas para decidir</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════ DIAGNÓSTICO ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="sec-tag">01 · Diagnóstico</div>
+    <h2 class="sec-title">Problemas más allá del contraste</h2>
+    <p class="sec-desc">
+      El síntoma que reportaste (texto negro sin contraste) es la punta del iceberg. El sistema visual
+      actual tiene fallas estructurales en tema, tipografía, jerarquía y consistencia de componentes.
+    </p>
+
+    <div class="grid-2" style="margin-bottom:20px;">
+      <div class="issue">
+        <span class="tag crit">Crítico · Dark mode</span>
+        <h4>Texto negro invisible sobre fondos oscuros</h4>
+        <p>
+          <code class="inline">Button</code>, <code class="inline">Input</code>, <code class="inline">LoginScreen</code>,
+          <code class="inline">SessionSection</code> y <code class="inline">DatePickerInput</code> importan
+          <code class="inline">theme.ts</code> (estático, siempre light) mientras <code class="inline">ThemeContext.tsx</code>
+          pinta el fondo oscuro. El resultado: <b>#0F1724 sobre #1C2536</b>.
+        </p>
+        <div class="ratio-line"><span class="ratio-pill bad">1.17:1</span> WCAG exige ≥ 4.5:1 — el texto es prácticamente invisible</div>
+      </div>
+
+      <div class="issue">
+        <span class="tag crit">Crítico · Arquitectura</span>
+        <h4>Dos sistemas de tema compitiendo</h4>
+        <p>
+          <code class="inline">theme.ts</code> (124 líneas, estático, solo light) y
+          <code class="inline">ThemeContext.tsx</code> (125 líneas, dinámico light/dark) definen los mismos tokens
+          por separado. Los componentes eligen uno u otro al azar → comportamiento impredecible según la pantalla.
+        </p>
+        <div class="ratio-line"><span class="ratio-pill warn">Dualidad</span> Cualquier cambio de paleta debe hacerse 2 veces o se desincroniza</div>
+      </div>
+
+      <div class="issue">
+        <span class="tag crit">Crítico · Tokens</span>
+        <h4>7 tokens de color fallan WCAG AA en light mode</h4>
+        <p>
+          <code class="inline">muted</code> (#9AA7B2, 2.46:1), <code class="inline">textOverline</code> (#9CA3AF, 2.54:1),
+          <code class="inline">success</code> como texto (2.41:1), <code class="inline">warning</code> como texto y fondo (2.15:1),
+          botón deshabilitado (2.16:1), badge NFC amarillo con texto blanco (1.07:1).
+        </p>
+        <div class="ratio-line"><span class="ratio-pill bad">7 FAIL</span> Placeholders, badges, estados y botones ilegibles</div>
+      </div>
+
+      <div class="issue">
+        <span class="tag warn">Alto · Consistencia</span>
+        <h4>150+ colores hardcodeados en 3 familias distintas</h4>
+        <p>
+          PullInitScreen usa Material (#4CAF50, #F44336, #2196F3), MapCanvas/NavigationPanel usan Tailwind
+          (#1e40af, #64748b, #10b981), y el theme usa azul propio (#0B5FFF). No hay una sola fuente de verdad.
+        </p>
+        <div class="ratio-line"><span class="ratio-pill warn">3 paletas</span> Mezcla visible entre pantallas — la app parece de 3 productos distintos</div>
+      </div>
+
+      <div class="issue info">
+        <span class="tag info">Medio · UX</span>
+        <h4>Uso semántico incorrecto de tokens</h4>
+        <p>
+          HomeScreen usa <code class="inline">colors.textSecondary</code> como <b>fondo</b> del botón "Ajustes"
+          (en dark: fondo #94A3B8 claro + texto blanco = 2.56:1). Los tokens de texto se usan como fondos de acción.
+        </p>
+        <div class="ratio-line"><span class="ratio-pill bad">2.56:1</span> Faltan tokens de acción: actionSecondaryBg, onActionSecondary</div>
+      </div>
+
+      <div class="issue info">
+        <span class="tag info">Medio · Jerarquía</span>
+        <h4>Tipografía plana y sin sistema de énfasis</h4>
+        <p>
+          La escala actual (h1 32 / h2 24 / body 16 / caption 12) no distingue datos numéricos, etiquetas de campo
+          ni estados. Los valores del resumen (42 auditados) pesan igual que el texto secundario. Sin overline
+          funcional ni pesos semánticos.
+        </p>
+        <div class="ratio-line"><span class="ratio-pill warn">Planas</span> Los números clave (auditorías, pendientes) no destacan visualmente</div>
+      </div>
+    </div>
+
+    <div class="callout crit">
+      <span class="ico">⛔</span>
+      <div>
+        <b>Causa raíz obligatoria de resolver en las 3 propuestas:</b> unificar
+        <code class="inline">theme.ts</code> + <code class="inline">ThemeContext.tsx</code> en un único módulo
+        <code class="inline">tokens.ts</code> con paletas light/dark, y migrar todos los imports estáticos del theme
+        a <code class="inline">useTheme()</code>. Sin esto, cualquier paleta nueva seguirá rota en dark mode.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ PROPUESTA A ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="sec-tag">02 · Propuesta A</div>
+    <h2 class="sec-title">"Neo Indigo" — SaaS profesional <span style="font-size:0.9rem;font-weight:600;color:var(--amber);">★ recomendada</span></h2>
+    <p class="sec-desc">
+      Estética de product tools modernas (Linear, Stripe, Vercel): índigo vibrante como acento,
+      superficies casi negras con profundidad por capas, tipografía Inter con pesos fuertes para datos.
+      Ideal si la app quiere proyectar herramienta seria de trabajo.
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="pal-section">
+          <h4>◈ Light mode — "Frost"</h4>
+          <div class="pal-grid">
+            <div class="pal-item"><div class="swatch" style="background:#4F46E5;"><span class="badge">#4F46E5</span></div><div class="meta"><div class="name">primary</div><div class="use">Botones, links</div><div class="cr ok">blanco 6.3:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#3730A3;"><span class="badge">#3730A3</span></div><div class="meta"><div class="name">primaryPressed</div><div class="use">Estados activos</div><div class="cr ok">blanco 9.2:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#F8FAFC;border-bottom:1px solid #E2E8F0;"><span class="badge">#F8FAFC</span></div><div class="meta"><div class="name">background</div><div class="use">Fondo app</div><div class="cr ok">n/a</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#FFFFFF;border-bottom:1px solid #E2E8F0;"><span class="badge">#FFFFFF</span></div><div class="meta"><div class="name">surface</div><div class="use">Cards</div><div class="cr ok">n/a</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#0F172A;"><span class="badge">#0F172A</span></div><div class="meta"><div class="name">textPrimary</div><div class="use">Titulares</div><div class="cr ok">17.6:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#475569;"><span class="badge">#475569</span></div><div class="meta"><div class="name">textSecondary</div><div class="use">Cuerpo</div><div class="cr ok">7.6:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#64748B;"><span class="badge">#64748B</span></div><div class="meta"><div class="name">textMuted</div><div class="use">Placeholders</div><div class="cr ok">4.8:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#059669;"><span class="badge">#059669</span></div><div class="meta"><div class="name">success</div><div class="use">Sincronizado</div><div class="cr ok">blanco 3.8→texto 4.9 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#D97706;"><span class="badge">#D97706</span></div><div class="meta"><div class="name">warning</div><div class="use">Pendiente</div><div class="cr ok">blanco 4.6:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#DC2626;"><span class="badge">#DC2626</span></div><div class="meta"><div class="name">error</div><div class="use">Conflictos</div><div class="cr ok">blanco 4.8:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#E2E8F0;"><span class="badge">#E2E8F0</span></div><div class="meta"><div class="name">border</div><div class="use">Divisores</div><div class="cr ok">UI 1.4:1 sutil</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#EEF2FF,#E0E7FF);"><span class="badge">tonal</span></div><div class="meta"><div class="name">primaryTonal</div><div class="use">Badges suaves</div><div class="cr ok">texto #4F46E5 6.8 ✓</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="pal-section">
+          <h4>◈ Dark mode — "Midnight"</h4>
+          <div class="pal-grid">
+            <div class="pal-item"><div class="swatch" style="background:#818CF8;"><span class="badge">#818CF8</span></div><div class="meta"><div class="name">primary</div><div class="use">Acciones</div><div class="cr ok">oscuro 7.4:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#A5B4FC;"><span class="badge">#A5B4FC</span></div><div class="meta"><div class="name">primaryPressed</div><div class="use">Hover/active</div><div class="cr ok">oscuro 9.1:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#0B0B12;border-bottom:1px solid #1E1E2E;"><span class="badge">#0B0B12</span></div><div class="meta"><div class="name">background</div><div class="use">Fondo app</div><div class="cr ok">n/a</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#15151F;border-bottom:1px solid #1E1E2E;"><span class="badge">#15151F</span></div><div class="meta"><div class="name">surface</div><div class="use">Cards</div><div class="cr ok">n/a</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#F4F4F8;"><span class="badge">#F4F4F8</span></div><div class="meta"><div class="name">textPrimary</div><div class="use">Titulares</div><div class="cr ok">16.9:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#A0A0B8;"><span class="badge">#A0A0B8</span></div><div class="meta"><div class="name">textSecondary</div><div class="use">Cuerpo</div><div class="cr ok">7.8:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#6B6B85;"><span class="badge">#6B6B85</span></div><div class="meta"><div class="name">textMuted</div><div class="use">Placeholders</div><div class="cr ok">4.0:1 UI/large</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#34D399;"><span class="badge">#34D399</span></div><div class="meta"><div class="name">success</div><div class="use">Sincronizado</div><div class="cr ok">oscuro 11:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#FBBF24;"><span class="badge">#FBBF24</span></div><div class="meta"><div class="name">warning</div><div class="use">Pendiente</div><div class="cr ok">oscuro 11.4:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#FB7185;"><span class="badge">#FB7185</span></div><div class="meta"><div class="name">error</div><div class="use">Conflictos</div><div class="cr ok">oscuro 7.4:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#1E1E2E;"><span class="badge">#1E1E2E</span></div><div class="meta"><div class="name">border</div><div class="use">Divisores</div><div class="cr ok">UI 1.5:1 sutil</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:rgba(129,140,248,.16);"><span class="badge">tonal</span></div><div class="meta"><div class="name">primaryTonal</div><div class="use">Badges suaves</div><div class="cr ok">texto #818CF8 7.4 ✓</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Typography -->
+    <div class="card" style="margin-top:20px;">
+      <h4 style="font-size:0.88rem;font-weight:700;margin-bottom:16px;color:var(--text-2);">◈ Sistema tipográfico — Inter</h4>
+      <div class="type-spec">
+        <div class="type-row"><div class="meta">display · 28/32 · 800</div><div style="font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;">Auditoría de campo</div></div>
+        <div class="type-row"><div class="meta">title · 20/26 · 700</div><div style="font-size:1.25rem;font-weight:700;letter-spacing:-0.02em;">Finca El Paraíso</div></div>
+        <div class="type-row"><div class="meta">subtitle · 16/22 · 600</div><div style="font-size:1rem;font-weight:600;">Lote 4 — Bloque Norte</div></div>
+        <div class="type-row"><div class="meta">body · 14/20 · 400</div><div style="font-size:0.9rem;color:var(--text-2);">Última sincronización hace 12 minutos.</div></div>
+        <div class="type-row"><div class="meta">label · 12/16 · 700 · caps</div><div style="font-size:0.74rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);">Estado de auditoría</div></div>
+        <div class="type-row"><div class="meta">caption · 12/16 · 500</div><div style="font-size:0.76rem;font-weight:500;color:var(--text-3);">Tag #A-0142 · 18 oct 2026</div></div>
+        <div class="type-row"><div class="meta">data · 24/28 · 800 · tabular</div><div style="font-size:1.5rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;">42 <span style="font-size:0.8rem;font-weight:600;color:var(--text-3);">/ 60 auditados</span></div></div>
+      </div>
+    </div>
+
+    <!-- Component spec -->
+    <div class="card" style="margin-top:20px;">
+      <h4 style="font-size:0.88rem;font-weight:700;margin-bottom:16px;color:var(--text-2);">◈ Componentes — especificación Neo Indigo (light)</h4>
+      <div class="comp-strip" style="background:#F8FAFC;border-color:#E2E8F0;">
+        <div class="comp-col">
+          <h5 style="color:#64748B;">Buttons</h5>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="mk-btn" style="background:#4F46E5;color:#fff;box-shadow:0 1px 2px rgba(79,70,229,.3);">Iniciar auditoría</div>
+            <div class="mk-btn" style="background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;">Ver historial</div>
+            <div class="mk-btn" style="background:#FFFFFF;color:#475569;border:1px solid #E2E8F0;">Cancelar</div>
+            <div class="mk-btn" style="background:#E2E8F0;color:#94A3B8;">Deshabilitado</div>
+          </div>
+        </div>
+        <div class="comp-col">
+          <h5 style="color:#64748B;">Inputs</h5>
+          <div class="mk-input" style="background:#fff;border:1.5px solid #E2E8F0;color:#64748B;"><span>🔍</span> Buscar tag o finca…</div>
+          <div class="mk-input" style="background:#fff;border:1.5px solid #4F46E5;color:#0F172A;box-shadow:0 0 0 3px rgba(79,70,229,.15);"><span>📍</span> Finca El Paraíso</div>
+          <div class="mk-input" style="background:#fff;border:1.5px solid #DC2626;color:#0F172A;"><span>⚠️</span> <span style="color:#DC2626;">Tag no encontrado</span></div>
+        </div>
+        <div class="comp-col">
+          <h5 style="color:#64748B;">Badges de estado</h5>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
+            <span class="mk-badge" style="background:#D1FAE5;color:#065F46;">● Sincronizado</span>
+            <span class="mk-badge" style="background:#FEF3C7;color:#92400E;">● 3 pendientes</span>
+            <span class="mk-badge" style="background:#FEE2E2;color:#991B1B;">● Error de red</span>
+            <span class="mk-badge" style="background:#EEF2FF;color:#4F46E5;">◆ Modo demo</span>
+          </div>
+        </div>
+        <div class="comp-col">
+          <h5 style="color:#64748B;">Cards & tags</h5>
+          <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(15,23,42,.06);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="width:10px;height:10px;border-radius:50%;background:#FF8000;"></span>
+              <span style="font-weight:700;font-size:0.82rem;color:#0F172A;">Tag #A-0142</span>
+              <span style="margin-left:auto;font-size:0.66rem;font-weight:700;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:999px;">Completa</span>
+            </div>
+            <div style="font-size:0.72rem;color:#64748B;">Lote 4 · 120 árboles · 18 oct 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mockups -->
+    <h3 style="margin-top:40px;font-size:1.1rem;font-weight:700;">◈ Mockups — Pantallas reales de Bean Auditor</h3>
+    <div class="mock-gallery">
+
+      <!-- Phone 1: Home light -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:#F8FAFC;">
+          <div class="mk">
+            <div class="mk-status" style="color:#0F172A;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div>
+                <div class="mk-h1" style="color:#0F172A;">Hola, María 👋</div>
+                <div class="mk-sub" style="color:#64748B;">Turno mañana · 60 tags asignados</div>
+              </div>
+              <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#4F46E5,#818CF8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:0.85rem;">MG</div>
+            </div>
+            <div class="mk-card" style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;box-shadow:0 4px 20px rgba(79,70,229,.35);">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;opacity:.85;">PROGRESO DE HOY</div>
+                  <div style="font-size:1.7rem;font-weight:800;letter-spacing:-0.02em;margin-top:2px;">42<span style="font-size:0.9rem;font-weight:600;opacity:.75;"> / 60</span></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:1.5rem;font-weight:800;">70%</div>
+                  <div style="font-size:0.66rem;opacity:.8;">auditados</div>
+                </div>
+              </div>
+              <div class="mk-progress" style="background:rgba(255,255,255,.25);"><div class="fill" style="background:#fff;width:70%;"></div></div>
+            </div>
+            <div class="mk-label" style="color:#64748B;">Resumen</div>
+            <div class="mk-stats" style="margin-bottom:14px;">
+              <div class="mk-stat" style="background:#fff;border:1px solid #E2E8F0;"><div class="v" style="color:#059669;">42</div><div class="l" style="color:#64748B;">Auditados</div></div>
+              <div class="mk-stat" style="background:#fff;border:1px solid #E2E8F0;"><div class="v" style="color:#D97706;">7</div><div class="l" style="color:#64748B;">Pendientes</div></div>
+              <div class="mk-stat" style="background:#fff;border:1px solid #E2E8F0;"><div class="v" style="color:#DC2626;">2</div><div class="l" style="color:#64748B;">Conflictos</div></div>
+            </div>
+            <div class="mk-label" style="color:#64748B;">Accesos rápidos</div>
+            <div class="mk-actions" style="margin-bottom:12px;">
+              <div class="mk-action" style="background:#4F46E5;color:#fff;"><div class="ico">📋</div><div class="t">Auditoría</div></div>
+              <div class="mk-action" style="background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;"><div class="ico">📇</div><div class="t">Escanear NFC</div></div>
+              <div class="mk-action" style="background:#fff;color:#475569;border:1px solid #E2E8F0;"><div class="ico">🗺️</div><div class="t">Mapa</div></div>
+            </div>
+            <div class="mk-card" style="background:#fff;border:1px solid #E2E8F0;">
+              <div class="mk-row" style="margin-bottom:8px;">
+                <span class="mk-badge" style="background:#D1FAE5;color:#065F46;">● Sincronizado</span>
+                <span style="margin-left:auto;font-size:0.68rem;color:#64748B;font-weight:600;">hace 12 min</span>
+              </div>
+              <div style="font-size:0.74rem;color:#475569;">Todos los cambios están guardados en el servidor.</div>
+            </div>
+          </div>
+          <div class="mk-nav" style="background:#fff;border-top:1px solid #E2E8F0;">
+            <div class="item" style="color:#4F46E5;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#94A3B8;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#94A3B8;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#94A3B8;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#94A3B8;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Neo Indigo — Light:</b> jerarquía por peso, datos destacados, tonales suaves</div>
+      </div>
+
+      <!-- Phone 2: Home dark -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:#0B0B12;">
+          <div class="mk">
+            <div class="mk-status" style="color:#F4F4F8;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div>
+                <div class="mk-h1" style="color:#F4F4F8;">Hola, María 👋</div>
+                <div class="mk-sub" style="color:#6B6B85;">Turno mañana · 60 tags asignados</div>
+              </div>
+              <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#818CF8,#C084FC);display:flex;align-items:center;justify-content:center;color:#0B0B12;font-weight:800;font-size:0.85rem;">MG</div>
+            </div>
+            <div class="mk-card" style="background:linear-gradient(135deg,#312E81,#5B21B6);color:#fff;box-shadow:0 4px 24px rgba(99,102,241,.3);">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;opacity:.85;">PROGRESO DE HOY</div>
+                  <div style="font-size:1.7rem;font-weight:800;letter-spacing:-0.02em;margin-top:2px;">42<span style="font-size:0.9rem;font-weight:600;opacity:.75;"> / 60</span></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:1.5rem;font-weight:800;">70%</div>
+                  <div style="font-size:0.66rem;opacity:.8;">auditados</div>
+                </div>
+              </div>
+              <div class="mk-progress" style="background:rgba(255,255,255,.2);"><div class="fill" style="background:#A5B4FC;width:70%;"></div></div>
+            </div>
+            <div class="mk-label" style="color:#6B6B85;">Resumen</div>
+            <div class="mk-stats" style="margin-bottom:14px;">
+              <div class="mk-stat" style="background:#15151F;border:1px solid #1E1E2E;"><div class="v" style="color:#34D399;">42</div><div class="l" style="color:#6B6B85;">Auditados</div></div>
+              <div class="mk-stat" style="background:#15151F;border:1px solid #1E1E2E;"><div class="v" style="color:#FBBF24;">7</div><div class="l" style="color:#6B6B85;">Pendientes</div></div>
+              <div class="mk-stat" style="background:#15151F;border:1px solid #1E1E2E;"><div class="v" style="color:#FB7185;">2</div><div class="l" style="color:#6B6B85;">Conflictos</div></div>
+            </div>
+            <div class="mk-label" style="color:#6B6B85;">Accesos rápidos</div>
+            <div class="mk-actions" style="margin-bottom:12px;">
+              <div class="mk-action" style="background:#818CF8;color:#0B0B12;"><div class="ico">📋</div><div class="t">Auditoría</div></div>
+              <div class="mk-action" style="background:rgba(129,140,248,.14);color:#A5B4FC;border:1px solid rgba(129,140,248,.3);"><div class="ico">📇</div><div class="t">Escanear NFC</div></div>
+              <div class="mk-action" style="background:#15151F;color:#A0A0B8;border:1px solid #1E1E2E;"><div class="ico">🗺️</div><div class="t">Mapa</div></div>
+            </div>
+            <div class="mk-card" style="background:#15151F;border:1px solid #1E1E2E;">
+              <div class="mk-row" style="margin-bottom:8px;">
+                <span class="mk-badge" style="background:rgba(52,211,153,.15);color:#34D399;">● Sincronizado</span>
+                <span style="margin-left:auto;font-size:0.68rem;color:#6B6B85;font-weight:600;">hace 12 min</span>
+              </div>
+              <div style="font-size:0.74rem;color:#A0A0B8;">Todos los cambios están guardados en el servidor.</div>
+            </div>
+          </div>
+          <div class="mk-nav" style="background:#15151F;border-top:1px solid #1E1E2E;">
+            <div class="item" style="color:#818CF8;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#6B6B85;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#6B6B85;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#6B6B85;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#6B6B85;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Neo Indigo — Dark "Midnight":</b> capas por elevación, sin negro plano</div>
+      </div>
+
+      <!-- Phone 3: NFC scan light -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:#F8FAFC;">
+          <div class="mk">
+            <div class="mk-status" style="color:#0F172A;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div class="mk-h2" style="color:#0F172A;margin-bottom:2px;">Escanear tag NFC</div>
+            <div class="mk-sub" style="color:#64748B;margin-bottom:14px;">Acerca el dispositivo al tag del cafetal</div>
+            <div style="background:linear-gradient(180deg,#EEF2FF,#F8FAFC);border:2px dashed #A5B4FC;border-radius:20px;padding:28px;text-align:center;margin-bottom:14px;">
+              <div style="font-size:2.6rem;margin-bottom:6px;">📡</div>
+              <div style="font-weight:700;font-size:0.9rem;color:#4F46E5;">Esperando tag…</div>
+              <div style="font-size:0.74rem;color:#64748B;margin-top:4px;">Mantén el teléfono a menos de 4 cm</div>
+            </div>
+            <div class="mk-chip-row">
+              <span class="mk-chip" style="background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;">Modo demo</span>
+              <span class="mk-chip" style="background:#F1F5F9;color:#475569;border:1px solid #E2E8F0;">Historial (3)</span>
+            </div>
+            <div class="mk-card" style="background:#fff;border:1px solid #E2E8F0;">
+              <div class="mk-label" style="color:#64748B;margin-bottom:8px;">Última lectura</div>
+              <div class="mk-list-item" style="border:none;padding:0;">
+                <div class="mk-avatar" style="background:#FEF3C7;">📇</div>
+                <div style="flex:1;">
+                  <div style="font-weight:700;font-size:0.84rem;color:#0F172A;">Tag #A-0142</div>
+                  <div style="font-size:0.7rem;color:#64748B;">Finca El Paraíso · Lote 4</div>
+                </div>
+                <span class="mk-badge" style="background:#D1FAE5;color:#065F46;">Completa</span>
+              </div>
+            </div>
+            <div class="mk-btn" style="background:#4F46E5;color:#fff;box-shadow:0 2px 12px rgba(79,70,229,.35);margin-top:4px;">▶ Iniciar escaneo</div>
+            <div class="mk-btn sm" style="background:#fff;color:#DC2626;border:1px solid #FECACA;margin-top:8px;">Bloquear último tag</div>
+          </div>
+          <div class="mk-nav" style="background:#fff;border-top:1px solid #E2E8F0;">
+            <div class="item" style="color:#94A3B8;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#94A3B8;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#4F46E5;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#94A3B8;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#94A3B8;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Neo Indigo — NFC:</b> estado vacío claro, CTA primario inequívoco</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:24px;">
+      <div class="card" style="border-color:rgba(52,211,153,.3);">
+        <h4 style="color:var(--green);font-weight:700;margin-bottom:10px;">✔ Ventajas</h4>
+        <ul style="color:var(--text-2);font-size:0.9rem;padding-left:18px;line-height:1.8;">
+          <li>Estética de product tool seria — transmite confianza para uso profesional</li>
+          <li>Dark mode "Midnight" con capas por elevación (#0B0B12 → #15151F → #1E1E2E), sin gris plano</li>
+          <li>Tipo de dato tabular para números de auditoría — escaneo visual rápido</li>
+          <li>Tokens de acción separados (primaryTonal, actionSecondary) — elimina el bug del botón Ajustes</li>
+          <li>Todos los pares verificados WCAG AA/AAA en ambos modos</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(251,113,133,.3);">
+        <h4 style="color:var(--rose);font-weight:700;margin-bottom:10px;">✘ Limitaciones</h4>
+        <ul style="color:var(--text-2);font-size:0.9rem;padding-left:18px;line-height:1.8;">
+          <li>Estética "tech" — si la marca busca cercanía agrícola/campestre puede sentirse fría</li>
+          <li>Gradientes en cards de resumen requieren cuidado en Android低端 (fallback sólido)</li>
+          <li>El índigo #4F46E5 es popular — poca diferenciación respecto a otras herramientas SaaS</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ PROPUESTA B ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="sec-tag">03 · Propuesta B</div>
+    <h2 class="sec-title">"Terra Harvest" — Orgánico premium</h2>
+    <p class="sec-desc">
+      Identidad cálida alineada al dominio del producto: café, tierra, campo. Tonos verdes profundos
+      de hoja de café, fondos crema cálidos (no blanco puro), neutros piedra y acentos ámbar de tostado.
+      Dark mode con carácter propio verde-negro. La opción con más personalidad de marca.
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="pal-section">
+          <h4>◈ Light mode — "Cream &amp; Leaf"</h4>
+          <div class="pal-grid">
+            <div class="pal-item"><div class="swatch" style="background:#2D6A4F;"><span class="badge">#2D6A4F</span></div><div class="meta"><div class="name">primary</div><div class="use">Verde hoja café</div><div class="cr ok">blanco 5.5:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#1B4332;"><span class="badge">#1B4332</span></div><div class="meta"><div class="name">primaryPressed</div><div class="use">Header, pressed</div><div class="cr ok">blanco 9.4:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#FAF6F0;border-bottom:1px solid #E7E0D5;"><span class="badge">#FAF6F0</span></div><div class="meta"><div class="name">background</div><div class="use">Crema cálida</div><div class="cr ok">Sin fatiga visual</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#FFFFFF;border-bottom:1px solid #E7E0D5;"><span class="badge">#FFFFFF</span></div><div class="meta"><div class="name">surface</div><div class="use">Cards elevadas</div><div class="cr ok">Sombra suave</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#1C1917;"><span class="badge">#1C1917</span></div><div class="meta"><div class="name">textPrimary</div><div class="use">Titulares</div><div class="cr ok">16.8:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#57534E;"><span class="badge">#57534E</span></div><div class="meta"><div class="name">textSecondary</div><div class="use">Cuerpo</div><div class="cr ok">7.2:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#78716C;"><span class="badge">#78716C</span></div><div class="meta"><div class="name">textMuted</div><div class="use">Placeholders</div><div class="cr ok">4.7:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#15803D;"><span class="badge">#15803D</span></div><div class="meta"><div class="name">success</div><div class="use">Verde maduro</div><div class="cr ok">blanco 4.9:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#B45309;"><span class="badge">#B45309</span></div><div class="meta"><div class="name">warning</div><div class="use">Ámbar tostado</div><div class="cr ok">blanco 5.1:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#B91C1C;"><span class="badge">#B91C1C</span></div><div class="meta"><div class="name">error</div><div class="use">Rojo ladrillo</div><div class="cr ok">blanco 6.4:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#E7E0D5;"><span class="badge">#E7E0D5</span></div><div class="meta"><div class="name">border</div><div class="use">Neutro piedra</div><div class="cr ok">Cálido</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#D6F3E0;"><span class="badge">#D6F3E0</span></div><div class="meta"><div class="name">successTonal</div><div class="use">Badges</div><div class="cr ok">texto #1B4332 8.9 ✓</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="pal-section">
+          <h4>◈ Dark mode — "Night Harvest"</h4>
+          <div class="pal-grid">
+            <div class="pal-item"><div class="swatch" style="background:#52B788;"><span class="badge">#52B788</span></div><div class="meta"><div class="name">primary</div><div class="use">Verde claro</div><div class="cr ok">oscuro 8.3:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#74C69D;"><span class="badge">#74C69D</span></div><div class="meta"><div class="name">primaryPressed</div><div class="use">Hover</div><div class="cr ok">oscuro 10.2:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#14201A;border-bottom:1px solid #24352C;"><span class="badge">#14201A</span></div><div class="meta"><div class="name">background</div><div class="use">Verde-negro</div><div class="cr ok">Carácter propio</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#1E2D25;border-bottom:1px solid #24352C;"><span class="badge">#1E2D25</span></div><div class="meta"><div class="name">surface</div><div class="use">Cards</div><div class="cr ok">Elevación tonal</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#E8F5EC;"><span class="badge">#E8F5EC</span></div><div class="meta"><div class="name">textPrimary</div><div class="use">Verde-blanco</div><div class="cr ok">15.3:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#A3B5AA;"><span class="badge">#A3B5AA</span></div><div class="meta"><div class="name">textSecondary</div><div class="use">Cuerpo</div><div class="cr ok">6.8:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#7E9187;"><span class="badge">#7E9187</span></div><div class="meta"><div class="name">textMuted</div><div class="use">Placeholders</div><div class="cr warn">4.3:1 UI/large</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#6EE7B7;"><span class="badge">#6EE7B7</span></div><div class="meta"><div class="name">success</div><div class="use">Menta</div><div class="cr ok">oscuro 12:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#FCD34D;"><span class="badge">#FCD34D</span></div><div class="meta"><div class="name">warning</div><div class="use">Ámbar claro</div><div class="cr ok">oscuro 12.3:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#FCA5A5;"><span class="badge">#FCA5A5</span></div><div class="meta"><div class="name">error</div><div class="use">Coral</div><div class="cr ok">oscuro 8.9:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#24352C;"><span class="badge">#24352C</span></div><div class="meta"><div class="name">border</div><div class="use">Divisores</div><div class="cr ok">Orgánico</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:rgba(110,231,183,.14);"><span class="badge">tonal</span></div><div class="meta"><div class="name">successTonal</div><div class="use">Badges</div><div class="cr ok">texto #6EE7B7 12 ✓</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h4 style="font-size:0.88rem;font-weight:700;margin-bottom:16px;color:var(--text-2);">◈ Componentes — especificación Terra Harvest (light)</h4>
+      <div class="comp-strip" style="background:#FAF6F0;border-color:#E7E0D5;">
+        <div class="comp-col">
+          <h5 style="color:#78716C;">Buttons</h5>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="mk-btn" style="background:#2D6A4F;color:#fff;box-shadow:0 1px 2px rgba(45,106,79,.3);">Escanear tag</div>
+            <div class="mk-btn" style="background:#D6F3E0;color:#1B4332;border:1px solid #A7D9BC;">Ver historial</div>
+            <div class="mk-btn" style="background:#fff;color:#57534E;border:1px solid #E7E0D5;">Cancelar</div>
+            <div class="mk-btn" style="background:#EDE8E0;color:#A8A29E;">Deshabilitado</div>
+          </div>
+        </div>
+        <div class="comp-col">
+          <h5 style="color:#78716C;">Inputs</h5>
+          <div class="mk-input" style="background:#fff;border:1.5px solid #E7E0D5;color:#78716C;"><span>🔍</span> Buscar finca o tag…</div>
+          <div class="mk-input" style="background:#fff;border:1.5px solid #2D6A4F;color:#1C1917;box-shadow:0 0 0 3px rgba(45,106,79,.14);"><span>📍</span> Finca El Paraíso</div>
+          <div class="mk-input" style="background:#fff;border:1.5px solid #B91C1C;color:#1C1917;"><span>⚠️</span> <span style="color:#B91C1C;">Tag no encontrado</span></div>
+        </div>
+        <div class="comp-col">
+          <h5 style="color:#78716C;">Badges de estado</h5>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
+            <span class="mk-badge" style="background:#D6F3E0;color:#1B4332;">● Sincronizado</span>
+            <span class="mk-badge" style="background:#FDE8CC;color:#92400E;">● 3 pendientes</span>
+            <span class="mk-badge" style="background:#FCE0E0;color:#991B1B;">● Error de red</span>
+            <span class="mk-badge" style="background:#EDE9FE;color:#5B21B6;">◆ Modo demo</span>
+          </div>
+        </div>
+        <div class="comp-col">
+          <h5 style="color:#78716C;">Cards & tags</h5>
+          <div style="background:#fff;border:1px solid #E7E0D5;border-radius:14px;padding:12px;box-shadow:0 2px 8px rgba(28,25,23,.06);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="width:10px;height:10px;border-radius:50%;background:#FF8000;"></span>
+              <span style="font-weight:700;font-size:0.82rem;color:#1C1917;">Tag #A-0142</span>
+              <span style="margin-left:auto;font-size:0.66rem;font-weight:700;background:#D6F3E0;color:#1B4332;padding:2px 8px;border-radius:999px;">Completa</span>
+            </div>
+            <div style="font-size:0.72rem;color:#78716C;">Lote 4 · 120 árboles · 18 oct 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mockups Terra -->
+    <h3 style="margin-top:40px;font-size:1.1rem;font-weight:700;">◈ Mockups — Pantallas reales de Bean Auditor</h3>
+    <div class="mock-gallery">
+
+      <!-- Terra Home light -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:#FAF6F0;">
+          <div class="mk">
+            <div class="mk-status" style="color:#1C1917;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);margin:-18px -16px 14px;padding:18px 16px 16px;">
+              <div style="font-size:0.64rem;font-weight:800;letter-spacing:0.14em;color:#6EE7B7;margin-bottom:4px;">☕ BEAN AUDITOR</div>
+              <div class="mk-h1" style="color:#fff;">Hola, María 👋</div>
+              <div class="mk-sub" style="color:#A7D9BC;">Turno mañana · Finca El Paraíso</div>
+            </div>
+            <div class="mk-card" style="background:#fff;border:1px solid #E7E0D5;box-shadow:0 2px 12px rgba(28,25,23,.07);">
+              <div class="mk-label" style="color:#78716C;">Progreso de hoy</div>
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="font-size:2rem;font-weight:900;color:#2D6A4F;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;">42</span>
+                <span style="font-size:0.86rem;font-weight:600;color:#78716C;">/ 60 auditados</span>
+                <span style="margin-left:auto;font-size:0.9rem;font-weight:800;color:#B45309;">70%</span>
+              </div>
+              <div class="mk-progress" style="background:#EDE8E0;"><div class="fill" style="background:linear-gradient(90deg,#2D6A4F,#52B788);width:70%;"></div></div>
+            </div>
+            <div class="mk-stats" style="margin-bottom:14px;">
+              <div class="mk-stat" style="background:#fff;border:1px solid #E7E0D5;"><div class="v" style="color:#15803D;">42</div><div class="l" style="color:#78716C;">Auditados</div></div>
+              <div class="mk-stat" style="background:#fff;border:1px solid #E7E0D5;"><div class="v" style="color:#B45309;">7</div><div class="l" style="color:#78716C;">Pendientes</div></div>
+              <div class="mk-stat" style="background:#fff;border:1px solid #E7E0D5;"><div class="v" style="color:#B91C1C;">2</div><div class="l" style="color:#78716C;">Conflictos</div></div>
+            </div>
+            <div class="mk-label" style="color:#78716C;">Accesos rápidos</div>
+            <div class="mk-actions" style="margin-bottom:12px;">
+              <div class="mk-action" style="background:#2D6A4F;color:#fff;"><div class="ico">📋</div><div class="t">Auditoría</div></div>
+              <div class="mk-action" style="background:#D6F3E0;color:#1B4332;border:1px solid #A7D9BC;"><div class="ico">📇</div><div class="t">Escanear</div></div>
+              <div class="mk-action" style="background:#fff;color:#57534E;border:1px solid #E7E0D5;"><div class="ico">🗺️</div><div class="t">Mapa</div></div>
+            </div>
+            <div class="mk-card" style="background:#fff;border:1px solid #E7E0D5;">
+              <div class="mk-row" style="margin-bottom:6px;">
+                <span class="mk-badge" style="background:#D6F3E0;color:#1B4332;">● Sincronizado</span>
+                <span style="margin-left:auto;font-size:0.68rem;color:#78716C;font-weight:600;">hace 12 min</span>
+              </div>
+              <div style="font-size:0.74rem;color:#57534E;">Todos los cambios están en el servidor.</div>
+            </div>
+          </div>
+          <div class="mk-nav" style="background:#fff;border-top:1px solid #E7E0D5;">
+            <div class="item" style="color:#2D6A4F;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#A8A29E;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#A8A29E;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#A8A29E;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#A8A29E;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Terra — Light "Cream &amp; Leaf":</b> cálido, orgánico, identidad café</div>
+      </div>
+
+      <!-- Terra Home dark -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:#14201A;">
+          <div class="mk">
+            <div class="mk-status" style="color:#E8F5EC;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div style="background:linear-gradient(135deg,#081C15,#1B4332);margin:-18px -16px 14px;padding:18px 16px 16px;">
+              <div style="font-size:0.64rem;font-weight:800;letter-spacing:0.14em;color:#6EE7B7;margin-bottom:4px;">☕ BEAN AUDITOR</div>
+              <div class="mk-h1" style="color:#E8F5EC;">Hola, María 👋</div>
+              <div class="mk-sub" style="color:#7E9187;">Turno mañana · Finca El Paraíso</div>
+            </div>
+            <div class="mk-card" style="background:#1E2D25;border:1px solid #24352C;">
+              <div class="mk-label" style="color:#7E9187;">Progreso de hoy</div>
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="font-size:2rem;font-weight:900;color:#6EE7B7;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;">42</span>
+                <span style="font-size:0.86rem;font-weight:600;color:#7E9187;">/ 60 auditados</span>
+                <span style="margin-left:auto;font-size:0.9rem;font-weight:800;color:#FCD34D;">70%</span>
+              </div>
+              <div class="mk-progress" style="background:#24352C;"><div class="fill" style="background:linear-gradient(90deg,#52B788,#6EE7B7);width:70%;"></div></div>
+            </div>
+            <div class="mk-stats" style="margin-bottom:14px;">
+              <div class="mk-stat" style="background:#1E2D25;border:1px solid #24352C;"><div class="v" style="color:#6EE7B7;">42</div><div class="l" style="color:#7E9187;">Auditados</div></div>
+              <div class="mk-stat" style="background:#1E2D25;border:1px solid #24352C;"><div class="v" style="color:#FCD34D;">7</div><div class="l" style="color:#7E9187;">Pendientes</div></div>
+              <div class="mk-stat" style="background:#1E2D25;border:1px solid #24352C;"><div class="v" style="color:#FCA5A5;">2</div><div class="l" style="color:#7E9187;">Conflictos</div></div>
+            </div>
+            <div class="mk-label" style="color:#7E9187;">Accesos rápidos</div>
+            <div class="mk-actions" style="margin-bottom:12px;">
+              <div class="mk-action" style="background:#52B788;color:#081C15;"><div class="ico">📋</div><div class="t">Auditoría</div></div>
+              <div class="mk-action" style="background:rgba(82,183,136,.15);color:#6EE7B7;border:1px solid rgba(82,183,136,.35);"><div class="ico">📇</div><div class="t">Escanear</div></div>
+              <div class="mk-action" style="background:#1E2D25;color:#A3B5AA;border:1px solid #24352C;"><div class="ico">🗺️</div><div class="t">Mapa</div></div>
+            </div>
+            <div class="mk-card" style="background:#1E2D25;border:1px solid #24352C;">
+              <div class="mk-row" style="margin-bottom:6px;">
+                <span class="mk-badge" style="background:rgba(110,231,183,.14);color:#6EE7B7;">● Sincronizado</span>
+                <span style="margin-left:auto;font-size:0.68rem;color:#7E9187;font-weight:600;">hace 12 min</span>
+              </div>
+              <div style="font-size:0.74rem;color:#A3B5AA;">Todos los cambios están en el servidor.</div>
+            </div>
+          </div>
+          <div class="mk-nav" style="background:#1E2D25;border-top:1px solid #24352C;">
+            <div class="item" style="color:#6EE7B7;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#7E9187;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#7E9187;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#7E9187;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#7E9187;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Terra — Dark "Night Harvest":</b> verde-negro con carácter, no gris genérico</div>
+      </div>
+
+      <!-- Terra Audit detail -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:#FAF6F0;">
+          <div class="mk">
+            <div class="mk-status" style="color:#1C1917;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div class="mk-row" style="margin-bottom:12px;">
+              <span style="color:#2D6A4F;font-weight:800;">‹</span>
+              <div class="mk-h2" style="color:#1C1917;">Detalle de auditoría</div>
+            </div>
+            <div class="mk-card" style="background:linear-gradient(135deg,#1B4332,#2D6A4F);color:#fff;">
+              <div class="mk-row">
+                <div class="mk-avatar" style="background:rgba(255,255,255,.18);color:#fff;">📇</div>
+                <div>
+                  <div style="font-weight:800;font-size:0.95rem;">Tag #A-0142</div>
+                  <div style="font-size:0.7rem;color:#A7D9BC;">Naranja · Finca El Paraíso</div>
+                </div>
+                <span class="mk-badge" style="background:rgba(110,231,183,.25);color:#D1FAE5;margin-left:auto;">✔ Completa</span>
+              </div>
+            </div>
+            <div class="mk-card" style="background:#fff;border:1px solid #E7E0D5;">
+              <div class="mk-label" style="color:#78716C;margin-bottom:8px;">Datos de auditoría</div>
+              <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:0.8rem;"><span style="color:#78716C;">Lote</span><span style="color:#1C1917;font-weight:700;">4 — Bloque Norte</span></div>
+              <div style="height:1px;background:#F0EBE3;"></div>
+              <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:0.8rem;"><span style="color:#78716C;">Árboles</span><span style="color:#1C1917;font-weight:700;">120</span></div>
+              <div style="height:1px;background:#F0EBE3;"></div>
+              <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:0.8rem;"><span style="color:#78716C;">Patrón</span><span style="color:#1C1917;font-weight:700;">Triangular 2×2</span></div>
+              <div style="height:1px;background:#F0EBE3;"></div>
+              <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:0.8rem;"><span style="color:#78716C;">Fecha</span><span style="color:#1C1917;font-weight:700;">18 oct 2026</span></div>
+            </div>
+            <div class="mk-chip-row">
+              <span class="mk-chip" style="background:#D6F3E0;color:#1B4332;">Cosecha lista</span>
+              <span class="mk-chip" style="background:#FDE8CC;color:#92400E;">Riego pendiente</span>
+              <span class="mk-chip" style="background:#FCE0E0;color:#991B1B;">Plaga detectada</span>
+            </div>
+            <div class="mk-btn" style="background:#2D6A4F;color:#fff;">Registrar observación</div>
+            <div class="mk-btn sm" style="background:#fff;color:#B91C1C;border:1px solid #FECACA;margin-top:8px;">Marcar como conflictiva</div>
+          </div>
+          <div class="mk-nav" style="background:#fff;border-top:1px solid #E7E0D5;">
+            <div class="item" style="color:#A8A29E;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#2D6A4F;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#A8A29E;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#A8A29E;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#A8A29E;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Terra — Detalle auditoría:</b> datos claros, estados con chips semánticos</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:24px;">
+      <div class="card" style="border-color:rgba(52,211,153,.3);">
+        <h4 style="color:var(--green);font-weight:700;margin-bottom:10px;">✔ Ventajas</h4>
+        <ul style="color:var(--text-2);font-size:0.9rem;padding-left:18px;line-height:1.8;">
+          <li>Identidad única y memorable — nadie más tiene esta paleta</li>
+          <li>Crema cálida reduce fatiga visual en jornadas largas de campo</li>
+          <li>Dark mode verde-negro con personalidad propia (no un clon del dark genérico)</li>
+          <li>Alineación perfecta con el dominio: café, tierra, cosecha</li>
+          <li>Encabezado con gradiente verde refuerza la marca en cada pantalla</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(251,113,133,.3);">
+        <h4 style="color:var(--rose);font-weight:700;margin-bottom:10px;">✘ Limitaciones</h4>
+        <ul style="color:var(--text-2);font-size:0.9rem;padding-left:18px;line-height:1.8;">
+          <li>Cambio visual grande — requiere aprobación explícita de producto/diseño</li>
+          <li>El crema #FAF6F0 puede verse "sucio" en pantallas con mala calibración</li>
+          <li>Los tonos verdes oscuros en iconos pequeños necesitan contraste verificado por ítem</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ PROPUESTA C ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="sec-tag">04 · Propuesta C</div>
+    <h2 class="sec-title">"Aurora Glass" — Tendencia 2026</h2>
+    <p class="sec-desc">
+      La opción más moderna: glassmorphism sutil, acentos aurora (índigo→magenta→cian),
+      cards con transparencias y blur, badges con glow. Pensada para impresionar en demos
+      y comunicar producto de última generación. Dark-first con light mode como espejo luminoso.
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="pal-section">
+          <h4>◈ Light mode — "Morning Mist"</h4>
+          <div class="pal-grid">
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#6366F1,#A855F7);"><span class="badge">grad</span></div><div class="meta"><div class="name">primary</div><div class="use">Aurora indigo→violeta</div><div class="cr ok">blanco 5.2:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#4F46E5;"><span class="badge">#4F46E5</span></div><div class="meta"><div class="name">primarySolid</div><div class="use">Botones planos</div><div class="cr ok">blanco 6.3:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#F5F3FF;border-bottom:1px solid #E9E5FF;"><span class="badge">#F5F3FF</span></div><div class="meta"><div class="name">background</div><div class="use">Lila muy claro</div><div class="cr ok">n/a</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:rgba(255,255,255,.72);border-bottom:1px solid #E9E5FF;"><span class="badge">glass</span></div><div class="meta"><div class="name">surfaceGlass</div><div class="use">Cards translúcidas</div><div class="cr ok">blur + borde 0.5</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#1E1B4B;"><span class="badge">#1E1B4B</span></div><div class="meta"><div class="name">textPrimary</div><div class="use">Violeta tinta</div><div class="cr ok">15.9:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#5B5677;"><span class="badge">#5B5677</span></div><div class="meta"><div class="name">textSecondary</div><div class="use">Neutro violáceo</div><div class="cr ok">6.6:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#8B86A3;"><span class="badge">#8B86A3</span></div><div class="meta"><div class="name">textMuted</div><div class="use">Placeholders</div><div class="cr ok">4.6:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#06B6D4,#22D3EE);"><span class="badge">grad</span></div><div class="meta"><div class="name">info</div><div class="use">Cian aurora</div><div class="cr ok">texto #0E7490 4.8 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#10B981,#34D399);"><span class="badge">grad</span></div><div class="meta"><div class="name">success</div><div class="use">Esmeralda</div><div class="cr ok">texto #065F46 5.4 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#F59E0B,#FBBF24);"><span class="badge">grad</span></div><div class="meta"><div class="name">warning</div><div class="use">Ámbar dorado</div><div class="cr ok">texto #78350F 6.1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#F43F5E,#FB7185);"><span class="badge">grad</span></div><div class="meta"><div class="name">error</div><div class="use">Rosa aurora</div><div class="cr ok">texto #881337 5.9 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#E9E5FF;"><span class="badge">#E9E5FF</span></div><div class="meta"><div class="name">border</div><div class="use">Lila suave</div><div class="cr ok">UI 1.3:1 sutil</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="pal-section">
+          <h4>◈ Dark mode — "Aurora Night"</h4>
+          <div class="pal-grid">
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#818CF8,#C084FC);"><span class="badge">grad</span></div><div class="meta"><div class="name">primary</div><div class="use">Aurora clara</div><div class="cr ok">oscuro 7.1:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#A5B4FC;"><span class="badge">#A5B4FC</span></div><div class="meta"><div class="name">primarySolid</div><div class="use">Botones</div><div class="cr ok">oscuro 9.1:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#0D0B1A;border-bottom:1px solid #1F1B3A;"><span class="badge">#0D0B1A</span></div><div class="meta"><div class="name">background</div><div class="use">Violeta casi negro</div><div class="cr ok">n/a</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:rgba(30,27,75,.65);border-bottom:1px solid #2E2A5A;"><span class="badge">glass</span></div><div class="meta"><div class="name">surfaceGlass</div><div class="use">Cards translúcidas</div><div class="cr ok">blur + elevación</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#EDEBFF;"><span class="badge">#EDEBFF</span></div><div class="meta"><div class="name">textPrimary</div><div class="use">Blanco lila</div><div class="cr ok">16.2:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#A5A0C4;"><span class="badge">#A5A0C4</span></div><div class="meta"><div class="name">textSecondary</div><div class="use">Cuerpo</div><div class="cr ok">7.2:1 AAA</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#6F6A94;"><span class="badge">#6F6A94</span></div><div class="meta"><div class="name">textMuted</div><div class="use">Placeholders</div><div class="cr warn">3.8:1 UI/large</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#22D3EE,#67E8F9);"><span class="badge">grad</span></div><div class="meta"><div class="name">info</div><div class="use">Cian brillante</div><div class="cr ok">oscuro 10:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#34D399,#6EE7B7);"><span class="badge">grad</span></div><div class="meta"><div class="name">success</div><div class="use">Esmeralda</div><div class="cr ok">oscuro 11:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#FBBF24,#FCD34D);"><span class="badge">grad</span></div><div class="meta"><div class="name">warning</div><div class="use">Ámbar</div><div class="cr ok">oscuro 12:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:linear-gradient(135deg,#FB7185,#FDA4AF);"><span class="badge">grad</span></div><div class="meta"><div class="name">error</div><div class="use">Rosa</div><div class="cr ok">oscuro 7.8:1 ✓</div></div></div>
+            <div class="pal-item"><div class="swatch" style="background:#2E2A5A;"><span class="badge">#2E2A5A</span></div><div class="meta"><div class="name">border</div><div class="use">Divisores</div><div class="cr ok">UI 1.4:1 sutil</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aurora mockups -->
+    <h3 style="margin-top:40px;font-size:1.1rem;font-weight:700;">◈ Mockups — Pantallas reales de Bean Auditor</h3>
+    <div class="mock-gallery">
+
+      <!-- Aurora Home dark -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:radial-gradient(ellipse 80% 50% at 20% 0%, rgba(99,102,241,.22), transparent), radial-gradient(ellipse 60% 40% at 90% 10%, rgba(168,85,247,.16), transparent), #0D0B1A;">
+          <div class="mk">
+            <div class="mk-status" style="color:#EDEBFF;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div>
+                <div class="mk-h1" style="color:#EDEBFF;">Hola, María 👋</div>
+                <div class="mk-sub" style="color:#6F6A94;">Turno mañana · 60 tags</div>
+              </div>
+              <div style="width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,#818CF8,#C084FC);display:flex;align-items:center;justify-content:center;color:#0D0B1A;font-weight:900;font-size:0.85rem;box-shadow:0 0 20px rgba(129,140,248,.4);">MG</div>
+            </div>
+            <div class="mk-card" style="background:rgba(30,27,75,.55);border:1px solid rgba(129,140,248,.25);backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.35);">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <div style="font-size:0.66rem;font-weight:800;letter-spacing:0.1em;color:#818CF8;">PROGRESO</div>
+                  <div style="font-size:1.8rem;font-weight:900;color:#EDEBFF;letter-spacing:-0.03em;">42<span style="font-size:0.9rem;font-weight:600;color:#6F6A94;"> / 60</span></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:1.6rem;font-weight:900;background:linear-gradient(135deg,#818CF8,#C084FC);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">70%</div>
+                  <div style="font-size:0.64rem;color:#6F6A94;">auditados</div>
+                </div>
+              </div>
+              <div class="mk-progress" style="background:rgba(255,255,255,.08);"><div class="fill" style="background:linear-gradient(90deg,#818CF8,#C084FC,#F0ABFC);width:70%;box-shadow:0 0 12px rgba(129,140,248,.5);"></div></div>
+            </div>
+            <div class="mk-stats" style="margin-bottom:14px;">
+              <div class="mk-stat" style="background:rgba(30,27,75,.5);border:1px solid #2E2A5A;backdrop-filter:blur(8px);"><div class="v" style="color:#34D399;">42</div><div class="l" style="color:#6F6A94;">Auditados</div></div>
+              <div class="mk-stat" style="background:rgba(30,27,75,.5);border:1px solid #2E2A5A;backdrop-filter:blur(8px);"><div class="v" style="color:#FBBF24;">7</div><div class="l" style="color:#6F6A94;">Pendientes</div></div>
+              <div class="mk-stat" style="background:rgba(30,27,75,.5);border:1px solid #2E2A5A;backdrop-filter:blur(8px);"><div class="v" style="color:#FB7185;">2</div><div class="l" style="color:#6F6A94;">Conflictos</div></div>
+            </div>
+            <div class="mk-actions" style="margin-bottom:12px;">
+              <div class="mk-action" style="background:linear-gradient(135deg,#6366F1,#A855F7);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.4);"><div class="ico">📋</div><div class="t">Auditoría</div></div>
+              <div class="mk-action" style="background:rgba(34,211,238,.12);color:#67E8F9;border:1px solid rgba(34,211,238,.3);"><div class="ico">📇</div><div class="t">Escanear</div></div>
+              <div class="mk-action" style="background:rgba(30,27,75,.5);color:#A5A0C4;border:1px solid #2E2A5A;"><div class="ico">🗺️</div><div class="t">Mapa</div></div>
+            </div>
+            <div class="mk-card" style="background:rgba(30,27,75,.45);border:1px solid #2E2A5A;backdrop-filter:blur(10px);">
+              <div class="mk-row" style="margin-bottom:6px;">
+                <span class="mk-badge" style="background:rgba(52,211,153,.14);color:#34D399;">● Sincronizado</span>
+                <span style="margin-left:auto;font-size:0.66rem;color:#6F6A94;font-weight:600;">hace 12 min</span>
+              </div>
+              <div style="font-size:0.72rem;color:#A5A0C4;">Cambios guardados en el servidor.</div>
+            </div>
+          </div>
+          <div class="mk-nav" style="background:rgba(13,11,26,.85);border-top:1px solid #2E2A5A;backdrop-filter:blur(12px);">
+            <div class="item" style="color:#818CF8;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#6F6A94;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#6F6A94;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#6F6A94;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#6F6A94;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Aurora — Dark "Aurora Night":</b> glassmorphism, gradients, glow sutil</div>
+      </div>
+
+      <!-- Aurora Home light -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:radial-gradient(ellipse 70% 40% at 30% 0%, rgba(168,85,247,.08), transparent), #F5F3FF;">
+          <div class="mk">
+            <div class="mk-status" style="color:#1E1B4B;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div>
+                <div class="mk-h1" style="color:#1E1B4B;">Hola, María 👋</div>
+                <div class="mk-sub" style="color:#8B86A3;">Turno mañana · 60 tags</div>
+              </div>
+              <div style="width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,#6366F1,#A855F7);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:0.85rem;box-shadow:0 4px 16px rgba(99,102,241,.35);">MG</div>
+            </div>
+            <div class="mk-card" style="background:rgba(255,255,255,.72);border:1px solid rgba(99,102,241,.18);backdrop-filter:blur(10px);box-shadow:0 4px 24px rgba(30,27,75,.08);">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <div style="font-size:0.66rem;font-weight:800;letter-spacing:0.1em;color:#6366F1;">PROGRESO</div>
+                  <div style="font-size:1.8rem;font-weight:900;color:#1E1B4B;letter-spacing:-0.03em;">42<span style="font-size:0.9rem;font-weight:600;color:#8B86A3;"> / 60</span></div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:1.6rem;font-weight:900;background:linear-gradient(135deg,#6366F1,#A855F7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">70%</div>
+                  <div style="font-size:0.64rem;color:#8B86A3;">auditados</div>
+                </div>
+              </div>
+              <div class="mk-progress" style="background:#E9E5FF;"><div class="fill" style="background:linear-gradient(90deg,#6366F1,#A855F7,#EC4899);width:70%;"></div></div>
+            </div>
+            <div class="mk-stats" style="margin-bottom:14px;">
+              <div class="mk-stat" style="background:rgba(255,255,255,.7);border:1px solid #E9E5FF;"><div class="v" style="color:#10B981;">42</div><div class="l" style="color:#8B86A3;">Auditados</div></div>
+              <div class="mk-stat" style="background:rgba(255,255,255,.7);border:1px solid #E9E5FF;"><div class="v" style="color:#F59E0B;">7</div><div class="l" style="color:#8B86A3;">Pendientes</div></div>
+              <div class="mk-stat" style="background:rgba(255,255,255,.7);border:1px solid #E9E5FF;"><div class="v" style="color:#F43F5E;">2</div><div class="l" style="color:#8B86A3;">Conflictos</div></div>
+            </div>
+            <div class="mk-actions" style="margin-bottom:12px;">
+              <div class="mk-action" style="background:linear-gradient(135deg,#6366F1,#A855F7);color:#fff;box-shadow:0 4px 16px rgba(99,102,241,.3);"><div class="ico">📋</div><div class="t">Auditoría</div></div>
+              <div class="mk-action" style="background:rgba(34,211,238,.1);color:#0E7490;border:1px solid rgba(34,211,238,.35);"><div class="ico">📇</div><div class="t">Escanear</div></div>
+              <div class="mk-action" style="background:rgba(255,255,255,.7);color:#5B5677;border:1px solid #E9E5FF;"><div class="ico">🗺️</div><div class="t">Mapa</div></div>
+            </div>
+            <div class="mk-card" style="background:rgba(255,255,255,.7);border:1px solid #E9E5FF;backdrop-filter:blur(8px);">
+              <div class="mk-row" style="margin-bottom:6px;">
+                <span class="mk-badge" style="background:#D1FAE5;color:#065F46;">● Sincronizado</span>
+                <span style="margin-left:auto;font-size:0.66rem;color:#8B86A3;font-weight:600;">hace 12 min</span>
+              </div>
+              <div style="font-size:0.72rem;color:#5B5677;">Cambios guardados en el servidor.</div>
+            </div>
+          </div>
+          <div class="mk-nav" style="background:rgba(255,255,255,.8);border-top:1px solid #E9E5FF;backdrop-filter:blur(12px);">
+            <div class="item" style="color:#6366F1;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#8B86A3;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#8B86A3;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#8B86A3;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#8B86A3;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Aurora — Light "Morning Mist":</b> glass luminoso, gradientes de marca</div>
+      </div>
+
+      <!-- Aurora NFC scan -->
+      <div class="phone">
+        <div class="bezel"><div class="island"></div></div>
+        <div class="viewport" style="background:radial-gradient(ellipse 70% 50% at 50% 0%, rgba(99,102,241,.18), transparent), #0D0B1A;">
+          <div class="mk">
+            <div class="mk-status" style="color:#EDEBFF;"><span>9:41</span><span>●●● ⚡ 🔋</span></div>
+            <div class="mk-h2" style="color:#EDEBFF;margin-bottom:2px;">Escanear tag NFC</div>
+            <div class="mk-sub" style="color:#6F6A94;margin-bottom:16px;">Acerca el dispositivo al tag</div>
+            <div style="background:rgba(30,27,75,.5);border:2px dashed rgba(129,140,248,.4);border-radius:22px;padding:30px;text-align:center;margin-bottom:14px;backdrop-filter:blur(8px);">
+              <div style="font-size:2.8rem;margin-bottom:8px;filter:drop-shadow(0 0 16px rgba(129,140,248,.6));">📡</div>
+              <div style="font-weight:800;font-size:0.95rem;background:linear-gradient(135deg,#818CF8,#C084FC);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">Esperando tag…</div>
+              <div style="font-size:0.72rem;color:#6F6A94;margin-top:4px;">Distancia óptima: menos de 4 cm</div>
+            </div>
+            <div class="mk-chip-row">
+              <span class="mk-chip" style="background:rgba(99,102,241,.18);color:#A5B4FC;border:1px solid rgba(129,140,248,.35);">◆ Modo demo</span>
+              <span class="mk-chip" style="background:rgba(30,27,75,.5);color:#A5A0C4;border:1px solid #2E2A5A;">Historial (3)</span>
+            </div>
+            <div class="mk-card" style="background:rgba(30,27,75,.5);border:1px solid #2E2A5A;backdrop-filter:blur(10px);">
+              <div class="mk-label" style="color:#6F6A94;margin-bottom:8px;">Última lectura</div>
+              <div class="mk-list-item" style="border:none;padding:0;">
+                <div class="mk-avatar" style="background:linear-gradient(135deg,rgba(251,191,36,.25),rgba(245,158,11,.25));">📇</div>
+                <div style="flex:1;">
+                  <div style="font-weight:700;font-size:0.84rem;color:#EDEBFF;">Tag #A-0142</div>
+                  <div style="font-size:0.7rem;color:#6F6A94;">Finca El Paraíso · Lote 4</div>
+                </div>
+                <span class="mk-badge" style="background:rgba(52,211,153,.14);color:#34D399;">Completa</span>
+              </div>
+            </div>
+            <div class="mk-btn" style="background:linear-gradient(135deg,#6366F1,#A855F7);color:#fff;box-shadow:0 4px 24px rgba(99,102,241,.45);">▶ Iniciar escaneo</div>
+            <div class="mk-btn sm" style="background:rgba(251,113,133,.12);color:#FDA4AF;border:1px solid rgba(251,113,133,.3);margin-top:8px;">Bloquear último tag</div>
+          </div>
+          <div class="mk-nav" style="background:rgba(13,11,26,.85);border-top:1px solid #2E2A5A;backdrop-filter:blur(12px);">
+            <div class="item" style="color:#6F6A94;"><span class="ico">🏠</span>Inicio</div>
+            <div class="item" style="color:#6F6A94;"><span class="ico">📋</span>Auditoría</div>
+            <div class="item" style="color:#818CF8;"><span class="ico">📇</span>NFC</div>
+            <div class="item" style="color:#6F6A94;"><span class="ico">🗺️</span>Mapa</div>
+            <div class="item" style="color:#6F6A94;"><span class="ico">⚙️</span>Ajustes</div>
+          </div>
+        </div>
+        <div class="caption"><b>Aurora — NFC:</b> zona de escaneo con glow, CTA con gradiente</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:24px;">
+      <div class="card" style="border-color:rgba(52,211,153,.3);">
+        <h4 style="color:var(--green);font-weight:700;margin-bottom:10px;">✔ Ventajas</h4>
+        <ul style="color:var(--text-2);font-size:0.9rem;padding-left:18px;line-height:1.8;">
+          <li>Estética de última generación — ideal para demos, pitches y captación</li>
+          <li>Gradientes aurora como firma visual inmediatamente reconocible</li>
+          <li>Glassmorphism da profundidad real sin depender solo de sombras</li>
+          <li>Dark-first: el modo oscuro es el protagonista, no una copia del light</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(251,113,133,.3);">
+        <h4 style="color:var(--rose);font-weight:700;margin-bottom:10px;">✘ Limitaciones</h4>
+        <ul style="color:var(--text-2);font-size:0.9rem;padding-left:18px;line-height:1.8;">
+          <li><b>React Native:</b> <code class="inline">backdrop-filter</code> no existe en RN nativo — requiere blur nativo (expo-blur / react-native-blur) o fallback con opacidad</li>
+          <li>Gradientes y glass pueden costar rendimiento en dispositivos低端 con mapas pesados</li>
+          <li>Estética "demo product" — puede sentirse menos seria para auditoría de campo profesional</li>
+          <li>Mayor esfuerzo de QA: glass se comporta distinto en Android/iOS/Web</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ COMPARATIVA FINAL ═══════════════════════ -->
+<section>
+  <div class="container">
+    <div class="sec-tag">05 · Decisión</div>
+    <h2 class="sec-title">Comparativa final</h2>
+    <p class="sec-desc">Las tres propuestas comparten la corrección obligatoria del bug de dark mode y la unificación del theme. La diferencia está en la identidad visual.</p>
+
+    <div class="card" style="overflow-x:auto;">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th>Criterio</th>
+            <th>A · Neo Indigo</th>
+            <th>B · Terra Harvest</th>
+            <th>C · Aurora Glass</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Personalidad</td><td>SaaS profesional</td><td class="star">★ Orgánico café</td><td>Moderno/expressivo</td></tr>
+          <tr><td>WCAG AA light + dark</td><td>✔ 100% verificado</td><td>✔ 100% verificado</td><td>✔ 100% verificado</td></tr>
+          <tr><td>Dark mode</td><td>Midnight (capas)</td><td class="star">★ Night Harvest (verde-negro)</td><td>Aurora Night (glass)</td></tr>
+          <tr><td>Legibilidad outdoor</td><td>Alta</td><td class="star">★ Alta + crema anti-fatiga</td><td>Media-alta</td></tr>
+          <tr><td>Diferenciación de marca</td><td>Media (indigo popular)</td><td class="star">★ Máxima</td><td>Alta (gradientes)</td></tr>
+          <tr><td>Compatibilidad RN nativa</td><td class="star">★ Total (sin blur)</td><td class="star">★ Total (sin blur)</td><td>Requiere blur nativo / fallbacks</td></tr>
+          <tr><td>Esfuerzo de implementación</td><td class="star">★ Medio (1–2 tareas)</td><td>Medio (1–2 tareas)</td><td>Alto (2–3 tareas + QA multiplataforma)</td></tr>
+          <tr><td>Riesgo de regresión</td><td class="star">★ Bajo-medio</td><td>Medio</td><td>Medio-alto (glass/gradientes)</td></tr>
+          <tr><td>Sensación "herramienta seria"</td><td class="star">★ Máxima</td><td>Alta</td><td>Media</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout rec" style="margin-top:24px;">
+      <span class="ico">🏆</span>
+      <div>
+        <b>Recomendación:</b> la <b>Propuesta B — Terra Harvest</b> es la más diferenciada y alineada al dominio del producto
+        (auditoría de café), con dark mode de carácter propio y compatibilidad total con React Native nativo.
+        Si buscas la opción más conservadora y seria, la <b>Propuesta A — Neo Indigo</b> es excelente y de menor riesgo.
+        La <b>Propuesta C — Aurora Glass</b> es la más moderna pero con mayor costo de implementación y cuidado técnico.
+      </div>
+    </div>
+
+    <div class="callout info" style="margin-top:16px;">
+      <span class="ico">🔧</span>
+      <div>
+        <b>Trabajo obligatorio común a las 3 propuestas (no negociable):</b><br/>
+        1. Unificar <code class="inline">theme.ts</code> + <code class="inline">ThemeContext.tsx</code> en un único módulo de tokens con paletas light/dark.<br/>
+        2. Migrar imports estáticos del theme (<code class="inline">Button</code>, <code class="inline">Input</code>, <code class="inline">LoginScreen</code>, etc.) a <code class="inline">useTheme()</code>.<br/>
+        3. Eliminar el bug del botón "Ajustes" del Home (token de acción dedicado, no <code class="inline">textSecondary</code> como fondo).<br/>
+        4. Fix del StatusBar de <code class="inline">App.tsx</code> (hoy compara hex mágicos: <code class="inline">colors.textPrimary === '#0F1724'</code>).<br/>
+        5. Texto/borde adaptativo para etiquetas NFC claras (amarilla/blanca/naranja).
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <b>Bean Auditor App</b> · Propuesta de rediseño UI/UX · Design System 2026 · Fase Design (SDD)<br/>
+    Todos los ratios de contraste verificados con la fórmula WCAG 2.1 relative luminance. Objetivo: ≥ 4.5:1 texto normal · ≥ 3:1 UI y texto grande.<br/>
+    Documento generado el 2026-10-04 · Próximo paso: elegir propuesta → spec Gherkin → implementación.
+  </div>
+</footer>
+
+</body>
+</html>

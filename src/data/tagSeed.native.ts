@@ -1,4 +1,5 @@
 import { execute, queryRows } from './sqlite/db.native';
+import runMigrations from './sqlite/migrations.native';
 import { tagsMock } from './mocks/tagsMock';
 
 /**
@@ -7,6 +8,9 @@ import { tagsMock } from './mocks/tagsMock';
  * All seeded tags have sync_pending = 0 (synced from server).
  */
 export async function seedTagsIfNeeded(): Promise<void> {
+  // Guarantee the schema exists before touching the tags table
+  await runMigrations();
+
   const existing = queryRows('SELECT COUNT(*) as count FROM tags;', []);
   const count = Number((existing[0]?.count ?? 0));
 

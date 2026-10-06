@@ -34,6 +34,8 @@ const NfcManager = {
   },
 };
 
+/* global Buffer, TextDecoder */
+
 const NfcTech = {
   Ndef: 'Ndef',
   NfcA: 'NfcA',

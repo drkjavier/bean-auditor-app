@@ -5,23 +5,33 @@
  */
 
 import { execute, queryRows } from '../sqlite/db.native';
+import runMigrations from '../sqlite/migrations.native';
 import { Farm, CreateFarm, UpdateFarm } from '../../domain/farm/Farm';
 
 type AnyRow = Record<string, unknown>;
 
 export class FarmRepository {
   /**
+   * Ensure the database schema exists before any operation.
+   */
+  private async ensure(): Promise<void> {
+    await runMigrations();
+  }
+
+  /**
    * Get all farms.
    */
-  getAll(): Farm[] {
+  async getAll(): Promise<Farm[]> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM farms ORDER BY name');
-    return rows.map(this.rowToFarm);
+    return rows.map(row => this.rowToFarm(row));
   }
 
   /**
    * Get farm by ID.
    */
-  getById(id: string): Farm | null {
+  async getById(id: string): Promise<Farm | null> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM farms WHERE id = ?', [id]);
     return rows.length > 0 ? this.rowToFarm(rows[0]) : null;
   }
@@ -29,15 +39,17 @@ export class FarmRepository {
   /**
    * Get farms by status.
    */
-  getByStatus(status: Farm['status']): Farm[] {
+  async getByStatus(status: Farm['status']): Promise<Farm[]> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM farms WHERE status = ? ORDER BY name', [status]);
-    return rows.map(this.rowToFarm);
+    return rows.map(row => this.rowToFarm(row));
   }
 
   /**
    * Create a new farm.
    */
-  create(farm: CreateFarm): Farm {
+  async create(farm: CreateFarm): Promise<Farm> {
+    await this.ensure();
     const now = Date.now();
     const newFarm: Farm = {
       ...farm,
@@ -73,8 +85,8 @@ export class FarmRepository {
   /**
    * Update an existing farm.
    */
-  update(id: string, updates: UpdateFarm): Farm | null {
-    const existing = this.getById(id);
+  async update(id: string, updates: UpdateFarm): Promise<Farm | null> {
+    const existing = await this.getById(id);
     if (!existing) return null;
 
     const now = Date.now();
@@ -113,15 +125,17 @@ export class FarmRepository {
   /**
    * Delete a farm.
    */
-  delete(id: string): boolean {
-    const result = execute('DELETE FROM farms WHERE id = ?', [id]);
+  async delete(id: string): Promise<boolean> {
+    await this.ensure();
+    execute('DELETE FROM farms WHERE id = ?', [id]);
     return true; // SQLite doesn't easily expose affected rows in this driver
   }
 
   /**
    * Get count of farms.
    */
-  count(): number {
+  async count(): Promise<number> {
+    await this.ensure();
     const rows = queryRows('SELECT COUNT(*) as count FROM farms');
     return (rows[0]?.count as number) || 0;
   }
@@ -129,7 +143,8 @@ export class FarmRepository {
   /**
    * Get pending sync count.
    */
-  pendingCount(): number {
+  async pendingCount(): Promise<number> {
+    await this.ensure();
     const rows = queryRows('SELECT COUNT(*) as count FROM farms WHERE sync_pending = 1');
     return (rows[0]?.count as number) || 0;
   }

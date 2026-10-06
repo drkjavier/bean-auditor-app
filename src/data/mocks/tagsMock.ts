@@ -1,19 +1,19 @@
 /**
- * Mock data: 6 800 tags simulating 4 hectares (2 × 2) of banana plantation.
+ * Mock data: ~50 tags simulating a small sample plantation (1 ha).
  *
- * Each hectare has ~1 700 plants placed in a mixed pattern (hileras) with
- * staggered rows (34 rows × 50 plants = 1 700 plants/ha).
+ * Each hectare uses a mixed pattern (hileras) with wide rows (10 m) and
+ * close plants within the row (20 m): 10 rows × 5 plants = 50 tags.
  *
  * The grid is centered on Finca bananera Tiquisate, Guatemala:
  *   Center: 14.283333, -91.366667
  *
- * The CENTER tag is the one closest to the center point (intersection of
- * the 4 hectares). It can be used as the reference point for NFC workflows.
+ * The CENTER tag is the one closest to the center point. It can be used as
+ * the reference point for NFC workflows.
  *
  * @module data/mocks/tagsMock
  */
 
-import { generateStandardPlantation } from '../../domain/farm/tagGenerator';
+import { generateTags } from '../../domain/farm/tagGenerator';
 import type { AuditStatus } from '../../domain/audit/AuditRecord';
 
 // ── Tag Type ──────────────────────────────────────────────────────────────────
@@ -37,21 +37,23 @@ const LON_BASE = -91.366667;
 // ── Generation ────────────────────────────────────────────────────────────────
 
 /**
- * The full plantation generation result — 4 hectares (2×2 grid).
+ * The full plantation generation result — 1 hectare sample (10 rows × 5 plants).
  * Generated once at module load time.
  */
-const generationResult = generateStandardPlantation(
-  LAT_BASE,
-  LON_BASE,
-  2, // hectaresPerSide: 2×2 = 4 ha
-  1700,
-  'mixed',
-);
+const generationResult = generateTags({
+  centerLat: LAT_BASE,
+  centerLon: LON_BASE,
+  hectaresPerSide: 1,
+  plantsPerHectare: 50,
+  patternType: 'mixed',
+  rowSpacing: 10,
+  plantSpacing: 20,
+});
 
-/** All 6 800 tags for the 4-hectare plantation */
+/** All ~50 tags for the 1-hectare sample plantation */
 export const tagsMock: Tag[] = generationResult.tags as Tag[];
 
-/** The tag closest to the center of the 4-hectare grid */
+/** The tag closest to the center of the grid */
 export const centerTag: Tag = generationResult.centerTag as Tag;
 
 /** Per-hectare metrics */
@@ -71,8 +73,8 @@ export function getPlantationSummary(): string {
   const avgPlants = totalPlants / totalHa;
   const firstHa = ha[0];
   return (
-    `${totalHa} hectáreas (2×2) · ` +
-    `${totalPlants.toLocaleString()} plantas totales · ` +
+    `${totalHa} hectárea(s) · ` +
+    `${totalPlants} plantas totales · ` +
     `~${Math.round(avgPlants)} plantas/ha · ` +
     `Patrón: mixto (${firstHa.rowSpacing.toFixed(2)}m × ${firstHa.plantSpacing.toFixed(2)}m) · ` +
     `Centro: ${centerTag.unique_id} @ (${LAT_BASE}, ${LON_BASE})`

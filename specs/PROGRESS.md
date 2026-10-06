@@ -1,65 +1,81 @@
-# PROGRESS.md — Reporte Maestro de Specs
+# SDD Progress Report
 
-> Este archivo se actualiza automáticamente por el agente每当 se modifique el estado de una spec.
-> Última actualización: YYYY-MM-DD
-
-## Resumen general
+## Resumen
 
 | Métrica | Valor |
 |---------|-------|
-| Total specs | 0 |
-| Completadas | 0 |
-| En progreso | 0 |
-| Pendientes | 0 |
-| % Avance | 0% |
+| **Specs totales** | 6 |
+| **Completadas** | 6 (100%) ✅ |
+| **En progreso** | 0 |
+| **Pendientes** | 0 |
+| **Bloqueadas** | 0 |
+| **Canceladas** | 0 |
 
-## Specs por tipo
+## Specs de Feature
 
-### Features
-| ID | Nombre | Estado | Prioridad | Capa | Fecha |
-|----|--------|--------|-----------|------|-------|
-| — | Sin specs registradas | — | — | — | — |
+| ID | Nombre | Estado | Capa | Tests |
+|----|--------|--------|------|-------|
+| FEAT-WAZE-001 | Navegación Tipo Waze (Maestra) | ✅ completed | domain | — |
+| FEAT-WAZE-001a | GeoUtils - Cálculos Geoespaciales | ✅ completed | domain | 31 ✅ |
+| FEAT-WAZE-001b | Navigation Store (Zustand) | ✅ completed | state | 18 ✅ |
+| FEAT-WAZE-001c | NavigationArrow SVG Component | ✅ completed | presentation | 20 ✅ |
+| FEAT-WAZE-001d | MapCanvas Integration | ✅ completed | presentation | 5 ✅ |
+| FEAT-WAZE-001e | AuditScreen Navigation Mode | ✅ completed | presentation | 6 ✅ |
 
-### APIs
-| ID | Nombre | Estado | Prioridad | Capa | Fecha |
-|----|--------|--------|-----------|------|-------|
-| — | Sin specs registradas | — | — | — | — |
+**Total tests nuevos: 80 ✅**
 
-### UI/UX
-| ID | Nombre | Estado | Prioridad | Capa | Fecha |
-|----|--------|--------|-----------|------|-------|
-| — | Sin specs registradas | — | — | — | — |
-
-## Grafo de dependencias
+## Grafo de Dependencias (Completado)
 
 ```
-[Spec padre] ──► [Sub-spec 1]
-             ──► [Sub-spec 2]
-                    ──► [Sub-spec 2a]
+FEAT-WAZE-001 (Maestra) ✅
+    │
+    ├── FEAT-WAZE-001a (GeoUtils) ✅ ──────────────────┐
+    │       │                                            │
+    │       └── FEAT-WAZE-001b (Navigation Store) ✅ ───┤
+    │               │                                    │
+    │               ├── FEAT-WAZE-001c (NavigationArrow) ✅
+    │               │       │                            │
+    │               │       └── FEAT-WAZE-001d (MapCanvas) ✅
+    │               │                                        │
+    │               └── FEAT-WAZE-001e (AuditScreen) ✅ ────┘
 ```
 
-*Se actualizará cuando existan specs con relaciones padre-hijo.*
+## Archivos Creados/Modificados
 
-## Historial de actividad
+### Nuevos (6 archivos)
+- `src/domain/farm/geoUtils.ts` - Funciones geoespaciales
+- `src/state/navigationStore.ts` - Store Zustand
+- `src/presentation/components/NavigationArrow.tsx` - Flecha SVG
+- `src/presentation/components/NavigationPanel.tsx` - Panel de control
+- `src/__tests__/domain/farm/geoUtils.test.ts` - Tests GeoUtils
+- `src/__tests__/state/navigationStore.test.ts` - Tests Store
+- `src/__tests__/components/NavigationArrow.test.tsx` - Tests Arrow
+- `src/__tests__/components/MapCanvas-navigation.test.tsx` - Tests MapCanvas
+- `src/__tests__/screens/AuditScreen-navigation.test.tsx` - Tests Screen
 
-| Fecha | Spec | Acción | Detalle |
-|-------|------|--------|---------|
-| — | — | — | Sin actividad registrada |
+### Modificados (3 archivos)
+- `src/presentation/components/MapCanvas.native.tsx` - Props navegación
+- `src/presentation/components/MapCanvas.web.tsx` - Props navegación
+- `src/presentation/screens/AuditScreen.tsx` - Modo navegación
 
-## Reglas de actualización
+### Dependencias agregadas
+- `@turf/bearing` (MIT, $0)
+- `@turf/distance` (MIT, $0)
+- `@turf/helpers` (MIT, $0)
 
-1. **Al crear una spec**: Agregar entrada en la tabla correspondiente con estado `pending`.
-2. **Al iniciar implementación**: Cambiar estado a `in_progress` y registrar fecha.
-3. **Al completar**: Cambiar estado a `completed`, calcular % avance.
-4. **Al modificar dependencias**: Actualizar grafo de dependencias.
-5. **Cada cambio**: Agregar entrada en historial de actividad.
+## Historial de Actividad
 
-## Leyenda de estados
+| Fecha | Evento | Detalles |
+|-------|--------|----------|
+| 2026-06-25 | Rama creada | `feature/waze-navigation` |
+| 2026-06-25 | Spec maestra creada | FEAT-WAZE-001 |
+| 2026-06-25 | Sub-specs creadas | 5 sub-specs atómicas |
+| 2026-06-25 | T1 completada | GeoUtils (31 tests) |
+| 2026-06-25 | T2 completada | Navigation Store (18 tests) |
+| 2026-06-25 | T3 completada | NavigationArrow (20 tests) |
+| 2026-06-25 | T4 completada | MapCanvas Integration (5 tests) |
+| 2026-06-25 | T5 completada | AuditScreen Integration (6 tests) |
 
-| Estado | Significado |
-|--------|-------------|
-| `pending` | Spec creada, esperando implementación |
-| `in_progress` | Implementación en curso |
-| `completed` | Implementación completa y validada |
-| `blocked` | Bloqueada por dependencia o decisión |
-| `cancelled` | Ya no es necesaria |
+## Costo Total: $0
+
+Todas las dependencias son MIT license sin costo.

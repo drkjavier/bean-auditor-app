@@ -12,29 +12,28 @@
  * - Fit all markers view
  * - Street/Satellite/Hybrid toggle
  * - Marker selection with visual feedback
+ * - Navigation mode with directional arrow overlay
  */
 
-import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MAPTILER_CONFIG, getMapLibreStyle } from '../../infrastructure/config/maptiler.config';
-import type { Tag } from '../../data/mocks/tagsMock';
-import type { AuditStatus } from '../../domain/audit/AuditRecord';
+import type { Tag } from '../../data/tagService';
 import * as locationService from '../../infrastructure/locationService';
 import { RESULTS } from 'react-native-permissions';
-import { NAV_BAR_HEIGHT } from '../themes/layout';
+import NavigationArrow from './NavigationArrow';
+import { useTheme } from '../themes/ThemeContext';
+import {
+  getNavigationZoom,
+  getUserFollowZoom,
+  shouldFollowUser,
+} from '../../domain/farm/navigationCamera';
 
-function getAuditStatusLabel(status: AuditStatus | null | undefined) {
-  switch (status) {
-    case 'audited':
-      return 'Auditado';
-    case 'not_audited':
-      return 'No auditado';
-    case 'pending':
-      return 'Pendiente';
-    default:
-      return 'Sin auditar';
-  }
-}
+/**
+ * Map-specific brand constant: white ring around data markers so they stay
+ * readable on both light and dark map styles. Not a theme token on purpose.
+ */
+const MARKER_STROKE_COLOR = '#ffffff';
 
 type Props = {
   items: Tag[];
@@ -42,27 +41,54 @@ type Props = {
   selectedId?: string | null;
   onSelect?: (item: Tag) => void;
   showUserLocation?: boolean;
+  /** Modo navegación activo */
+  isNavigationActive?: boolean;
+  /** Tag destino de navegación */
+  navigationTarget?: Tag | null;
+  /** UUID del tag más cercano pendiente (para resaltarlo en el mapa) */
+  nearestTagId?: string | null;
+  /** Distancia al destino en metros */
+  distanceToTarget?: number | null;
+  /** Bearing al destino en grados */
+  bearingToTarget?: number | null;
+  /** Callback al presionar la flecha de navegación */
+  onNavigationPress?: () => void;
+  /** Live user position from navigationStore (Waze-like follow) */
+  userPosition?: { lat: number; lon: number } | null;
 };
 
-export default function MapCanvas({ items, style, selectedId, onSelect, showUserLocation = false }: Props) {
+export default function MapCanvas({
+  items,
+  style,
+  selectedId,
+  showUserLocation = false,
+  isNavigationActive = false,
+  navigationTarget = null,
+  nearestTagId = null,
+  distanceToTarget = null,
+  bearingToTarget = null,
+  onNavigationPress,
+  userPosition = null,
+}: Props) {
+  const { colors } = useTheme();
   const [mapReady, setMapReady] = useState(false);
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('satellite');
   const [MapLibreModule, setMapLibreModule] = useState<any>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const mapRef = useRef<any>(null);
+  const lastFollowRef = useRef<{ at: number; pos: { lat: number; lon: number } | null }>({
+    at: 0,
+    pos: null,
+  });
+  const lastTargetUuidRef = useRef<string | null>(null);
 
   const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
 
-  const legendItems = useMemo(() => {
-    const map = new Map<string, string>();
-    items.forEach(item => {
-      const label = getAuditStatusLabel(item.audit_status);
-      if (!map.has(label)) {
-        map.set(label, item.colorHex);
-      }
-    });
-    return Array.from(map.entries()).map(([label, color]) => ({ label, color }));
-  }, [items]);
+  // In navigation mode use live store position; otherwise fall back to Settings one-shot.
+  const displayUserLocation = isNavigationActive && userPosition ? userPosition : userLocation;
+  const showUserMarker = isNavigationActive
+    ? userPosition != null
+    : showUserLocation && userLocation != null;
 
   useEffect(() => {
     import('@maplibre/maplibre-react-native').then((module) => {
@@ -72,14 +98,14 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
     });
   }, []);
 
-  // Get user location when showUserLocation is true
+  // Get user location when showUserLocation is true (non-navigation mode)
   useEffect(() => {
-    if (!showUserLocation || !mapReady) return;
+    if (isNavigationActive || !showUserLocation || !mapReady) return;
 
     const getUserLocation = async () => {
       try {
         const status = await locationService.checkPermission();
-        
+
         if (status === RESULTS.GRANTED) {
           locationService.getCurrentPosition(
             (position) => {
@@ -103,41 +129,52 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
     };
 
     getUserLocation();
-  }, [showUserLocation, mapReady]);
+  }, [showUserLocation, mapReady, isNavigationActive]);
 
-  const handleCenterOnMe = async () => {
-    try {
-      const status = await locationService.checkPermission();
-      
-      if (status === RESULTS.GRANTED) {
-        locationService.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            if (mapRef.current) {
-              mapRef.current.flyTo([longitude, latitude], 18, 1500);
-            }
-          },
-          (error) => {
-            console.error('Error al obtener ubicación:', error);
-            Alert.alert('Error', 'No se pudo obtener tu ubicación');
-          },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-      } else if (status === RESULTS.DENIED) {
-        const requestStatus = await locationService.requestPermission();
-        if (requestStatus === RESULTS.GRANTED) {
-          handleCenterOnMe();
-        } else {
-          Alert.alert('Permiso denegado', 'Necesitamos permiso de ubicación');
-        }
-      } else {
-        Alert.alert('Permiso requerido', 'Por favor, habilita el permiso de ubicación');
+  // Waze-like camera: follow user at max zoom; recenter only when destination tag changes
+  useEffect(() => {
+    if (!isNavigationActive || !mapReady || !mapRef.current) return;
+
+    const targetZoom = getNavigationZoom(distanceToTarget);
+    const userZoom = getUserFollowZoom(MAPTILER_CONFIG.maxZoom);
+    const previousTargetUuid = lastTargetUuidRef.current;
+
+    if (navigationTarget && navigationTarget.uuid !== previousTargetUuid) {
+      lastTargetUuidRef.current = navigationTarget.uuid;
+
+      // Destination changed mid-session → recenter on the new tag
+      if (previousTargetUuid != null) {
+        lastFollowRef.current = { at: Date.now(), pos: userPosition };
+        mapRef.current.flyTo([navigationTarget.lon, navigationTarget.lat], targetZoom, 1200);
+        return;
       }
-    } catch (error) {
-      console.error('Error al verificar permisos:', error);
-      Alert.alert('Error', 'No se pudo verificar los permisos');
+      // First target of the session: prefer following the user if we have a position
     }
-  };
+
+    if (!userPosition) return;
+
+    const now = Date.now();
+    const shouldFollow = shouldFollowUser({
+      lastFollowAt: lastFollowRef.current.at || null,
+      lastFollowPosition: lastFollowRef.current.pos,
+      currentPosition: userPosition,
+      now,
+    });
+
+    if (!shouldFollow) return;
+
+    lastFollowRef.current = { at: now, pos: userPosition };
+    // Center on user with maximum zoom (field detail)
+    mapRef.current.flyTo([userPosition.lon, userPosition.lat], userZoom, 900);
+  }, [isNavigationActive, mapReady, userPosition, navigationTarget, distanceToTarget]);
+
+  // Reset target ref when navigation stops so the next session recenters
+  useEffect(() => {
+    if (!isNavigationActive) {
+      lastTargetUuidRef.current = null;
+      lastFollowRef.current = { at: 0, pos: null };
+    }
+  }, [isNavigationActive]);
 
   const handleFitAll = () => {
     if (!mapRef.current || items.length === 0) return;
@@ -163,8 +200,8 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
 
   if (!MapLibreModule) {
     return (
-      <View style={[styles.wrapper, style, styles.loadingContainer]}>
-        <Text style={styles.loadingText}>Cargando mapa...</Text>
+      <View style={[styles.wrapper, style, styles.loadingContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Cargando mapa...</Text>
       </View>
     );
   }
@@ -173,14 +210,17 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
   const mapStyle = getMapLibreStyle(mapType);
 
   return (
-    <View style={[styles.wrapper, style && { borderRadius: (style as any).borderRadius }]} accessibilityLabel="Mapa de auditorías">
+    <View
+      style={[styles.wrapper, style && { borderRadius: (style as any).borderRadius }, { borderColor: colors.border, backgroundColor: colors.card }]}
+      accessibilityLabel="Mapa de auditorías"
+    >
       {items.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No hay puntos para mostrar</Text>
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>No hay puntos para mostrar</Text>
         </View>
       ) : (
         <>
-          <View style={styles.toolbar}>
+          <View style={[styles.toolbar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
             <View style={styles.actions}>
               {selectedItem ? (
                 <Pressable
@@ -189,7 +229,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                   onPress={handleCenterSelection}
                   style={[styles.mapToggleButton, styles.actionInlineButton]}
                 >
-                  <Text style={styles.mapToggleButtonText}>Centrar</Text>
+                  <Text style={[styles.mapToggleButtonText, { color: colors.primary }]}>Centrar</Text>
                 </Pressable>
               ) : null}
 
@@ -199,7 +239,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                 onPress={handleFitAll}
                 style={[styles.mapToggleButton, styles.actionInlineButton]}
               >
-                <Text style={styles.mapToggleButtonText}>Ver todos</Text>
+                <Text style={[styles.mapToggleButtonText, { color: colors.primary }]}>Ver todos</Text>
               </Pressable>
 
               <View style={{ width: 6 }} />
@@ -208,9 +248,15 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                 accessibilityLabel="Vista Street"
                 accessibilityState={{ pressed: mapType === 'street' }}
                 onPress={() => setMapType('street')}
-                style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
+                style={[
+                  styles.mapToggleButton,
+                  styles.mapTypeToggleButton,
+                  mapType === 'street'
+                    ? [styles.mapToggleButtonActive, { backgroundColor: colors.primary, borderColor: colors.primaryVariant }]
+                    : undefined,
+                ]}
               >
-                <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
+                <Text style={[styles.mapToggleButtonText, { color: colors.primary }, mapType === 'street' ? { color: colors.textButton } : undefined]}>Street</Text>
               </Pressable>
 
               <View style={{ width: 6 }} />
@@ -219,9 +265,15 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                 accessibilityLabel="Vista Satellite"
                 accessibilityState={{ pressed: mapType === 'satellite' }}
                 onPress={() => setMapType('satellite')}
-                style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
+                style={[
+                  styles.mapToggleButton,
+                  styles.mapTypeToggleButton,
+                  mapType === 'satellite'
+                    ? [styles.mapToggleButtonActive, { backgroundColor: colors.primary, borderColor: colors.primaryVariant }]
+                    : undefined,
+                ]}
               >
-                <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
+                <Text style={[styles.mapToggleButtonText, { color: colors.primary }, mapType === 'satellite' ? { color: colors.textButton } : undefined]}>Satellite</Text>
               </Pressable>
 
               <View style={{ width: 6 }} />
@@ -230,14 +282,17 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                 accessibilityLabel="Vista Hybrid"
                 accessibilityState={{ pressed: mapType === 'hybrid' }}
                 onPress={() => setMapType('hybrid')}
-                style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'hybrid' ? styles.mapToggleButtonActive : undefined]}
+                style={[
+                  styles.mapToggleButton,
+                  styles.mapTypeToggleButton,
+                  mapType === 'hybrid'
+                    ? [styles.mapToggleButtonActive, { backgroundColor: colors.primary, borderColor: colors.primaryVariant }]
+                    : undefined,
+                ]}
               >
-                <Text style={[styles.mapToggleButtonText, mapType === 'hybrid' ? styles.mapToggleButtonTextActive : undefined]}>Hybrid</Text>
+                <Text style={[styles.mapToggleButtonText, { color: colors.primary }, mapType === 'hybrid' ? { color: colors.textButton } : undefined]}>Hybrid</Text>
               </Pressable>
             </View>
-            <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${MAPTILER_CONFIG.maxZoom}`}>
-              Máx. zoom: {MAPTILER_CONFIG.maxZoom}
-            </Text>
           </View>
 
           <View style={[styles.mapContainer, style && { height: (style as any).height || 470 }]}>
@@ -265,6 +320,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                       id: item.uuid,
                       color: item.colorHex,
                       isSelected: selectedItem?.uuid === item.uuid,
+                      isNearest: nearestTagId === item.uuid,
                     },
                   })),
                 }}
@@ -274,6 +330,8 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                   style={{
                     circleRadius: [
                       'case',
+                      ['boolean', ['get', 'isNearest'], false],
+                      14,
                       ['boolean', ['get', 'isSelected'], false],
                       13,
                       10,
@@ -281,17 +339,24 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                     circleColor: ['get', 'color'],
                     circleStrokeWidth: [
                       'case',
+                      ['boolean', ['get', 'isNearest'], false],
+                      5,
                       ['boolean', ['get', 'isSelected'], false],
                       4,
                       2,
                     ],
-                    circleStrokeColor: '#ffffff',
+                    circleStrokeColor: [
+                      'case',
+                      ['boolean', ['get', 'isNearest'], false],
+                      colors.warning,
+                      MARKER_STROKE_COLOR,
+                    ],
                   }}
                 />
               </ShapeSource>
 
               {/* User Location Marker */}
-              {userLocation && (
+              {showUserMarker && displayUserLocation && (
                 <ShapeSource
                   id="user-location"
                   shape={{
@@ -301,7 +366,7 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                         type: 'Feature',
                         geometry: {
                           type: 'Point',
-                          coordinates: [userLocation.lon, userLocation.lat],
+                          coordinates: [displayUserLocation.lon, displayUserLocation.lat],
                         },
                         properties: {},
                       },
@@ -312,14 +377,28 @@ export default function MapCanvas({ items, style, selectedId, onSelect, showUser
                     id="user-location-circle"
                     style={{
                       circleRadius: 10,
-                      circleColor: '#4285F4',
+                      circleColor: colors.primary,
                       circleStrokeWidth: 3,
-                      circleStrokeColor: '#ffffff',
+                      circleStrokeColor: MARKER_STROKE_COLOR,
                     }}
                   />
                 </ShapeSource>
               )}
             </MapView>
+
+            {/* Navigation Arrow Overlay */}
+            {isNavigationActive && navigationTarget && distanceToTarget !== null && bearingToTarget !== null && (
+              <View style={styles.navigationOverlay} pointerEvents="box-none">
+                <NavigationArrow
+                  bearing={bearingToTarget}
+                  distance={distanceToTarget}
+                  tagId={navigationTarget.unique_id}
+                  tagStatus={navigationTarget.audit_status}
+                  visible={true}
+                  onPress={onNavigationPress}
+                />
+              </View>
+            )}
           </View>
         </>
       )}
@@ -332,8 +411,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fff',
     width: '100%',
     minWidth: 0,
   },
@@ -345,9 +422,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 8,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   legend: {
     flexDirection: 'row',
@@ -367,7 +442,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   legendText: {
-    color: '#475569',
     fontSize: 12,
   },
   actions: {
@@ -389,30 +463,20 @@ const styles = StyleSheet.create({
     width: 76,
     flexShrink: 0,
   },
-  mapToggleButtonActive: {
-    backgroundColor: '#1e40af',
-    borderColor: '#153a8a',
-  },
+  mapToggleButtonActive: {},
   mapToggleButtonText: {
-    color: '#1e40af',
     fontWeight: '700',
     fontSize: 12,
   },
-  mapToggleButtonTextActive: {
-    color: '#fff',
-  },
+  mapToggleButtonTextActive: {},
   actionInlineButton: {
     marginRight: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
   },
-  locationButton: {
-    backgroundColor: '#10b981',
-    borderColor: '#059669',
-  },
+  locationButton: {},
   providerInfo: {
-    color: '#64748b',
     fontSize: 12,
     alignSelf: 'flex-end',
     marginTop: 6,
@@ -422,15 +486,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyText: {
-    color: '#64748b',
-  },
+  emptyText: {},
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#64748b',
     fontSize: 14,
+  },
+  navigationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
 });

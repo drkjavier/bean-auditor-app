@@ -72,8 +72,6 @@ function parseNdefRecords(tag: any): NdefRecord[] {
       const payload = record.payload;
 
       if (tnf === Ndef.TNF_WELL_KNOWN) {
-        const rtdType = record.type;
-
         // Text record — use Ndef.text.decodePayload for proper decoding
         if (Ndef.isType(record, Ndef.TNF_WELL_KNOWN, Ndef.RTD_TEXT)) {
           try {

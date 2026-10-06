@@ -40,3 +40,11 @@ export const queryRows = (sql: string, params: (string | number | null)[] = []):
   const result = execute(sql, params);
   return normalizeRows(result.rows);
 };
+
+// Enforce referential integrity on every connection (audit_records → tags
+// ON DELETE CASCADE). Non-fatal: warn and continue if the driver rejects it.
+try {
+  execute('PRAGMA foreign_keys = ON;');
+} catch (err) {
+  console.warn('[db.native] Could not enable foreign_keys pragma:', err);
+}

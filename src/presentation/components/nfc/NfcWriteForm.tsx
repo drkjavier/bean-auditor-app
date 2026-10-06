@@ -52,7 +52,7 @@ export default function NfcWriteForm({ uuid, initialData, onSubmit, isWriting, d
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
     color: colors.textPrimary,
     padding: spacing.sm,
     ...typography.body,
@@ -67,7 +67,7 @@ export default function NfcWriteForm({ uuid, initialData, onSubmit, isWriting, d
       <Text style={[styles.label, { color: colors.textCaption, ...typography.caption }]}>
         UUID (fábrica)
       </Text>
-      <View style={[styles.readOnlyField, { backgroundColor: colors.background, borderColor: colors.border, borderRadius: radii.md }]}>
+      <View style={[styles.readOnlyField, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.md }]}>
         <Text style={[styles.readOnlyText, { color: colors.textSecondary, ...typography.body }]} selectable>
           {uuid || 'Escanea un tag primero'}
         </Text>
@@ -82,11 +82,16 @@ export default function NfcWriteForm({ uuid, initialData, onSubmit, isWriting, d
           value={colorHex}
           onChangeText={setColorHex}
           placeholder="#FF0000"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={colors.textMuted}
           editable={!disabled && !isWriting}
           accessibilityLabel="Color del tag en formato hex"
         />
-        <View style={[styles.colorSwatch, { backgroundColor: colorHex, marginLeft: spacing.sm }]} />
+        <View
+          style={[
+            styles.colorSwatch,
+            { backgroundColor: colorHex, marginLeft: spacing.sm, borderColor: colors.border },
+          ]}
+        />
       </View>
 
       <Text style={[styles.label, { color: colors.textCaption, ...typography.caption, marginTop: spacing.sm }]}>
@@ -97,7 +102,7 @@ export default function NfcWriteForm({ uuid, initialData, onSubmit, isWriting, d
         value={tagId}
         onChangeText={setTagId}
         placeholder="Ej: TAG-TIQ-001"
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={colors.textMuted}
         editable={!disabled && !isWriting}
         accessibilityLabel="Identificador del tag"
       />
@@ -112,7 +117,7 @@ export default function NfcWriteForm({ uuid, initialData, onSubmit, isWriting, d
             value={lat}
             onChangeText={setLat}
             placeholder="14.2833"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             editable={!disabled && !isWriting}
             accessibilityLabel="Latitud del tag"
@@ -127,7 +132,7 @@ export default function NfcWriteForm({ uuid, initialData, onSubmit, isWriting, d
             value={lon}
             onChangeText={setLon}
             placeholder="-91.3667"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             editable={!disabled && !isWriting}
             accessibilityLabel="Longitud del tag"
@@ -173,7 +178,6 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#ccc',
   },
   coordinateRow: {
     flexDirection: 'row',

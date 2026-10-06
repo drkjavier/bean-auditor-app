@@ -79,7 +79,12 @@ export async function fetchTags(filter?: TagFilter, options?: FetchTagsOptions):
     result = result.filter(t => (t.colorHex ?? '').trim().toLowerCase() === colorNorm);
   }
   if (audit_status) {
-    result = result.filter(t => t.audit_status === audit_status);
+    // Business rule: audit_status null is the same concept as "pending".
+    result = result.filter(t =>
+      audit_status === 'pending'
+        ? t.audit_status === 'pending' || t.audit_status == null
+        : t.audit_status === audit_status,
+    );
   }
   if (from) {
     const f = new Date(from);
@@ -143,7 +148,8 @@ export async function getAuditCounts(): Promise<{
     const total = tagsMock.length;
     const audited = tagsMock.filter(t => t.audit_status === 'audited').length;
     const not_audited = tagsMock.filter(t => t.audit_status === 'not_audited').length;
-    const pending = tagsMock.filter(t => t.audit_status === 'pending').length;
+    // Business rule: audit_status null counts as pending.
+    const pending = tagsMock.filter(t => t.audit_status === 'pending' || t.audit_status == null).length;
     return { audited, not_audited, pending, total };
   }
 

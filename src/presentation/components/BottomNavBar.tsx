@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NAV_BAR_HEIGHT } from '../themes/layout';
+import { useTheme } from '../themes/ThemeContext';
 
 export interface TabRoute {
   key: string;
@@ -25,6 +26,7 @@ interface BottomNavBarProps {
  */
 function BottomNavBar({ routes, activeIndex, onTabPress, accessibilityLabel = 'Navegación inferior' }: BottomNavBarProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   return (
     <View
@@ -33,6 +35,8 @@ function BottomNavBar({ routes, activeIndex, onTabPress, accessibilityLabel = 'N
         {
           height: NAV_BAR_HEIGHT + insets.bottom,
           paddingBottom: insets.bottom,
+          borderTopColor: colors.border,
+          backgroundColor: colors.card,
         },
       ]}
       accessibilityRole="tablist"
@@ -41,13 +45,23 @@ function BottomNavBar({ routes, activeIndex, onTabPress, accessibilityLabel = 'N
       {routes.map((route, i) => (
         <Pressable
           key={route.key}
-          style={[styles.tabItem, activeIndex === i ? styles.tabItemActive : null]}
+          style={[
+            styles.tabItem,
+            activeIndex === i ? { backgroundColor: colors.primaryTonal } : null,
+          ]}
           onPress={() => onTabPress(i)}
           accessibilityRole="tab"
           accessibilityState={{ selected: activeIndex === i }}
           accessibilityLabel={route.title}
         >
-          <Text style={[styles.tabTitle, activeIndex === i ? styles.tabTitleActive : null]}>
+          <Text
+            style={[
+              styles.tabTitle,
+              activeIndex === i
+                ? { color: colors.primary }
+                : { color: colors.textSecondary },
+            ]}
+          >
             {route.title}
           </Text>
         </Pressable>
@@ -69,11 +83,9 @@ export function useBottomBarOffset(): number {
 const styles = StyleSheet.create({
   bar: {
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: '#fff',
   },
   tabItem: {
     flex: 1,
@@ -81,15 +93,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
   },
-  tabItemActive: {
-    backgroundColor: '#eef2ff',
-  },
   tabTitle: {
     fontWeight: '600',
-    color: '#475569',
-  },
-  tabTitleActive: {
-    color: '#2563eb',
   },
 });
 
