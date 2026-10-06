@@ -91,46 +91,46 @@ export function distance(from: GeoPosition, to: GeoPosition): number {
 }
 
 /**
- * Encuentra el tag más cercano que NO esté en estado 'audited'.
- * 
+ * Encuentra el tag más cercano que NO esté en estado 'audited'
+ * y que no esté en la lista de exclusiones (p.ej. saltados en la sesión).
+ *
  * @param tags - Lista de tags disponibles
  * @param userPosition - Posición actual del usuario
+ * @param excludeUuids - UUIDs a excluir del cálculo (opcional)
  * @returns El tag pendiente más cercano, o null si no hay pendientes
- * 
+ *
  * @example
  * ```typescript
  * const userPos = { lat: 14.2833, lon: -91.3667 };
- * const nearest = getNearestUncAuditTag(tags, userPos);
- * 
- * if (nearest) {
- *   console.log(`Tag más cercano: ${nearest.unique_id}`);
- * }
+ * const nearest = getNearestUncAuditTag(tags, userPos, ['tag-004']);
  * ```
  */
 export function getNearestUncAuditTag(
   tags: Tag[],
-  userPosition: GeoPosition
+  userPosition: GeoPosition,
+  excludeUuids: string[] = [],
 ): Tag | null {
-  // Filtrar solo tags no auditados
-  const unaudited = tags.filter(tag => tag.audit_status !== 'audited');
-  
+  const excluded = new Set(excludeUuids);
+  const unaudited = tags.filter(
+    tag => tag.audit_status !== 'audited' && !excluded.has(tag.uuid),
+  );
+
   if (unaudited.length === 0) {
     return null;
   }
-  
-  // Encontrar el más cercano
+
   let nearest: Tag | null = null;
   let nearestDistance = Infinity;
-  
+
   for (const tag of unaudited) {
     const dist = distance(userPosition, { lat: tag.lat, lon: tag.lon });
-    
+
     if (dist < nearestDistance) {
       nearestDistance = dist;
       nearest = tag;
     }
   }
-  
+
   return nearest;
 }
 

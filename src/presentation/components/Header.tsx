@@ -1,10 +1,11 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import theme from '../themes/theme';
+import { useTheme } from '../themes/ThemeContext';
 
 type Props = { title?: string; onMenuPress?: () => void; right?: React.ReactNode };
 
 export default function Header({ title, onMenuPress, right }: Props) {
+  const { colors } = useTheme();
   return (
     <View style={styles.container}>
       {onMenuPress ? (
@@ -15,7 +16,7 @@ export default function Header({ title, onMenuPress, right }: Props) {
         <View style={styles.menuButton} />
       )}
       <View style={styles.titleWrap}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
       </View>
       <View style={styles.right}>{right}</View>
     </View>
@@ -27,6 +28,6 @@ const styles = StyleSheet.create({
   menuButton: { padding: 8 },
   menuIcon: { fontSize: 20 },
   titleWrap: { flex: 1, alignItems: 'center' },
-  title: { fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary },
+  title: { fontSize: 18, fontWeight: '700' },
   right: { width: 48, alignItems: 'flex-end' },
 });

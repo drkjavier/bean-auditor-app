@@ -1,16 +1,27 @@
 /**
  * API configuration for authentication.
  *
- * NOTE: All access to process.env is guarded with typeof checks to ensure
- * this module works in Vite's ESM browser context where `process` is not
- * available by default. Use VITE_ prefixed vars via import.meta.env when
- * possible, and only fall back to process.env for compatibility.
+ * NOTE: All environment access is funneled through getEnv() so this module
+ * works in every runtime:
+ * - Native (Metro): process.env
+ * - Web (Vite): globalThis.__VITE_ENV__, injected from import.meta.env in
+ *   index.web.jsx at startup (keeps the import.meta token out of shared
+ *   modules so Jest/CJS can parse them)
+ * - Node/Jest: process.env
  */
 
-// Helper to safely read process.env without crashing when process is undefined
+// Helper to safely read env vars without crashing when process is undefined.
+// Web builds expose VITE_* vars via globalThis.__VITE_ENV__ (see index.web.jsx).
 const getEnv = (key: string): string | undefined => {
   if (typeof process !== 'undefined' && process.env) {
-    return (process.env as Record<string, string | undefined>)[key];
+    const value = (process.env as Record<string, string | undefined>)[key];
+    if (value !== undefined) {
+      return value;
+    }
+  }
+  const viteEnv = (globalThis as Record<string, unknown>).__VITE_ENV__;
+  if (viteEnv && typeof viteEnv === 'object') {
+    return (viteEnv as Record<string, string | undefined>)[key];
   }
   return undefined;
 };
@@ -18,13 +29,13 @@ const getEnv = (key: string): string | undefined => {
 export const AUTH_BASE_URL =
   getEnv('AUTH_BASE_URL') ||
   getEnv('REACT_APP_AUTH_BASE_URL') ||
-  import.meta.env.VITE_AUTH_BASE_URL ||
+  getEnv('VITE_AUTH_BASE_URL') ||
   'http://localhost:3000';
 
 export const AUTH_USE_API =
   (getEnv('AUTH_USE_API') === 'true' ||
     getEnv('REACT_APP_AUTH_USE_API') === 'true' ||
-    import.meta.env.VITE_AUTH_USE_API === 'true') ||
+    getEnv('VITE_AUTH_USE_API') === 'true') ||
   false;
 
 // Default to cookie-based sessions for web, allow env override
@@ -32,7 +43,7 @@ let _AUTH_USE_COOKIES = true;
 const cookiesFromEnv =
   getEnv('AUTH_USE_COOKIES') ||
   getEnv('REACT_APP_AUTH_USE_COOKIES') ||
-  import.meta.env.VITE_AUTH_USE_COOKIES;
+  getEnv('VITE_AUTH_USE_COOKIES');
 if (cookiesFromEnv !== undefined) {
   _AUTH_USE_COOKIES = cookiesFromEnv === 'true';
 }
@@ -46,7 +57,7 @@ export const TOKEN_REFRESH_WINDOW_MS = 30 * 1000; // 30 seconds
 export const SYNC_BASE_URL =
   getEnv('SYNC_BASE_URL') ||
   getEnv('REACT_APP_SYNC_BASE_URL') ||
-  import.meta.env.VITE_SYNC_BASE_URL ||
+  getEnv('VITE_SYNC_BASE_URL') ||
   AUTH_BASE_URL; // Default to same as auth
 
 export const SYNC_ENDPOINTS = {

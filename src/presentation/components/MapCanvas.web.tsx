@@ -16,27 +16,20 @@
  * - Navigation mode with directional arrow overlay
  */
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { MAPTILER_CONFIG } from '../../infrastructure/config/maptiler.config';
-import type { Tag } from '../../data/mocks/tagsMock';
-import type { AuditStatus } from '../../domain/audit/AuditRecord';
-import { NAV_BAR_HEIGHT } from '../themes/layout';
+import type { Tag } from '../../data/tagService';
 import NavigationArrow from './NavigationArrow';
+import { useTheme } from '../themes/ThemeContext';
+import { getContrastText } from '../themes/colorUtils';
+import { getAuditStatusLabel } from '../utils/auditStatus';
+import {
+  getNavigationZoom,
+  getUserFollowZoom,
+  shouldFollowUser,
+} from '../../domain/farm/navigationCamera';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
-
-function getAuditStatusLabel(status: AuditStatus | null | undefined) {
-  switch (status) {
-    case 'audited':
-      return 'Auditado';
-    case 'not_audited':
-      return 'No auditado';
-    case 'pending':
-      return 'Pendiente';
-    default:
-      return 'Sin auditar';
-  }
-}
 
 type Props = {
   items: Tag[];
@@ -48,12 +41,16 @@ type Props = {
   isNavigationActive?: boolean;
   /** Tag destino de navegación */
   navigationTarget?: Tag | null;
+  /** UUID del tag más cercano pendiente (para resaltarlo en el mapa) */
+  nearestTagId?: string | null;
   /** Distancia al destino en metros */
   distanceToTarget?: number | null;
   /** Bearing al destino en grados */
   bearingToTarget?: number | null;
   /** Callback al presionar la flecha de navegación */
   onNavigationPress?: () => void;
+  /** Live user position from navigationStore (Waze-like follow) */
+  userPosition?: { lat: number; lon: number } | null;
 };
 
 export default function MapCanvas({
@@ -64,17 +61,15 @@ export default function MapCanvas({
   showUserLocation = false,
   isNavigationActive = false,
   navigationTarget = null,
+  nearestTagId = null,
   distanceToTarget = null,
   bearingToTarget = null,
   onNavigationPress,
+  userPosition = null,
 }: Props) {
-  const insetsBottom = typeof window !== 'undefined' 
-    ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0') || 0 
-    : 0;
-  
+  const { colors } = useTheme();
   const [mapReady, setMapReady] = useState(false);
   const [mapType, setMapType] = useState<'street' | 'satellite' | 'hybrid'>('street');
-  const [toast, setToast] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
   const [currentZoom, setCurrentZoom] = useState<number>(12);
@@ -82,26 +77,24 @@ export default function MapCanvas({
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const userLocationMarkerRef = useRef<any>(null);
-  const toastTimer = useRef<number | null>(null);
+  const lastFollowRef = useRef<{ at: number; pos: { lat: number; lon: number } | null }>({
+    at: 0,
+    pos: null,
+  });
+  const lastTargetUuidRef = useRef<string | null>(null);
 
   const selectedItem = selectedId ? items.find(item => item.unique_id === selectedId) ?? null : null;
 
-  function showToast(message: string, ms = 3000) {
-    setToast(message);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), ms);
-  }
+  // In navigation mode use live store position; otherwise fall back to Settings one-shot.
+  const displayUserLocation = isNavigationActive && userPosition ? userPosition : userLocation;
+  const showUserMarker = isNavigationActive
+    ? userPosition != null
+    : showUserLocation && userLocation != null;
 
-  const legendItems = useMemo(() => {
-    const map = new Map<string, string>();
-    items.forEach(item => {
-      const label = getAuditStatusLabel(item.audit_status);
-      if (!map.has(label)) {
-        map.set(label, item.colorHex);
-      }
-    });
-    return Array.from(map.entries()).map(([label, color]) => ({ label, color }));
-  }, [items]);
+  // Keep latest items in a ref so the mount-only map init effect can read
+  // the initial center without re-running when items change.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   // Initialize map
   // NOTE: The map container div is always rendered (even when items is empty)
@@ -136,8 +129,9 @@ export default function MapCanvas({
         config.apiKey = MAPTILER_CONFIG.apiKey;
 
         if (!mapInstanceRef.current) {
-          const initialCenter = items.length > 0
-            ? [items[0].lon, items[0].lat]
+          const initialItems = itemsRef.current;
+          const initialCenter = initialItems.length > 0
+            ? [initialItems[0].lon, initialItems[0].lat]
             : [-122.42, 37.77];
 
           try {
@@ -172,6 +166,16 @@ export default function MapCanvas({
             // Listen for style errors (tiles failing to load)
             mapInstanceRef.current.on('error', (e: any) => {
               console.warn('[MapCanvas] Map error:', e?.error?.message || e);
+            });
+
+            // Register a placeholder for sprite images missing from the style
+            // (e.g. "transportation:road_") to silence repeated load errors.
+            mapInstanceRef.current.on('styleimagemissing', (e: any) => {
+              const missingId = e?.id;
+              if (!missingId || mapInstanceRef.current?.hasImage(missingId)) return;
+              const size = 16;
+              const placeholder = new Uint8Array(size * size * 4); // fully transparent RGBA
+              mapInstanceRef.current?.addImage(missingId, { width: size, height: size, data: placeholder });
             });
 
             // Observe container resizes so the canvas can adjust via map.resize()
@@ -225,47 +229,58 @@ export default function MapCanvas({
 
       items.forEach((item) => {
         const isSelected = selectedItem?.uuid === item.uuid;
+        const isNearest = nearestTagId === item.uuid;
         
         const marker = new Marker({
           color: item.colorHex,
-          scale: isSelected ? 1.3 : 1,
+          scale: isSelected ? 1.3 : isNearest ? 1.2 : 1,
         })
           .setLngLat([item.lon, item.lat])
           .setPopup(
+            // NOTE: the popup root div carries the themed card background so the
+            // interpolated text tokens stay readable in both light and dark mode.
+            // The MapTiler SDK chrome around the content keeps its default style.
             new Popup().setHTML(`
-              <div style="max-width: 300px; font-family: system-ui, sans-serif;">
+              <div style="max-width: 300px; font-family: system-ui, sans-serif; background-color: ${colors.card};">
                 <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                  <span style="width: 12px; height: 12px; border-radius: 999px; background-color: ${item.colorHex}; display: inline-block; margin-right: 8px;"></span>
-                  <strong style="color: #0f172a; font-size: 14px;">${item.unique_id}</strong>
+                  <span style="width: 12px; height: 12px; border-radius: 999px; background-color: ${item.colorHex}; display: inline-block; margin-right: 8px; ${isNearest ? `box-shadow: 0 0 0 3px ${colors.warning};` : ''}"></span>
+                  <strong style="color: ${colors.textPrimary}; font-size: 14px;">${item.unique_id}</strong>
+                  ${isNearest ? `<span style="background: ${colors.warning}; color: ${colors.textButton}; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: 600;">MÁS CERCANO</span>` : ''}
                 </div>
-                <div style="color: #475569; font-size: 12px; margin-bottom: 6px;">
-                  Auditoría: <strong style="color: #0f172a;">${getAuditStatusLabel(item.audit_status)}</strong>
+                <div style="color: ${colors.textSecondary}; font-size: 12px; margin-bottom: 6px;">
+                  Auditoría: <strong style="color: ${colors.textPrimary};">${getAuditStatusLabel(item.audit_status)}</strong>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px;">
                   <div>
-                    <div style="color: #64748b;">UUID</div>
-                    <div style="color: #0f172a; font-weight: 600;">${item.uuid}</div>
+                    <div style="color: ${colors.textMuted};">UUID</div>
+                    <div style="color: ${colors.textPrimary}; font-weight: 600;">${item.uuid}</div>
                   </div>
                   <div>
-                    <div style="color: #64748b;">Color</div>
-                    <div style="color: #0f172a; font-weight: 600;">${item.colorHex}</div>
+                    <div style="color: ${colors.textMuted};">Color</div>
+                    <div style="color: ${colors.textPrimary}; font-weight: 600;">${item.colorHex}</div>
                   </div>
                   <div>
-                    <div style="color: #64748b;">Lat</div>
-                    <div style="color: #0f172a; font-weight: 600;">${item.lat.toFixed(6)}</div>
+                    <div style="color: ${colors.textMuted};">Lat</div>
+                    <div style="color: ${colors.textPrimary}; font-weight: 600;">${item.lat.toFixed(6)}</div>
                   </div>
                   <div>
-                    <div style="color: #64748b;">Lon</div>
-                    <div style="color: #0f172a; font-weight: 600;">${item.lon.toFixed(6)}</div>
+                    <div style="color: ${colors.textMuted};">Lon</div>
+                    <div style="color: ${colors.textPrimary}; font-weight: 600;">${item.lon.toFixed(6)}</div>
                   </div>
                 </div>
-                <div style="color: #64748b; font-size: 11px; margin-top: 8px;">
+                <div style="color: ${colors.textMuted}; font-size: 11px; margin-top: 8px;">
                   Actualizado: ${new Date(item.timestamp).toLocaleString()}
                 </div>
               </div>
             `)
           )
           .addTo(mapInstanceRef.current);
+
+        // Add visual indicator for nearest tag
+        if (isNearest) {
+          const element = marker.getElement();
+          element.style.filter = `drop-shadow(0 0 6px ${colors.warning})`;
+        }
 
         if (onSelect) {
           marker.getElement().addEventListener('click', () => {
@@ -276,7 +291,7 @@ export default function MapCanvas({
         markersRef.current.push(marker);
       });
     });
-  }, [items, selectedId, mapReady]);
+  }, [items, selectedId, selectedItem, nearestTagId, mapReady, onSelect, colors]);
 
   // Update map style
   useEffect(() => {
@@ -322,9 +337,9 @@ export default function MapCanvas({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, mapReady]);
 
-  // Get user location when showUserLocation is true
+  // Get user location when showUserLocation is true (non-navigation mode)
   useEffect(() => {
-    if (!showUserLocation || !mapReady || !mapInstanceRef.current) return;
+    if (isNavigationActive || !showUserLocation || !mapReady || !mapInstanceRef.current) return;
 
     if (!navigator.geolocation) {
       console.warn('Geolocation not available');
@@ -341,11 +356,64 @@ export default function MapCanvas({
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [showUserLocation, mapReady]);
+  }, [showUserLocation, mapReady, isNavigationActive]);
+
+  // Waze-like camera: follow user at max zoom; recenter only when destination tag changes
+  useEffect(() => {
+    if (!isNavigationActive || !mapReady || !mapInstanceRef.current) return;
+
+    const targetZoom = getNavigationZoom(distanceToTarget);
+    const userZoom = getUserFollowZoom(MAPTILER_CONFIG.maxZoom);
+    const previousTargetUuid = lastTargetUuidRef.current;
+
+    if (navigationTarget && navigationTarget.uuid !== previousTargetUuid) {
+      lastTargetUuidRef.current = navigationTarget.uuid;
+
+      // Destination changed mid-session → recenter on the new tag
+      if (previousTargetUuid != null) {
+        lastFollowRef.current = { at: Date.now(), pos: userPosition };
+        mapInstanceRef.current.flyTo({
+          center: [navigationTarget.lon, navigationTarget.lat],
+          zoom: targetZoom,
+          duration: 1200,
+        });
+        return;
+      }
+      // First target of the session: prefer following the user if we have a position
+    }
+
+    if (!userPosition) return;
+
+    const now = Date.now();
+    const shouldFollow = shouldFollowUser({
+      lastFollowAt: lastFollowRef.current.at || null,
+      lastFollowPosition: lastFollowRef.current.pos,
+      currentPosition: userPosition,
+      now,
+    });
+
+    if (!shouldFollow) return;
+
+    lastFollowRef.current = { at: now, pos: userPosition };
+    // Center on user with maximum zoom (field detail)
+    mapInstanceRef.current.flyTo({
+      center: [userPosition.lon, userPosition.lat],
+      zoom: userZoom,
+      duration: 900,
+    });
+  }, [isNavigationActive, mapReady, userPosition, navigationTarget, distanceToTarget]);
+
+  // Reset target ref when navigation stops so the next session recenters
+  useEffect(() => {
+    if (!isNavigationActive) {
+      lastTargetUuidRef.current = null;
+      lastFollowRef.current = { at: 0, pos: null };
+    }
+  }, [isNavigationActive]);
 
   // Add/update user location marker
   useEffect(() => {
-    if (!mapReady || !mapInstanceRef.current || !userLocation) return;
+    if (!mapReady || !mapInstanceRef.current || !showUserMarker || !displayUserLocation) return;
 
     import('@maptiler/sdk').then(({ Marker }) => {
       // Remove existing user location marker
@@ -358,12 +426,12 @@ export default function MapCanvas({
       element.style.width = '20px';
       element.style.height = '20px';
       element.style.borderRadius = '50%';
-      element.style.backgroundColor = '#4285F4';
+      element.style.backgroundColor = colors.primary;
       element.style.border = '3px solid white';
       element.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
 
       userLocationMarkerRef.current = new Marker({ element })
-        .setLngLat([userLocation.lon, userLocation.lat])
+        .setLngLat([displayUserLocation.lon, displayUserLocation.lat])
         .addTo(mapInstanceRef.current);
     });
 
@@ -373,32 +441,7 @@ export default function MapCanvas({
         userLocationMarkerRef.current = null;
       }
     };
-  }, [userLocation, mapReady]);
-
-  const handleCenterOnMe = () => {
-    if (!navigator.geolocation) {
-      showToast('La geolocalización no está disponible');
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 18,
-            duration: 1500,
-          });
-        }
-      },
-      (error) => {
-        console.error('Error al obtener ubicación:', error);
-        showToast('No se pudo obtener tu ubicación');
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
+  }, [showUserMarker, displayUserLocation, mapReady, colors]);
 
   const handleFitAll = () => {
     if (!mapInstanceRef.current || items.length === 0) return;
@@ -431,12 +474,15 @@ export default function MapCanvas({
   const mapHeight = (style as any)?.height || 470;
 
   return (
-    <View style={[styles.wrapper, style && { borderRadius: (style as any).borderRadius }]} accessibilityLabel="Mapa de auditorías">
+    <View
+      style={[styles.wrapper, style && { borderRadius: (style as any).borderRadius }, { borderColor: colors.border, backgroundColor: colors.card }]}
+      accessibilityLabel="Mapa de auditorías"
+    >
       {mapLoadError ? (
-        <View style={styles.errorState}>
+        <View style={[styles.errorState, { backgroundColor: colors.dangerTonal, borderColor: colors.error }]}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorTitle}>Error al cargar el mapa</Text>
-          <Text style={styles.errorMessage}>{mapLoadError}</Text>
+          <Text style={[styles.errorTitle, { color: colors.error }]}>Error al cargar el mapa</Text>
+          <Text style={[styles.errorMessage, { color: colors.error }]}>{mapLoadError}</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Reintentar carga del mapa"
@@ -448,16 +494,16 @@ export default function MapCanvas({
                 window.location.reload();
               }, 100);
             }}
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: colors.error }]}
           >
-            <Text style={styles.retryButtonText}>Reintentar</Text>
+            <Text style={[styles.retryButtonText, { color: colors.textButton }]}>Reintentar</Text>
           </Pressable>
         </View>
       ) : (
         <>
           {/* Toolbar: only shown when there are items to interact with */}
           {items.length > 0 && (
-            <View style={styles.toolbar}>
+            <View style={[styles.toolbar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
               <View style={styles.actions}>
                 {selectedItem ? (
                   <Pressable
@@ -466,7 +512,7 @@ export default function MapCanvas({
                     onPress={handleCenterSelection}
                     style={[styles.mapToggleButton, styles.actionInlineButton]}
                   >
-                    <Text style={styles.mapToggleButtonText}>Centrar</Text>
+                    <Text style={[styles.mapToggleButtonText, { color: colors.primary }]}>Centrar</Text>
                   </Pressable>
                 ) : null}
 
@@ -476,7 +522,7 @@ export default function MapCanvas({
                   onPress={handleFitAll}
                   style={[styles.mapToggleButton, styles.actionInlineButton]}
                 >
-                  <Text style={styles.mapToggleButtonText}>Ver todos</Text>
+                  <Text style={[styles.mapToggleButtonText, { color: colors.primary }]}>Ver todos</Text>
                 </Pressable>
 
                 <View style={{ width: 6 }} />
@@ -485,9 +531,9 @@ export default function MapCanvas({
                   accessibilityLabel="Vista Street"
                   accessibilityState={{ pressed: mapType === 'street' }}
                   onPress={() => setMapType('street')}
-                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'street' ? styles.mapToggleButtonActive : undefined]}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'street' ? [styles.mapToggleButtonActive, { backgroundColor: colors.primary, borderColor: colors.primaryVariant }] : undefined]}
                 >
-                  <Text style={[styles.mapToggleButtonText, mapType === 'street' ? styles.mapToggleButtonTextActive : undefined]}>Street</Text>
+                  <Text style={[styles.mapToggleButtonText, { color: colors.primary }, mapType === 'street' ? { color: colors.textButton } : undefined]}>Street</Text>
                 </Pressable>
 
                 <View style={{ width: 6 }} />
@@ -496,9 +542,9 @@ export default function MapCanvas({
                   accessibilityLabel="Vista Satellite"
                   accessibilityState={{ pressed: mapType === 'satellite' }}
                   onPress={() => setMapType('satellite')}
-                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'satellite' ? styles.mapToggleButtonActive : undefined]}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'satellite' ? [styles.mapToggleButtonActive, { backgroundColor: colors.primary, borderColor: colors.primaryVariant }] : undefined]}
                 >
-                  <Text style={[styles.mapToggleButtonText, mapType === 'satellite' ? styles.mapToggleButtonTextActive : undefined]}>Satellite</Text>
+                  <Text style={[styles.mapToggleButtonText, { color: colors.primary }, mapType === 'satellite' ? { color: colors.textButton } : undefined]}>Satellite</Text>
                 </Pressable>
 
                 <View style={{ width: 6 }} />
@@ -507,14 +553,11 @@ export default function MapCanvas({
                   accessibilityLabel="Vista Hybrid"
                   accessibilityState={{ pressed: mapType === 'hybrid' }}
                   onPress={() => setMapType('hybrid')}
-                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'hybrid' ? styles.mapToggleButtonActive : undefined]}
+                  style={[styles.mapToggleButton, styles.mapTypeToggleButton, mapType === 'hybrid' ? [styles.mapToggleButtonActive, { backgroundColor: colors.primary, borderColor: colors.primaryVariant }] : undefined]}
                 >
-                  <Text style={[styles.mapToggleButtonText, mapType === 'hybrid' ? styles.mapToggleButtonTextActive : undefined]}>Hybrid</Text>
-                </Pressable>
+                <Text style={[styles.mapToggleButtonText, { color: colors.primary }, mapType === 'hybrid' ? { color: colors.textButton } : undefined]}>Hybrid</Text>
+              </Pressable>
               </View>
-              <Text style={styles.providerInfo} accessibilityLabel={`Zoom máximo disponible ${MAPTILER_CONFIG.maxZoom}`}>
-                Máx. zoom: {MAPTILER_CONFIG.maxZoom}
-              </Text>
             </View>
           )}
 
@@ -537,29 +580,29 @@ export default function MapCanvas({
                 width: '100%',
                 height: `${mapHeight}px`,
                 position: 'relative',
-                backgroundColor: '#e2e8f0',
+                backgroundColor: colors.border,
               }}
             />
 
             {/* Loading overlay: shown while the map tiles are loading */}
             {!mapReady && (
-              <View style={styles.loadingOverlay} pointerEvents="none">
-                <ActivityIndicator size="small" color="#1e40af" />
-                <Text style={styles.loadingText}>Cargando mapa…</Text>
+              <View style={[styles.loadingOverlay, { pointerEvents: 'none' }]}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.primary }]}>Cargando mapa…</Text>
               </View>
             )}
 
             {/* Empty state overlay: shown when map is ready but no items to display */}
             {items.length === 0 && mapReady && (
-              <View style={styles.emptyStateOverlay} pointerEvents="none">
-                <Text style={styles.emptyText}>No hay puntos para mostrar</Text>
+              <View style={[styles.emptyStateOverlay, { pointerEvents: 'none' }]}>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>No hay puntos para mostrar</Text>
               </View>
             )}
 
             {/* Zoom indicator */}
             {mapReady && (
-              <View style={styles.zoomIndicator} pointerEvents="none">
-                <Text style={styles.zoomText} accessibilityLabel={`Zoom nivel ${currentZoom.toFixed(1)}`}>
+              <View style={[styles.zoomIndicator, { backgroundColor: colors.primaryVariant, pointerEvents: 'none' }]}>
+                <Text style={[styles.zoomText, { color: getContrastText(colors.primaryVariant) }]} accessibilityLabel={`Zoom nivel ${currentZoom.toFixed(1)}`}>
                   {currentZoom.toFixed(1)}×
                 </Text>
               </View>
@@ -567,7 +610,7 @@ export default function MapCanvas({
 
             {/* Navigation Arrow Overlay */}
             {isNavigationActive && navigationTarget && distanceToTarget !== null && bearingToTarget !== null && (
-              <View style={styles.navigationOverlay} pointerEvents="box-none">
+              <View style={[styles.navigationOverlay, { pointerEvents: 'box-none' }]}>
                 <NavigationArrow
                   bearing={bearingToTarget}
                   distance={distanceToTarget}
@@ -579,15 +622,6 @@ export default function MapCanvas({
               </View>
             )}
           </View>
-
-          {toast ? (
-            <View
-              style={[styles.toast, { bottom: (insetsBottom || 0) + NAV_BAR_HEIGHT + 14, zIndex: 1200 }]}
-              accessibilityLiveRegion="polite"
-            >
-              <Text style={styles.toastText}>{toast}</Text>
-            </View>
-          ) : null}
         </>
       )}
     </View>
@@ -598,8 +632,6 @@ const styles = StyleSheet.create({
   wrapper: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fff',
     width: '100%',
     minWidth: 0,
     // NOTE: overflow is intentionally NOT set to 'hidden' here.
@@ -617,9 +649,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 8,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   actions: {
     flexDirection: 'row',
@@ -640,30 +670,20 @@ const styles = StyleSheet.create({
     width: 76,
     flexShrink: 0,
   },
-  mapToggleButtonActive: {
-    backgroundColor: '#1e40af',
-    borderColor: '#153a8a',
-  },
+  mapToggleButtonActive: {},
   mapToggleButtonText: {
-    color: '#1e40af',
     fontWeight: '700',
     fontSize: 12,
   },
-  mapToggleButtonTextActive: {
-    color: '#fff',
-  },
+  mapToggleButtonTextActive: {},
   actionInlineButton: {
     marginRight: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
   },
-  locationButton: {
-    backgroundColor: '#10b981',
-    borderColor: '#059669',
-  },
+  locationButton: {},
   providerInfo: {
-    color: '#64748b',
     fontSize: 12,
     alignSelf: 'flex-end',
     marginTop: 6,
@@ -676,11 +696,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    // Map-overlay scrim: must dim the map tiles in both themes (not a theme surface).
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
     zIndex: 10,
   },
   loadingText: {
-    color: '#1e40af',
     fontSize: 14,
     fontWeight: '600',
     marginTop: 8,
@@ -693,65 +713,43 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    // Map-overlay scrim: must dim the map tiles in both themes (not a theme surface).
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
     zIndex: 10,
   },
   emptyText: {
-    color: '#64748b',
     fontSize: 14,
     fontWeight: '500',
-  },
-  toast: {
-    position: 'absolute',
-    left: '50%',
-    transform: [{ translateX: -150 } as any],
-    bottom: 14,
-    width: 300,
-    backgroundColor: 'rgba(15,23,42,0.9)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  toastText: {
-    color: '#fff',
-    fontSize: 13,
   },
   errorState: {
     minHeight: 320,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#fef2f2',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#fecaca',
   },
   errorIcon: {
     fontSize: 32,
     marginBottom: 12,
   },
   errorTitle: {
-    color: '#991b1b',
     fontWeight: '700',
     fontSize: 16,
     marginBottom: 8,
   },
   errorMessage: {
-    color: '#b91c1c',
     fontSize: 13,
     textAlign: 'center',
     marginBottom: 16,
     lineHeight: 18,
   },
   retryButton: {
-    backgroundColor: '#dc2626',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,
   },
   retryButtonText: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: 13,
   },
@@ -759,14 +757,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 10,
     right: 10,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     zIndex: 1000,
   },
   zoomText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
     fontFamily: 'monospace',

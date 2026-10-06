@@ -128,7 +128,8 @@ describe('NavigationArrow', () => {
         <NavigationArrow {...defaultProps} tagStatus={null} />
       );
       
-      expect(getByText('Sin auditar')).toBeTruthy();
+      // Business rule: audit_status null ≡ pending → "Pendiente"
+      expect(getByText('Pendiente')).toBeTruthy();
     });
   });
 

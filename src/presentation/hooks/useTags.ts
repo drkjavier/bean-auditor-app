@@ -46,6 +46,7 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
+  const filterKey = JSON.stringify(filter);
 
   const fetchTagsData = useCallback(async () => {
     // Cancel previous request
@@ -59,8 +60,9 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
     setError(null);
 
     try {
+      const parsedFilter = JSON.parse(filterKey) as TagFilter;
       const filterObj: TagFilter | undefined =
-        Object.keys(filter).length > 0 ? filter : undefined;
+        Object.keys(parsedFilter).length > 0 ? parsedFilter : undefined;
       const data = await fetchTags(filterObj, { signal: controller.signal });
       if (mountedRef.current) {
         setTags(data);
@@ -79,7 +81,7 @@ export function useTags(options: UseTagsOptions = {}): UseTagsReturn {
         setIsLoading(false);
       }
     }
-  }, [JSON.stringify(filter)]);
+  }, [filterKey]);
 
   // Auto-fetch on mount and when filter changes
   useEffect(() => {

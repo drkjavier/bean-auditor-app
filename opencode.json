@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "default_agent": "frontend-agent",
+  "default_agent": "build",
   "agent": {
     "skills-agent": {
       "description": "Agente especializado en crear y gestionar agentes y skills de OpenCode",

@@ -14,7 +14,6 @@
 import { TagRecord } from '../audit/AuditRecord';
 import { Farm } from '../farm/Farm';
 import { User } from '../user/User';
-import { SyncConflict } from './SyncContracts';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -70,7 +69,7 @@ export class ConflictResolver {
   resolve(
     local: SyncRecord,
     server: SyncRecord,
-    type: ConflictType
+    _type: ConflictType
   ): ConflictResolution {
     // Compare timestamps
     const localTimestamp = this.getTimestamp(local);

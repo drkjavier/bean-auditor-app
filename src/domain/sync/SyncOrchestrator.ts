@@ -16,8 +16,8 @@
  */
 
 import { ISyncApi } from './ISyncApi';
-import { PullUseCase, PullResult, PullProgress } from './PullUseCase';
-import { PushUseCase, PushResult, PushProgress } from './PushUseCase';
+import { PullUseCase, PullResult } from './PullUseCase';
+import { PushUseCase, PushResult } from './PushUseCase';
 import { ConflictResolver, ManualConflict } from './ConflictResolver';
 import { SyncConflict, SyncState } from './SyncContracts';
 import * as syncRepo from '../../data/sync';

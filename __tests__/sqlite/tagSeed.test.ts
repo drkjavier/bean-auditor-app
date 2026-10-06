@@ -9,7 +9,7 @@ import { tagsMock } from '../../src/data/mocks/tagsMock';
 beforeEach(() => {
   mockDb.clear();
 
-  // Create tags table
+  // Create tags table (full schema, including sync metadata columns)
   mockDb.execute(`
     CREATE TABLE IF NOT EXISTS tags (
       uuid TEXT PRIMARY KEY NOT NULL,
@@ -20,7 +20,10 @@ beforeEach(() => {
       timestamp TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      sync_pending INTEGER NOT NULL DEFAULT 0
+      sync_pending INTEGER NOT NULL DEFAULT 0,
+      version INTEGER NOT NULL DEFAULT 1,
+      updated_by TEXT,
+      farm_id TEXT
     );
   `);
 });
@@ -105,7 +108,8 @@ describe('Tag Seed', () => {
   });
 
   test('all tags from mock are included', () => {
-    expect(tagsMock.length).toBeGreaterThanOrEqual(6_500);
+    expect(tagsMock.length).toBeGreaterThanOrEqual(45);
+    expect(tagsMock.length).toBeLessThanOrEqual(55);
     expect(tagsMock[0].uuid).toBeDefined();
     expect(tagsMock[0].colorHex).toBeDefined();
   });

@@ -1,6 +1,6 @@
 import React, { useState, forwardRef } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, TextInputProps } from 'react-native';
-import theme from '../themes/theme';
+import { useTheme } from '../themes/ThemeContext';
 import MdiIcon from './MdiIcon';
 
 type InputProps = TextInputProps & {
@@ -18,6 +18,7 @@ type InputProps = TextInputProps & {
 
 const Input = forwardRef<TextInput, InputProps>(
   ({ label, error, secure = false, prependIcon, appendIcon, onAppendPress, style, testID, ...rest }: InputProps, ref) => {
+    const { colors, radii } = useTheme();
     const [showPassword, setShowPassword] = useState(false);
     const a11yLabel = (rest as any)?.accessibilityLabel ?? label;
 
@@ -29,19 +30,24 @@ const Input = forwardRef<TextInput, InputProps>(
 
     return (
       <View style={styles.container}>
-        {label ? <Text style={styles.label}>{label}</Text> : null}
-        <View style={styles.inputRow}>
+        {label ? <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text> : null}
+        <View
+          style={[
+            styles.inputRow,
+            { borderColor: colors.border, backgroundColor: colors.card, borderRadius: radii.md },
+          ]}
+        >
           {prependIcon ? (
             <View style={styles.prepend}>
-              <MdiIcon name={prependIcon} size={18} />
+              <MdiIcon name={prependIcon} size={18} color={colors.textMuted} />
             </View>
           ) : null}
           <TextInput
             {...(rest as any)}
             ref={ref}
             secureTextEntry={isPassword && !isPasswordVisible}
-            placeholderTextColor={theme.colors.muted}
-            style={[styles.input, prependIcon ? styles.inputWithPrepend : null, style as any]}
+            placeholderTextColor={colors.textMuted}
+            style={[styles.input, { color: colors.textPrimary }, prependIcon ? styles.inputWithPrepend : null, style as any]}
             accessibilityLabel={a11yLabel}
             testID={testID}
           />
@@ -52,11 +58,11 @@ const Input = forwardRef<TextInput, InputProps>(
               accessibilityLabel={isPassword ? (isPasswordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña') : undefined}
               style={styles.append}
             >
-              <MdiIcon name={currentAppendIcon} size={20} />
+              <MdiIcon name={currentAppendIcon} size={20} color={colors.textSecondary} />
             </Pressable>
           ) : null}
         </View>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
       </View>
     );
   }
@@ -66,14 +72,11 @@ export default Input;
 
 const styles = StyleSheet.create({
   container: { width: '100%', maxWidth: 448 },
-  label: { marginBottom: 6, color: theme.colors.textSecondary, fontSize: 15 },
+  label: { marginBottom: 6, fontSize: 15 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
-    backgroundColor: theme.colors.background,
   },
   prepend: {
     paddingLeft: 12,
@@ -85,7 +88,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: theme.colors.textPrimary,
     fontSize: 15,
     outlineStyle: 'none',
   },
@@ -99,5 +101,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  error: { marginTop: 6, color: theme.colors.error },
+  error: { marginTop: 6 },
 });

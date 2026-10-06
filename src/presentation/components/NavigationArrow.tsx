@@ -20,9 +20,12 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import type { AuditStatus } from '../../domain/audit/AuditRecord';
 import { formatDistance, getBearingDescription } from '../../domain/farm/geoUtils';
+import { useTheme } from '../themes/ThemeContext';
+import { getContrastText } from '../themes/colorUtils';
+import { getAuditStatusLabel, getStatusBadgeColors } from '../utils/auditStatus';
 
 /**
  * Props del componente NavigationArrow
@@ -48,51 +51,21 @@ export type NavigationArrowProps = {
 };
 
 /**
- * Obtiene el color según la distancia
+ * Returns the arrow color for a navigation distance bucket.
+ * Semantic mapping: very near → success, near → primary, far → info.
  */
-function getDistanceColor(meters: number): string {
+function getDistanceColor(
+  meters: number,
+  colors: ReturnType<typeof useTheme>['colors'],
+): string {
   if (meters < 50) {
-    return '#10b981'; // Verde - muy cerca
+    return colors.success; // Very near
   }
   if (meters < 100) {
-    return '#22c55e'; // Verde claro
+    return colors.primary; // Near
   }
-  if (meters < 500) {
-    return '#3b82f6'; // Azul claro
-  }
-  return '#1e40af'; // Azul normal
-}
-
-/**
- * Obtiene el color de fondo del badge de estado
- */
-function getStatusColor(status: AuditStatus | null): string {
-  switch (status) {
-    case 'audited':
-      return '#10b981';
-    case 'not_audited':
-      return '#ef4444';
-    case 'pending':
-      return '#f59e0b';
-    default:
-      return '#6b7280';
-  }
-}
-
-/**
- * Obtiene la etiqueta del estado
- */
-function getStatusLabel(status: AuditStatus | null): string {
-  switch (status) {
-    case 'audited':
-      return 'Auditado';
-    case 'not_audited':
-      return 'No auditado';
-    case 'pending':
-      return 'Pendiente';
-    default:
-      return 'Sin auditar';
-  }
+  // Far and very far share the info color
+  return colors.info;
 }
 
 /**
@@ -106,6 +79,8 @@ export default function NavigationArrow({
   visible,
   onPress,
 }: NavigationArrowProps) {
+  const { colors } = useTheme();
+
   // Animación de rotación
   const rotationAnim = useRef(new Animated.Value(0)).current;
   
@@ -150,11 +125,14 @@ export default function NavigationArrow({
     return null;
   }
   
-  const distanceColor = getDistanceColor(distanceMeters);
-  const statusColor = getStatusColor(tagStatus);
-  const statusLabel = getStatusLabel(tagStatus);
+  const distanceColor = getDistanceColor(distanceMeters, colors);
+  const statusBadge = getStatusBadgeColors(tagStatus, colors);
+  const statusLabel = getAuditStatusLabel(tagStatus);
   const directionLabel = getBearingDescription(bearingDegrees);
   const formattedDistance = formatDistance(distanceMeters);
+  // Floating map-overlay chip: primaryVariant guarantees contrast on both
+  // light and dark map styles; text color adapts via getContrastText.
+  const overlayChipText = getContrastText(colors.primaryVariant);
   
   // Label de accesibilidad
   const accessibilityLabel = `Navegación hacia ${tagId}, ${formattedDistance} metros, dirección ${directionLabel}`;
@@ -189,18 +167,18 @@ export default function NavigationArrow({
       </Animated.View>
       
       {/* Badge de distancia */}
-      <View style={[styles.distanceBadge, { backgroundColor: 'rgba(15, 23, 42, 0.85)' }]}>
-        <Text style={styles.distanceText}>{formattedDistance}</Text>
+      <View style={[styles.distanceBadge, { backgroundColor: colors.primaryVariant }]}>
+        <Text style={[styles.distanceText, { color: overlayChipText }]}>{formattedDistance}</Text>
       </View>
       
       {/* Badge de tag ID */}
-      <View style={[styles.tagBadge, { backgroundColor: statusColor }]}>
-        <Text style={styles.tagText}>{tagId}</Text>
+      <View style={[styles.tagBadge, { backgroundColor: statusBadge.background }]}>
+        <Text style={[styles.tagText, { color: statusBadge.text }]}>{tagId}</Text>
       </View>
       
       {/* Badge de estado */}
-      <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-        <Text style={styles.statusText}>{statusLabel}</Text>
+      <View style={[styles.statusBadge, { backgroundColor: statusBadge.background }]}>
+        <Text style={[styles.statusText, { color: statusBadge.text }]}>{statusLabel}</Text>
       </View>
     </Pressable>
   );
@@ -245,7 +223,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   distanceText: {
-    color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
@@ -257,7 +234,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   tagText: {
-    color: '#ffffff',
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
@@ -268,7 +244,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusText: {
-    color: '#ffffff',
     fontSize: 10,
     fontWeight: '500',
     textAlign: 'center',

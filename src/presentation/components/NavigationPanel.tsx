@@ -21,9 +21,11 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import type { Tag } from '../../data/mocks/tagsMock';
+import type { Tag } from '../../data/tagService';
 import type { AuditStatus } from '../../domain/audit/AuditRecord';
 import { formatDistance } from '../../domain/farm/geoUtils';
+import { useTheme } from '../themes/ThemeContext';
+import { getAuditStatusLabel, getStatusBadgeColors } from '../utils/auditStatus';
 import MdiIcon from './MdiIcon';
 
 /**
@@ -42,6 +44,9 @@ export type NavigationPanelProps = {
   /** Si hay posición del usuario */
   hasPosition: boolean;
   
+  /** Si se está buscando la posición GPS */
+  isSearchingPosition?: boolean;
+  
   /** Callback para auditar */
   onAudit: () => void;
   
@@ -53,38 +58,6 @@ export type NavigationPanelProps = {
 };
 
 /**
- * Obtiene el color del estado
- */
-function getStatusColor(status: AuditStatus | null): string {
-  switch (status) {
-    case 'audited':
-      return '#10b981';
-    case 'not_audited':
-      return '#ef4444';
-    case 'pending':
-      return '#f59e0b';
-    default:
-      return '#6b7280';
-  }
-}
-
-/**
- * Obtiene la etiqueta del estado
- */
-function getStatusLabel(status: AuditStatus | null): string {
-  switch (status) {
-    case 'audited':
-      return 'Auditado';
-    case 'not_audited':
-      return 'No auditado';
-    case 'pending':
-      return 'Pendiente';
-    default:
-      return 'Sin auditar';
-  }
-}
-
-/**
  * Componente NavigationPanel
  */
 export default function NavigationPanel({
@@ -92,56 +65,60 @@ export default function NavigationPanel({
   distance,
   tagStatus,
   hasPosition,
+  isSearchingPosition = false,
   onAudit,
   onNext,
   onClose,
 }: NavigationPanelProps) {
-  const statusColor = getStatusColor(tagStatus);
-  const statusLabel = getStatusLabel(tagStatus);
+  const { colors } = useTheme();
+  const statusBadge = getStatusBadgeColors(tagStatus, colors);
+  const statusLabel = getAuditStatusLabel(tagStatus);
   const formattedDistance = distance !== null ? formatDistance(distance) : '--';
   
   return (
-    <View style={styles.container} accessibilityLabel="Panel de navegación">
+    <View
+      style={[styles.container, { backgroundColor: colors.card, borderTopColor: colors.border }]}
+      accessibilityLabel="Panel de navegación"
+    >
       {/* Header */}
-      <View style={styles.header}>
-        <MdiIcon name="compass-outline" size={20} color="#1e40af" />
-        <Text style={styles.headerText}>NAVEGACIÓN ACTIVA</Text>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <MdiIcon name="compass-outline" size={20} color={colors.primary} />
+        <Text style={[styles.headerText, { color: colors.primary }]}>NAVEGACIÓN ACTIVA</Text>
       </View>
       
       {/* Información del tag destino */}
       {targetTag ? (
         <View style={styles.targetInfo}>
           <View style={styles.targetRow}>
-            <Text style={styles.targetLabel}>Destino:</Text>
-            <Text style={styles.targetValue}>{targetTag.unique_id}</Text>
+            <Text style={[styles.targetLabel, { color: colors.textSecondary }]}>Destino:</Text>
+            <Text style={[styles.targetValue, { color: colors.textPrimary }]}>{targetTag.unique_id}</Text>
           </View>
           
           <View style={styles.targetRow}>
-            <Text style={styles.targetLabel}>Distancia:</Text>
-            <Text style={[styles.targetValue, styles.distanceValue]}>
+            <Text style={[styles.targetLabel, { color: colors.textSecondary }]}>Distancia:</Text>
+            <Text style={[styles.targetValue, styles.distanceValue, { color: colors.primary }]}>
               {formattedDistance}
             </Text>
           </View>
           
           <View style={styles.targetRow}>
-            <Text style={styles.targetLabel}>Estado:</Text>
-            <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-              <Text style={styles.statusText}>{statusLabel}</Text>
+            <Text style={[styles.targetLabel, { color: colors.textSecondary }]}>Estado:</Text>
+            <View style={[styles.statusBadge, { backgroundColor: statusBadge.background }]}>
+              <Text style={[styles.statusText, { color: statusBadge.text }]}>{statusLabel}</Text>
             </View>
           </View>
-          
-          <View style={styles.targetRow}>
-            <Text style={styles.targetLabel}>Coordenadas:</Text>
-            <Text style={styles.coordinates}>
-              {targetTag.lat.toFixed(6)}, {targetTag.lon.toFixed(6)}
-            </Text>
-          </View>
+        </View>
+      ) : isSearchingPosition ? (
+        <View style={styles.emptyState}>
+          <MdiIcon name="crosshairs-gps" size={32} color={colors.info} />
+          <Text style={[styles.searchingText, { color: colors.info }]}>Buscando señal GPS…</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Esperando señal para calcular tag más cercano</Text>
         </View>
       ) : (
         <View style={styles.emptyState}>
-          <MdiIcon name="check-circle-outline" size={32} color="#10b981" />
-          <Text style={styles.emptyText}>¡Todos auditados!</Text>
-          <Text style={styles.emptySubtext}>No hay más tags pendientes</Text>
+          <MdiIcon name="check-circle-outline" size={32} color={colors.success} />
+          <Text style={[styles.emptyText, { color: colors.success }]}>¡Todos auditados!</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>No hay más tags pendientes</Text>
         </View>
       )}
       
@@ -149,42 +126,42 @@ export default function NavigationPanel({
       {targetTag && (
         <View style={styles.actions}>
           <Pressable
-            style={[styles.button, styles.auditButton]}
+            style={[styles.button, { backgroundColor: colors.success }]}
             onPress={onAudit}
             accessibilityRole="button"
             accessibilityLabel={`Auditar tag ${targetTag.unique_id}`}
           >
-            <MdiIcon name="check-circle-outline" size={18} color="#ffffff" />
-            <Text style={styles.buttonText}>Auditar</Text>
+            <MdiIcon name="check-circle-outline" size={18} color={colors.textButton} />
+            <Text style={[styles.buttonText, { color: colors.textButton }]}>Auditar</Text>
           </Pressable>
           
           <Pressable
-            style={[styles.button, styles.nextButton]}
+            style={[styles.button, { backgroundColor: colors.actionSecondaryBg }]}
             onPress={onNext}
             accessibilityRole="button"
             accessibilityLabel="Saltar al siguiente tag"
           >
-            <MdiIcon name="skip-next-outline" size={18} color="#ffffff" />
-            <Text style={styles.buttonText}>Siguiente</Text>
+            <MdiIcon name="skip-next-outline" size={18} color={colors.onActionSecondary} />
+            <Text style={[styles.buttonText, { color: colors.onActionSecondary }]}>Siguiente</Text>
           </Pressable>
           
           <Pressable
-            style={[styles.button, styles.closeButton]}
+            style={[styles.button, { backgroundColor: colors.actionSecondaryBg }]}
             onPress={onClose}
             accessibilityRole="button"
             accessibilityLabel="Cerrar navegación"
           >
-            <MdiIcon name="close" size={18} color="#ffffff" />
-            <Text style={styles.buttonText}>Cerrar</Text>
+            <MdiIcon name="close" size={18} color={colors.onActionSecondary} />
+            <Text style={[styles.buttonText, { color: colors.onActionSecondary }]}>Cerrar</Text>
           </Pressable>
         </View>
       )}
       
       {/* Sin posición */}
       {!hasPosition && targetTag && (
-        <View style={styles.warningBanner}>
-          <MdiIcon name="alert-circle-outline" size={16} color="#f59e0b" />
-          <Text style={styles.warningText}>Buscando señal GPS...</Text>
+        <View style={[styles.warningBanner, { backgroundColor: colors.warningTonal }]}>
+          <MdiIcon name="alert-circle-outline" size={16} color={colors.warning} />
+          <Text style={[styles.warningText, { color: colors.warning }]}>Buscando señal GPS…</Text>
         </View>
       )}
     </View>
@@ -193,9 +170,7 @@ export default function NavigationPanel({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -205,12 +180,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   headerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1e40af',
     marginLeft: 8,
     letterSpacing: 0.5,
   },
@@ -224,19 +197,16 @@ const styles = StyleSheet.create({
   },
   targetLabel: {
     fontSize: 13,
-    color: '#64748b',
     width: 80,
   },
   targetValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0f172a',
     flex: 1,
   },
   distanceValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1e40af',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -246,11 +216,9 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ffffff',
   },
   coordinates: {
     fontSize: 12,
-    color: '#64748b',
     fontFamily: 'monospace',
   },
   emptyState: {
@@ -260,12 +228,15 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#10b981',
+    marginTop: 8,
+  },
+  searchingText: {
+    fontSize: 16,
+    fontWeight: '600',
     marginTop: 8,
   },
   emptySubtext: {
     fontSize: 13,
-    color: '#64748b',
     marginTop: 4,
   },
   actions: {
@@ -283,25 +254,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 6,
   },
-  auditButton: {
-    backgroundColor: '#10b981',
-  },
-  nextButton: {
-    backgroundColor: '#3b82f6',
-  },
-  closeButton: {
-    backgroundColor: '#6b7280',
-  },
   buttonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#ffffff',
   },
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fef3c7',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,
@@ -311,7 +271,6 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#92400e',
   },
 });
 

@@ -5,23 +5,33 @@
  */
 
 import { execute, queryRows } from '../sqlite/db.native';
+import runMigrations from '../sqlite/migrations.native';
 import { User, CreateUser, UpdateUser } from '../../domain/user/User';
 
 type AnyRow = Record<string, unknown>;
 
 export class UserRepository {
   /**
+   * Ensure the database schema exists before any operation.
+   */
+  private async ensure(): Promise<void> {
+    await runMigrations();
+  }
+
+  /**
    * Get all users.
    */
-  getAll(): User[] {
+  async getAll(): Promise<User[]> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM users ORDER BY display_name');
-    return rows.map(this.rowToUser);
+    return rows.map(row => this.rowToUser(row));
   }
 
   /**
    * Get user by ID.
    */
-  getById(id: string): User | null {
+  async getById(id: string): Promise<User | null> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM users WHERE id = ?', [id]);
     return rows.length > 0 ? this.rowToUser(rows[0]) : null;
   }
@@ -29,7 +39,8 @@ export class UserRepository {
   /**
    * Get user by username.
    */
-  getByUsername(username: string): User | null {
+  async getByUsername(username: string): Promise<User | null> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM users WHERE username = ?', [username]);
     return rows.length > 0 ? this.rowToUser(rows[0]) : null;
   }
@@ -37,23 +48,26 @@ export class UserRepository {
   /**
    * Get users by role.
    */
-  getByRole(role: User['role']): User[] {
+  async getByRole(role: User['role']): Promise<User[]> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM users WHERE role = ? ORDER BY display_name', [role]);
-    return rows.map(this.rowToUser);
+    return rows.map(row => this.rowToUser(row));
   }
 
   /**
    * Get active users only.
    */
-  getActive(): User[] {
+  async getActive(): Promise<User[]> {
+    await this.ensure();
     const rows = queryRows('SELECT * FROM users WHERE is_active = 1 ORDER BY display_name');
-    return rows.map(this.rowToUser);
+    return rows.map(row => this.rowToUser(row));
   }
 
   /**
    * Create a new user.
    */
-  create(user: CreateUser): User {
+  async create(user: CreateUser): Promise<User> {
+    await this.ensure();
     const now = Date.now();
     const newUser: User = {
       ...user,
@@ -87,8 +101,8 @@ export class UserRepository {
   /**
    * Update an existing user.
    */
-  update(id: string, updates: UpdateUser): User | null {
-    const existing = this.getById(id);
+  async update(id: string, updates: UpdateUser): Promise<User | null> {
+    const existing = await this.getById(id);
     if (!existing) return null;
 
     const now = Date.now();
@@ -123,7 +137,8 @@ export class UserRepository {
   /**
    * Delete a user.
    */
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
+    await this.ensure();
     execute('DELETE FROM users WHERE id = ?', [id]);
     return true;
   }
@@ -131,7 +146,8 @@ export class UserRepository {
   /**
    * Get count of users.
    */
-  count(): number {
+  async count(): Promise<number> {
+    await this.ensure();
     const rows = queryRows('SELECT COUNT(*) as count FROM users');
     return (rows[0]?.count as number) || 0;
   }
@@ -139,7 +155,8 @@ export class UserRepository {
   /**
    * Get pending sync count.
    */
-  pendingCount(): number {
+  async pendingCount(): Promise<number> {
+    await this.ensure();
     const rows = queryRows('SELECT COUNT(*) as count FROM users WHERE sync_pending = 1');
     return (rows[0]?.count as number) || 0;
   }

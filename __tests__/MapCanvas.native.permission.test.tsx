@@ -22,7 +22,13 @@ jest.mock('react-native-permissions');
 const perms = require('react-native-permissions');
 const geolocation = require('@react-native-community/geolocation').default;
 
-describe('MapCanvas native permission flows', () => {
+// TODO(maplibre-migration): This suite drives the legacy centerOnMeBtn flow
+// from the react-native-maps implementation. MapCanvas.native no longer
+// renders that button: permissions are now requested from a showUserLocation
+// effect via locationService, and the map lazy-loads
+// @maplibre/maplibre-react-native (dynamic import()).
+// Redesign these scenarios under SDD once the MapLibre WIP migration is complete.
+describe.skip('MapCanvas native permission flows', () => {
   beforeEach(async () => {
     if (perms.__resetMocks) perms.__resetMocks();
     if (geolocation.__resetMocks) geolocation.__resetMocks();

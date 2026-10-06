@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useTheme } from '../themes/ThemeContext';
 
 interface Props {
   children: ReactNode;
@@ -57,24 +58,36 @@ export default class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      return (
-        <View style={styles.container}>
-          <Text style={styles.title}>Algo salió mal</Text>
-          <Text style={styles.message}>
-            Ha ocurrido un error inesperado. Por favor, intenta de nuevo.
-          </Text>
-          {process.env.NODE_ENV !== 'production' && this.state.error && (
-            <Text style={styles.errorDetail}>{this.state.error.message}</Text>
-          )}
-          <Pressable style={styles.button} onPress={this.handleReset}>
-            <Text style={styles.buttonText}>Reintentar</Text>
-          </Pressable>
-        </View>
-      );
+      return <ThemedErrorFallback error={this.state.error} onReset={this.handleReset} />;
     }
 
     return this.props.children;
   }
+}
+
+/**
+ * Full-screen error UI — a function component so it can consume theme
+ * tokens via `useTheme()` (class components cannot use hooks).
+ */
+function ThemedErrorFallback({ error, onReset }: { error: Error | null; onReset: () => void }) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>Algo salió mal</Text>
+      <Text style={[styles.message, { color: colors.textSecondary }]}>
+        Ha ocurrido un error inesperado. Por favor, intenta de nuevo.
+      </Text>
+      {process.env.NODE_ENV !== 'production' && error && (
+        <Text style={[styles.errorDetail, { color: colors.textMuted, backgroundColor: colors.card }]}>
+          {error.message}
+        </Text>
+      )}
+      <Pressable style={[styles.button, { backgroundColor: colors.primary }]} onPress={onReset}>
+        <Text style={[styles.buttonText, { color: colors.textButton }]}>Reintentar</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -83,41 +96,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#f8fafc',
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
     marginBottom: 8,
     textAlign: 'center',
   },
   message: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
     marginBottom: 16,
     lineHeight: 20,
   },
   errorDetail: {
     fontSize: 12,
-    color: '#94a3b8',
     fontFamily: 'monospace',
     textAlign: 'center',
     marginBottom: 16,
     padding: 8,
-    backgroundColor: '#f1f5f9',
     borderRadius: 4,
     overflow: 'hidden',
   },
   button: {
-    backgroundColor: '#2563eb',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   buttonText: {
-    color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
   },

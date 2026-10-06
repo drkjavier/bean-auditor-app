@@ -1,12 +1,14 @@
 import React from 'react';
 import { View } from 'react-native';
 import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet';
+import { useTheme } from '../themes/ThemeContext';
 
 const MAX_MAP_ZOOM = 21;
 
 // Simple test component to render two markers ~1m apart for visual verification.
 // Uses static ESM imports for Vite/web compatibility.
 export default function MapZoomTest() {
+  const { colors } = useTheme();
   // base coords near project sample
   const baseLat = 14.283333;
   const baseLon = -91.366667;
@@ -18,8 +20,8 @@ export default function MapZoomTest() {
     <View style={{ height: 300 }}>
       <MapContainer center={[baseLat, baseLon]} zoom={18} style={{ height: '100%', width: '100%' }} maxZoom={MAX_MAP_ZOOM}>
         <TileLayer url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'} maxNativeZoom={19} maxZoom={MAX_MAP_ZOOM} />
-        <CircleMarker center={[baseLat, baseLon]} radius={8} pathOptions={{ color: '#ff0000', fillColor: '#ff0000' }} />
-        <CircleMarker center={[baseLat + offsetDeg, baseLon]} radius={8} pathOptions={{ color: '#00ff00', fillColor: '#00ff00' }} />
+        <CircleMarker center={[baseLat, baseLon]} radius={8} pathOptions={{ color: colors.error, fillColor: colors.error }} />
+        <CircleMarker center={[baseLat + offsetDeg, baseLon]} radius={8} pathOptions={{ color: colors.success, fillColor: colors.success }} />
       </MapContainer>
     </View>
   );

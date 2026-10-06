@@ -10,7 +10,7 @@ import { mockDb } from '../helpers/sqliteMock';
 beforeEach(() => {
   mockDb.clear();
 
-  // Create tags table
+  // Create tags table (full schema, including sync metadata columns)
   mockDb.execute(`
     CREATE TABLE IF NOT EXISTS tags (
       uuid TEXT PRIMARY KEY NOT NULL,
@@ -21,7 +21,10 @@ beforeEach(() => {
       timestamp TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      sync_pending INTEGER NOT NULL DEFAULT 0
+      sync_pending INTEGER NOT NULL DEFAULT 0,
+      version INTEGER NOT NULL DEFAULT 1,
+      updated_by TEXT,
+      farm_id TEXT
     );
   `);
 

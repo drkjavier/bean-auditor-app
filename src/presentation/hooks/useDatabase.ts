@@ -13,7 +13,6 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
 import runMigrations from '../../data/sqlite/migrations.native';
 
 export type UseDatabaseReturn = {
@@ -36,12 +35,6 @@ export function useDatabase(): UseDatabaseReturn {
   const [error, setError] = useState<string | null>(null);
 
   const initialize = useCallback(async () => {
-    // Skip on web - web shim handles initialization asynchronously
-    if (Platform.OS === 'web') {
-      setIsReady(true);
-      return;
-    }
-
     if (isInitializing || isReady) return;
 
     setIsInitializing(true);
@@ -58,12 +51,11 @@ export function useDatabase(): UseDatabaseReturn {
     }
   }, [isInitializing, isReady]);
 
-  // Auto-initialize on mount (native only)
+  // Auto-initialize on mount (native and web: the sql.js shim executes the
+  // same migrations against the WASM database)
   useEffect(() => {
-    if (Platform.OS !== 'web') {
-      initialize();
-    }
-  }, []);
+    initialize();
+  }, [initialize]);
 
   return {
     isReady,

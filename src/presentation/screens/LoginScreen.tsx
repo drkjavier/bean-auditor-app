@@ -15,7 +15,7 @@ import { AUTH_DEBUG, genAttemptId, setAttemptId, getAttemptId, maskUsername, san
 import Button from '../components/Button';
 import Input from '../components/Input';
 import ErrorBanner from '../components/ErrorBanner';
-import theme from '../themes/theme';
+import { useTheme } from '../themes/ThemeContext';
 
 /**
  * Pantalla de inicio de sesión (LoginScreen) siguiendo buenas prácticas:
@@ -30,6 +30,7 @@ interface Props {
 }
 
 export default function LoginScreen({ navigation }: Props) {
+  const { colors, radii } = useTheme();
   const username = useAuthStore(state => state.username);
   const setUsername = useAuthStore(state => state.setUsername);
   const login = useAuthStore(state => state.login);
@@ -203,7 +204,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.screen}
+      style={[styles.screen, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
@@ -211,12 +212,12 @@ export default function LoginScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.card}>
-        <Text style={styles.appTitle}>BeanAuditor</Text>
-        <Text style={styles.appSubtitle}>Sistema de Auditoría de Café</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderRadius: radii.lg }]}>
+        <Text style={[styles.appTitle, { color: colors.textPrimary }]}>BeanAuditor</Text>
+        <Text style={[styles.appSubtitle, { color: colors.textMuted }]}>Sistema de Auditoría de Café</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Account</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textPrimary }]}>Account</Text>
         </View>
 
         <Input
@@ -237,8 +238,8 @@ export default function LoginScreen({ navigation }: Props) {
         />
 
         <View style={styles.passwordHeader}>
-          <Text style={styles.sectionLabel}>Password</Text>
-          <Text style={styles.forgotLink}>Forgot login password?</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textPrimary }]}>Password</Text>
+          <Text style={[styles.forgotLink, { color: colors.textLink }]}>Forgot login password?</Text>
         </View>
 
         <Input
@@ -259,8 +260,8 @@ export default function LoginScreen({ navigation }: Props) {
           testID="input-password"
         />
 
-        <View style={styles.warningCard}>
-          <Text style={styles.warningText}>
+        <View style={[styles.warningCard, { backgroundColor: colors.warningTonal }]}>
+          <Text style={[styles.warningText, { color: colors.textSecondary }]}>
             Warning: After 3 consecutive failed login attempts, your account will be temporarily locked for three hours. If you must login now, you can also click "Forgot login password?" below to reset the login password.
           </Text>
         </View>
@@ -272,12 +273,12 @@ export default function LoginScreen({ navigation }: Props) {
         {generalError ? <ErrorBanner message={generalError} /> : null}
 
         <View style={styles.signupRow}>
-          <Text style={styles.signupLink}>Sign up now </Text>
-          <Text style={styles.signupArrow}>›</Text>
+          <Text style={[styles.signupLink, { color: colors.textLink }]}>Sign up now </Text>
+          <Text style={[styles.signupArrow, { color: colors.textLink }]}>›</Text>
         </View>
 
         {AUTH_DEBUG ? (
-          <Text accessibilityRole="text" style={styles.debugText}>{`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}</Text>
+          <Text accessibilityRole="text" style={[styles.debugText, { color: colors.textMuted }]}>{`DEBUG ${debugAttemptId ? debugAttemptId : ''}${debugMessage ? ' — ' + debugMessage : ''}`}</Text>
         ) : null}
         </View>
       </ScrollView>
@@ -288,7 +289,6 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollContent: {
     flexGrow: 1,
@@ -299,27 +299,21 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 448,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
     padding: 32,
     paddingBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    // boxShadow is supported natively by RN 0.76+ and by react-native-web.
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
     elevation: 3,
   },
   appTitle: {
     fontSize: 24,
     fontWeight: '700',
     textAlign: 'center',
-    color: theme.colors.textPrimary,
     marginBottom: 4,
   },
   appSubtitle: {
     fontSize: 14,
     textAlign: 'center',
-    color: theme.colors.muted,
     marginBottom: 28,
   },
   section: {
@@ -328,7 +322,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 15,
     fontWeight: '500',
-    color: theme.colors.textPrimary,
   },
   passwordHeader: {
     flexDirection: 'row',
@@ -339,11 +332,9 @@ const styles = StyleSheet.create({
   },
   forgotLink: {
     fontSize: 13,
-    color: theme.colors.primary,
     textDecorationLine: 'underline',
   },
   warningCard: {
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 12,
     marginTop: 16,
@@ -351,7 +342,6 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 12,
-    color: '#666',
     lineHeight: 18,
   },
   signupRow: {
@@ -362,16 +352,13 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     fontSize: 14,
-    color: theme.colors.primary,
   },
   signupArrow: {
     fontSize: 18,
-    color: theme.colors.primary,
     marginLeft: 2,
   },
   debugText: {
     marginTop: 12,
     fontSize: 12,
-    color: '#94a3b8',
   },
 });

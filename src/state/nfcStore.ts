@@ -116,7 +116,7 @@ export const useNfcStore = create<NfcStore>((set, get) => ({
         isNfcAvailable: available,
         capability,
       });
-    } catch (err) {
+    } catch {
       set({
         isNfcAvailable: false,
         capability: {

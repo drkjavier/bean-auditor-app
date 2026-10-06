@@ -39,7 +39,7 @@ export default function SessionCard({ session }: Props) {
         styles.container,
         {
           backgroundColor: colors.surface,
-          borderColor: isExpired ? '#EF4444' : colors.primary,
+          borderColor: isExpired ? colors.error : colors.primary,
           borderWidth: 1,
         },
       ]}
@@ -51,8 +51,8 @@ export default function SessionCard({ session }: Props) {
           {session.session_id.substring(0, 8)}...
         </Text>
         {isExpired && (
-          <View style={[styles.badge, { backgroundColor: '#EF4444' }]}>
-            <Text style={[styles.badgeText, { color: '#FFFFFF' }]}>
+          <View style={[styles.badge, { backgroundColor: colors.dangerTonal, borderColor: colors.error, borderWidth: 1 }]}>
+            <Text style={[styles.badgeText, { color: colors.error }]}>
               Expirada
             </Text>
           </View>
@@ -75,7 +75,7 @@ export default function SessionCard({ session }: Props) {
 
         <View style={styles.detailRow}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>Expira:</Text>
-          <Text style={[styles.value, { color: isExpired ? '#EF4444' : colors.textPrimary }]}>
+          <Text style={[styles.value, { color: isExpired ? colors.error : colors.textPrimary }]}>
             {formatDate(session.expires_at)}
           </Text>
         </View>

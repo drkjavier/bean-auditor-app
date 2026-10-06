@@ -41,8 +41,8 @@ export default function HomeScreen({ onNavigate }: Props) {
   }, [initializeSync]);
 
   const quickActions = [
-    { key: 'audit', icon: 'clipboard-text-search-outline', label: 'Auditoría', color: colors.primary, bg: colors.primary },
-    { key: 'settings', icon: 'cog-outline', label: 'Ajustes', color: colors.textSecondary, bg: colors.textSecondary },
+    { key: 'audit', icon: 'clipboard-text-search-outline', label: 'Auditoría', bg: colors.primary, fg: colors.textButton },
+    { key: 'settings', icon: 'cog-outline', label: 'Ajustes', bg: colors.actionSecondaryBg, fg: colors.onActionSecondary },
   ];
 
   return (
@@ -66,19 +66,19 @@ export default function HomeScreen({ onNavigate }: Props) {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <MdiIcon name="clipboard-check-outline" size={24} color={colors.success} />
-              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{counts.audited}</Text>
+              <Text style={[styles.summaryValue, { color: colors.textPrimary, ...typography.data }]}>{counts.audited}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textCaption, ...typography.caption }]}>Auditados</Text>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
             <View style={styles.summaryItem}>
               <MdiIcon name="clipboard-clock-outline" size={24} color={colors.warning} />
-              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{counts.pending}</Text>
+              <Text style={[styles.summaryValue, { color: colors.textPrimary, ...typography.data }]}>{counts.pending}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textCaption, ...typography.caption }]}>Pendientes</Text>
             </View>
             <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
             <View style={styles.summaryItem}>
               <MdiIcon name="tag-outline" size={24} color={colors.primary} />
-              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{counts.total}</Text>
+              <Text style={[styles.summaryValue, { color: colors.textPrimary, ...typography.data }]}>{counts.total}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textCaption, ...typography.caption }]}>Total tags</Text>
             </View>
           </View>
@@ -110,8 +110,8 @@ export default function HomeScreen({ onNavigate }: Props) {
                 },
               ]}
             >
-              <MdiIcon name={action.icon} size={28} color="#FFFFFF" />
-              <Text style={[styles.actionLabel, { color: '#FFFFFF', ...typography.body }]}>
+              <MdiIcon name={action.icon} size={28} color={action.fg} />
+              <Text style={[styles.actionLabel, { color: action.fg, ...typography.body }]}>
                 {action.label}
               </Text>
             </Pressable>
@@ -157,9 +157,8 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     minWidth: 140,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    // boxShadow is supported natively by RN 0.76+ and by react-native-web.
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 2,
   },
   actionLabel: {

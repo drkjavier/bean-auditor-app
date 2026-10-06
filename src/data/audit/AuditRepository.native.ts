@@ -55,16 +55,19 @@ export const AuditRepositoryImpl: AuditRepository = {
     const now = Date.now();
 
     execute(
-      `INSERT INTO tags (uuid, colorHex, unique_id, lat, lon, timestamp, created_at, updated_at, sync_pending)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+      `INSERT INTO tags (uuid, colorHex, unique_id, lat, lon, timestamp, created_at, updated_at, sync_pending, version, updated_by, farm_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
        ON CONFLICT(uuid) DO UPDATE SET
          colorHex = excluded.colorHex,
          unique_id = excluded.unique_id,
          lat = excluded.lat,
          lon = excluded.lon,
          timestamp = excluded.timestamp,
-         updated_at = excluded.updated_at;`,
-      [tag.uuid, tag.colorHex, tag.unique_id, tag.lat, tag.lon, tag.timestamp, now, now],
+         updated_at = excluded.updated_at,
+         version = excluded.version,
+         updated_by = excluded.updated_by,
+         farm_id = excluded.farm_id;`,
+      [tag.uuid, tag.colorHex, tag.unique_id, tag.lat, tag.lon, tag.timestamp, now, now, tag.version ?? 1, tag.updated_by ?? null, tag.farm_id ?? null],
     );
   },
 
@@ -82,7 +85,7 @@ export const AuditRepositoryImpl: AuditRepository = {
     await ensureMigrations();
 
     const rows = queryRows(
-      `SELECT uuid, colorHex, unique_id, lat, lon, timestamp, created_at, updated_at, sync_pending
+      `SELECT uuid, colorHex, unique_id, lat, lon, timestamp, created_at, updated_at, sync_pending, version, updated_by, farm_id
        FROM tags
        WHERE sync_pending = 1
        ORDER BY updated_at ASC;`,
@@ -225,7 +228,9 @@ export const AuditRepositoryImpl: AuditRepository = {
          (SELECT COUNT(*) FROM tags) AS total,
          (SELECT COUNT(*) FROM latest WHERE status = 'audited') AS audited,
          (SELECT COUNT(*) FROM latest WHERE status = 'not_audited') AS not_audited,
-         (SELECT COUNT(*) FROM latest WHERE status = 'pending') AS pending;`,
+         (SELECT COUNT(*) FROM tags)
+           - (SELECT COUNT(*) FROM latest WHERE status = 'audited')
+           - (SELECT COUNT(*) FROM latest WHERE status = 'not_audited') AS pending;`,
       [],
     );
 

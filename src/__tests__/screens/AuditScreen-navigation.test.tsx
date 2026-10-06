@@ -11,6 +11,7 @@ import { useNavigationStore } from '../../state/navigationStore';
 jest.mock('../../data/tagService', () => ({
   fetchTags: jest.fn().mockResolvedValue([]),
   saveTagAudit: jest.fn().mockResolvedValue(undefined),
+  getAuditCounts: jest.fn().mockResolvedValue({ audited: 0, not_audited: 0, pending: 0, total: 0 }),
 }));
 
 jest.mock('../../infrastructure/api/abortManager', () => ({
@@ -19,11 +20,25 @@ jest.mock('../../infrastructure/api/abortManager', () => ({
   abortAllControllers: jest.fn(),
 }));
 
-jest.mock('../../state/settingsStore', () => ({
-  useSettingsStore: jest.fn().mockReturnValue({
+jest.mock('../../state/settingsStore', () => {
+  const state = {
     showUserLocation: false,
-  }),
-}));
+    arrivalRadiusMeters: 10,
+    arrivalRadiusConfigured: true,
+    setShowUserLocation: jest.fn(),
+    setArrivalRadius: jest.fn(),
+    hydrateSettings: jest.fn().mockResolvedValue(true),
+  };
+  const store: any = (selector?: (s: typeof state) => unknown) =>
+    typeof selector === 'function' ? selector(state) : state;
+  store.getState = () => state;
+  store.setState = jest.fn();
+  return {
+    useSettingsStore: store,
+    DEFAULT_ARRIVAL_RADIUS_METERS: 10,
+    canStartNavigationWithoutRadiusModal: jest.fn().mockReturnValue(true),
+  };
+});
 
 jest.mock('../../stores', () => ({
   useAuthStore: jest.fn().mockReturnValue({
@@ -106,7 +121,7 @@ describe('AuditScreen Navigation Integration', () => {
   });
 
   it('should activate navigation mode when toggle is pressed', async () => {
-    const { getByText, getByTestId } = render(<AuditScreen />);
+    const { getByText } = render(<AuditScreen />);
     
     const toggleButton = getByText('Modo Navegación');
     

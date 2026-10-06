@@ -196,11 +196,28 @@ describe('geoUtils', () => {
       const singleTag: Tag[] = [
         { ...mockTags[0], audit_status: 'pending' },
       ];
-      
+
       const result = getNearestUncAuditTag(singleTag, FINCA_CENTER);
-      
+
       expect(result).not.toBeNull();
       expect(result?.unique_id).toBe('TAG-001');
+    });
+
+    it('should exclude tags listed in excludeUuids', () => {
+      const result = getNearestUncAuditTag(mockTags, FINCA_CENTER, ['tag-004']);
+
+      expect(result).not.toBeNull();
+      expect(result?.unique_id).not.toBe('TAG-004');
+    });
+
+    it('should return null when all pending tags are excluded', () => {
+      const result = getNearestUncAuditTag(mockTags, FINCA_CENTER, [
+        'tag-001',
+        'tag-003',
+        'tag-004',
+      ]);
+
+      expect(result).toBeNull();
     });
   });
 

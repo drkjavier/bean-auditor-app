@@ -23,7 +23,10 @@ function isDevOrTest(): boolean {
   // __DEV__ is a React Native global, may not exist in web/Vite context
   // eslint-disable-next-line no-undef
   const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
-  return isDev || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test');
+  // Vite dev server exposes DEV=true via import.meta.env → __VITE_ENV__
+  // (set in webEnv.ts before the app tree loads); false in production builds.
+  const isViteDev = (globalThis as { __VITE_ENV__?: { DEV?: boolean } }).__VITE_ENV__?.DEV === true;
+  return isDev || isViteDev || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test');
 }
 
 export const AuthRepositoryImpl: AuthRepository = {
@@ -129,14 +132,14 @@ export const AuthRepositoryImpl: AuthRepository = {
             } catch (e: any) {
               if (e && (e.name === 'AbortError' || e.message === 'Aborted')) {
                 // aborted due to logout/unmount; treat as no session
-                try { unregisterAbortController(ctrl); } catch (_) {}
+                try { unregisterAbortController(ctrl); } catch { /* noop */ }
                 return null;
               }
               // refresh failed - proceed to return null (will require login)
-              try { unregisterAbortController(ctrl); } catch (_) {}
+              try { unregisterAbortController(ctrl); } catch { /* noop */ }
               return null;
             } finally {
-              try { unregisterAbortController(ctrl); } catch (_) {}
+              try { unregisterAbortController(ctrl); } catch { /* noop */ }
             }
         }
     } catch (insErr) {

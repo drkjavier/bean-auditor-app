@@ -5,7 +5,7 @@
  */
 
 import { PushUseCase } from '../../src/domain/sync/PushUseCase';
-import { ISyncApi, ApiError } from '../../src/domain/sync/ISyncApi';
+import { ISyncApi } from '../../src/domain/sync/ISyncApi';
 import { PushResponse } from '../../src/domain/sync/SyncContracts';
 import { TagRecord, AuditRecord } from '../../src/domain/audit/AuditRecord';
 
